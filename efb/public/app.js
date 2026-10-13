@@ -74,6 +74,7 @@ async function loadConfig() {
 function connectEvents() {
   const es = new EventSource('/api/events');
   es.onmessage = (e) => { app.sim = JSON.parse(e.data); onSim(); };
+  ['cl', 'cp'].forEach((n) => es.addEventListener(n, (e) => { try { if (window.onEfbEvent) window.onEfbEvent(n, JSON.parse(e.data)); } catch { /* egal */ } }));
   es.onerror = () => { app.sim = { ...app.sim, connected: false, bridgeDown: true }; onSim(); };
   es.onopen = () => { app.sim.bridgeDown = false; };
 }

@@ -121,6 +121,8 @@ Alles dazu findest du unter **Setup**. Links wählst du den Bereich.
 - Befehle: „weiter“ (Punkt überspringen), „wiederholen“, „stopp“.
 - Die Sprache ist die Spracherkennung deines Browsers; Chrome und Edge senden die Aufnahme dafür an Google bzw. Microsoft (siehe PRIVACY.md). Das Feld „Antwort eintippen“ funktioniert auch ohne Mikrofon.
 
+**Mit der Windows-App (empfohlen):** Die App hat ein eigenes Copilot-Fenster (Reiter „Copilot“ → „Copilot-Fenster öffnen“). Es spricht über deine Kopfhörer und hört per Mikrofon zu; die Spracherkennung (Whisper) läuft offline auf dem PC und wird in der App mit einem Klick installiert. Das iPad zeigt nur die Checkliste: Haken erscheinen dort sofort, du kannst dort auch Listen antippen. Du kannst eine Liste direkt ansagen: „Let's do the Cockpit Preparation checklist“, „starte die Before Start Checkliste“ oder „next checklist“.
+
 ## Updates installieren
 
 Neue ZIP herunterladen, EFB am PC öffnen, Setup → Info → „Update installieren“, ZIP wählen, „Installieren“, dann „Jetzt neu starten“. Starte die EFB dafür immer über `start.bat`, nur dann startet sie selbst neu. Einstellungen, Logbuch, PIN, Hintergründe und `config.json` bleiben unberührt.

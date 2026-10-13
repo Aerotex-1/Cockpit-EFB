@@ -10,4 +10,4 @@ Cockpit EFB läuft vollständig auf deinem eigenen PC und im eigenen Heimnetz. E
 
 ## Sprach-Copilot
 
-Die Sprachausgabe nutzt die Stimmen deines Systems. Die Spracherkennung ist die des Browsers (Web Speech API): Chrome sendet die Aufnahme zur Erkennung an Google, Edge an Microsoft. Cockpit EFB selbst speichert oder versendet keine Audiodaten. Schalte den Copilot aus oder das Häkchen „Mikrofon“ ab, um nichts aufzunehmen; die Texteingabe funktioniert ohne Mikrofon.
+Die Sprachausgabe nutzt die Stimmen deines Systems. Die Spracherkennung der Windows-App (Whisper) läuft komplett offline auf dem PC; die Aufnahme verlässt den Rechner nicht und wird nicht gespeichert. Ohne die App nutzt der Copilot die Spracherkennung des Browsers (Web Speech API): Chrome sendet die Aufnahme zur Erkennung an Google, Edge an Microsoft. Cockpit EFB selbst speichert oder versendet keine Audiodaten. Schalte den Copilot aus oder das Häkchen „Mikrofon“ ab, um nichts aufzunehmen; die Texteingabe funktioniert ohne Mikrofon.

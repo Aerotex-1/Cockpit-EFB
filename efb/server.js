@@ -23,6 +23,7 @@ const VERSION = require('./package.json').version;
 const { Spotify } = require('./spotify');
 const updater = require('./updater');
 const tts = require('./tts');
+const stt = require('./stt');
 
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
@@ -93,6 +94,15 @@ setInterval(() => {
   for (const res of clients) res.write(msg);
 }, 250);
 setInterval(() => { for (const res of clients) res.write(': ping\n\n'); }, 15000);
+const bcast = (name, obj) => { const msg = `event: ${name}\ndata: ${JSON.stringify(obj)}\n\n`; for (const res of clients) res.write(msg); };
+
+// ---------- Checklisten-Stand und Copilot-Ereignisse (gemeinsam für PC-App und iPad) ----------
+const CL_FILE = path.join(__dirname, 'clstate.json');
+let clState = {}; try { clState = JSON.parse(fs.readFileSync(CL_FILE, 'utf8')); } catch { /* neu */ }
+let clTimer = 0;
+const clSave = () => { clearTimeout(clTimer); clTimer = setTimeout(() => { try { fs.writeFileSync(CL_FILE, JSON.stringify(clState)); } catch { /* egal */ } }, 800); };
+let cpHost = { id: '', t: 0 };
+const CP_TYPES = new Set(['pick', 'input', 'show', 'log']);
 
 // ---------- Hilfsfunktionen ----------
 const MIME = {
@@ -199,6 +209,37 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': st.size, 'Cache-Control': 'private, max-age=86400' });
         return fs.createReadStream(f).pipe(res);
       } catch (e) { return sendJson(res, 500, { error: e.message }); }
+    }
+    if (p === '/api/stt/status') return sendJson(res, 200, { available: stt.available(), model: stt.model() });
+    if (p === '/api/stt' && req.method === 'POST') {
+      if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' });
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 8e6) return sendJson(res, 413, { error: 'Audio zu lang.' }); chunks.push(c); }
+      try { return sendJson(res, 200, { text: await stt.transcribe(Buffer.concat(chunks), { lang: url.searchParams.get('lang') || 'auto', prompt: url.searchParams.get('prompt') || '' }) }); } catch (e) { return sendJson(res, 500, { error: e.message }); }
+    }
+    if (p === '/api/cl') {
+      if (req.method === 'GET') return sendJson(res, 200, clState);
+      if (req.method === 'POST') {
+        const b = await readBody(req);
+        if (typeof b.k !== 'string' || !/^cl\.[\w.-]{1,60}$/.test(b.k) || typeof b.v !== 'object' || b.v === null) return sendJson(res, 400, { error: 'ungültig' });
+        clState[b.k] = b.v; clSave();
+        bcast('cl', { k: b.k, v: b.v, from: String(b.from || '').slice(0, 40) });
+        return sendJson(res, 200, { ok: true });
+      }
+    }
+    if (p === '/api/cp/event' && req.method === 'POST') {
+      const b = await readBody(req);
+      if (!CP_TYPES.has(b.type)) return sendJson(res, 400, { error: 'ungültig' });
+      const ev = { type: b.type, from: String(b.from || '').slice(0, 40) };
+      if (b.type === 'pick' || b.type === 'show') ev.index = Math.max(0, Math.min(99, Number(b.index) | 0));
+      if (b.type === 'input') ev.text = String(b.text || '').slice(0, 300);
+      if (b.type === 'log') { ev.who = String(b.who || '').slice(0, 20); ev.text = String(b.text || '').slice(0, 400); }
+      bcast('cp', ev);
+      return sendJson(res, 200, { ok: true });
+    }
+    if (p === '/api/cp/host') {
+      if (req.method === 'POST') { const b = await readBody(req); cpHost = b.off ? { id: '', t: 0 } : { id: String(b.id || '').slice(0, 40), t: Date.now() }; return sendJson(res, 200, { ok: true }); }
+      return sendJson(res, 200, { active: Date.now() - cpHost.t < 15000, id: cpHost.id });
     }
     if (p === '/api/copilot') {
       const f = path.join(__dirname, 'copilot.json');

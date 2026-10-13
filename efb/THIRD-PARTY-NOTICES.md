@@ -29,3 +29,7 @@ Die Namen der Sim-Variablen für FlyByWire (A32NX, A380X), Headwind (A339X), Fen
 ## Piper (Sprachausgabe der Windows-App)
 
 Piper (https://github.com/rhasspy/piper, MIT-Lizenz) erzeugt die eingebauten Copilot-Stimmen. Die Stimmmodelle stammen aus https://huggingface.co/rhasspy/piper-voices; jede Stimme hat ihre eigene Lizenz (siehe Modellkarte der Stimme dort). Prüfe die Lizenz, bevor du die App mit Stimmen weitergibst.
+
+## whisper.cpp und Whisper-Modelle (Spracherkennung der Windows-App)
+
+whisper.cpp (https://github.com/ggml-org/whisper.cpp, MIT-Lizenz) erkennt Sprache offline auf dem PC. Die Modelle (ggml-Umsetzung der OpenAI-Whisper-Modelle, MIT-Lizenz) lädt die App bei Bedarf von https://huggingface.co/ggerganov/whisper.cpp. Sie werden nicht mit der EFB ausgeliefert.

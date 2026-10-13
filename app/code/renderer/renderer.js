@@ -35,7 +35,7 @@ function render(s) {
   if (s.bootNote) $('#uState').textContent = s.bootNote;
   const c = s.settings;
   $('#sAutoStart').checked = c.autoStartServer; $('#sBrowser').checked = c.openBrowserOnStart; $('#sLogin').checked = c.startWithWindows; $('#sClose').checked = c.closeStopsServer;
-  $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port;
+  $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port; $('#cpOnStart').checked = !!c.copilotOnStart;
   $('#uRepo').value = c.repo; $('#uToken').value = c.token; $('#uEdition').value = c.edition; $('#uCheck').checked = c.checkOnStart;
   $('#logBox').textContent = s.logs.join('\n');
   renderUpdate(s.update);
@@ -56,6 +56,25 @@ $('#sSave').onclick = async () => {
   const s = await bridge.invoke('settings:set', { autoStartServer: $('#sAutoStart').checked, openBrowserOnStart: $('#sBrowser').checked, startWithWindows: $('#sLogin').checked, closeStopsServer: $('#sClose').checked, openIn: $('#sOpenIn').value, port: $('#sPort').value });
   render(s); $('#sMsg').textContent = 'Gespeichert.'; setTimeout(() => ($('#sMsg').textContent = ''), 2500);
 };
+
+// ---- Copilot-Fenster und Spracherkennung
+$('#cpOpen').onclick = async () => { try { await bridge.invoke('copilot:open'); } catch (e) { $('#sttMsg').textContent = e.message.replace(/^Error invoking remote method[^:]*: /, ''); } };
+$('#cpOnStart').onchange = () => bridge.invoke('settings:set', { copilotOnStart: $('#cpOnStart').checked });
+let sttInfo = { models: [], binary: false, active: '' };
+function renderStt() {
+  $('#sttList').innerHTML = sttInfo.models.map((m) => `<div class="v ${m.installed ? 'on' : ''}"><div><b>${esc(m.name)}</b> ${m.id === sttInfo.active ? '<span class="sub">in Benutzung</span>' : ''}</div>
+    <span class="sub">${esc(m.desc)} · ${m.mb} MB</span>
+    ${m.installed ? `${m.id === sttInfo.active ? '' : `<button data-suse="${m.id}">Benutzen</button>`}<button data-srm="${m.id}">Entfernen</button>` : `<button class="primary" data-sget="${m.id}" id="sb-${m.id}">Installieren</button>`}</div>`).join('');
+}
+async function loadStt() { sttInfo = await bridge.invoke('stt:status'); renderStt(); }
+document.addEventListener('click', async (e) => {
+  const g = e.target.closest('[data-sget]'), u = e.target.closest('[data-suse]'), r = e.target.closest('[data-srm]');
+  const fail = (er) => { $('#sttMsg').textContent = 'Fehler: ' + er.message.replace(/^Error invoking remote method[^:]*: /, ''); renderStt(); };
+  if (g) { g.disabled = true; g.textContent = '0 %'; $('#sttMsg').textContent = 'Lade …'; try { sttInfo = await bridge.invoke('stt:install', g.dataset.sget); renderStt(); $('#sttMsg').textContent = 'Fertig. Das Copilot-Fenster nutzt die Spracherkennung jetzt.'; } catch (er) { fail(er); } }
+  if (u) { try { sttInfo = await bridge.invoke('stt:use', u.dataset.suse); renderStt(); } catch (er) { fail(er); } }
+  if (r) { try { sttInfo = await bridge.invoke('stt:remove', r.dataset.srm); renderStt(); } catch (er) { fail(er); } }
+});
+bridge.on('stt:progress', ({ what, p }) => { const b = document.querySelector('[data-sget][disabled]'); if (b) b.textContent = what + ' ' + Math.round(p * 100) + ' %'; });
 
 // ---- Copilot
 let cp = {};
@@ -136,4 +155,4 @@ $('#uInstCode').onclick = () => bridge.invoke('update:code').catch((e) => { $('#
 bridge.on('update:info', (u) => { st.update = u; renderUpdate(u); });
 bridge.on('update:progress', (p) => { $('#uBar').hidden = false; $('#uBar div').style.width = Math.round(p.p * 100) + '%'; $('#uProg').textContent = p.text; });
 
-bridge.invoke('state').then((s) => { render(s); loadVoiceList(); loadCopilot(); });
+bridge.invoke('state').then((s) => { render(s); loadVoiceList(); loadCopilot(); loadStt(); });

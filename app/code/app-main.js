@@ -9,6 +9,7 @@ const { ServerProc } = require('./lib/server-proc');
 const releases = require('./lib/releases');
 const settingsStore = require('./lib/store');
 const voiceLib = require('./lib/voices');
+const whisperLib = require('./lib/whisper');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -17,12 +18,13 @@ const EFB_DIR = path.join(DATA, 'efb');
 const BOOT = global.__EFB_BOOT || { shellDir: path.join(__dirname, '..'), bundledDir: __dirname, userCodeDir: path.join(app.getPath('userData'), 'app-code'), shellVersion: app.getVersion() };
 const CODE_VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version; } catch { return '0.0.0'; } })();
 const BUNDLE = app.isPackaged ? path.join(process.resourcesPath, 'efb') : path.join(BOOT.shellDir, 'efb-bundle');
+const WHISPER_DIR = path.join(app.getPath('userData'), 'whisper');
 const SETTINGS_FILE = path.join(DATA, 'launcher.json');
 const VOICES_USER = path.join(DATA, 'voices');
 const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices') : path.join(BOOT.shellDir, 'voices-bundle');
 const PIPER_EXE = [path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(BOOT.shellDir, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || '';
 const safe = { available: () => safeStorage.isEncryptionAvailable(), encrypt: (t) => safeStorage.encryptString(t), decrypt: (b) => safeStorage.decryptString(b) };
-let S = null, win = null, efbWin = null, proc = null, updateInfo = { efb: null, code: null, shell: null, error: null, checkedAt: 0 };
+let S = null, win = null, efbWin = null, cpWin = null, proc = null, updateInfo = { efb: null, code: null, shell: null, error: null, checkedAt: 0 };
 
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 const efbVersion = () => readJson(path.join(EFB_DIR, 'package.json'), {}).version || '0.0.0';
@@ -115,6 +117,17 @@ function openEfb(mode) {
   } else shell.openExternal(url);
 }
 
+// Copilot-Fenster: spricht über die Kopfhörer des PCs und hört per Mikrofon zu; das iPad zeigt nur die Checkliste
+function openCopilot() {
+  if (cpWin && !cpWin.isDestroyed()) { cpWin.show(); return cpWin.focus(); }
+  cpWin = new BrowserWindow({ width: 560, height: 760, title: 'Cockpit Copilot', autoHideMenuBar: true, webPreferences: { autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } });
+  cpWin.loadURL(`http://127.0.0.1:${proc.port()}/?host=1`);
+  cpWin.on('closed', () => { cpWin = null; });
+}
+const whisperEnv = () => whisperLib.env(WHISPER_DIR, S.sttModel);
+async function sttApply() { Object.assign(proc.env, whisperEnv()); if (proc.status === 'running') { await proc.restart(); if (cpWin && !cpWin.isDestroyed()) setTimeout(() => cpWin && !cpWin.isDestroyed() && cpWin.reload(), 2500); } }
+const sttState = () => ({ ...whisperLib.status(WHISPER_DIR, S.sttModel), cores: os.cpus().length });
+
 function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startWithWindows }); } catch { /* nicht unterstützt */ } }
 
 function state() {
@@ -127,8 +140,13 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   S = settingsStore.load(SETTINGS_FILE, safe);
   seed();
-  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath(), EFB_PIPER: PIPER_EXE, EFB_VOICES: VOICES_USER, EFB_VOICES_BUNDLED: VOICES_BUNDLED }, getPort: null });
-  proc.on('status', (st) => { send('status', st); if (st === 'running' && S.openBrowserOnStart && !proc._opened) { proc._opened = true; openEfb(); } });
+  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath(), EFB_PIPER: PIPER_EXE, EFB_VOICES: VOICES_USER, EFB_VOICES_BUNDLED: VOICES_BUNDLED, ...whisperEnv() }, getPort: null });
+  // Mikrofon nur für die lokale EFB erlauben
+  const okOrigin = (u) => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(u || '');
+  const ses = require('electron').session.defaultSession;
+  ses.setPermissionRequestHandler((wc, perm, cb, det) => cb(perm === 'media' && okOrigin(det && det.requestingUrl)));
+  ses.setPermissionCheckHandler((wc, perm, origin) => perm === 'media' && okOrigin(origin + '/'));
+  proc.on('status', (st) => { send('status', st); if (st === 'running' && S.openBrowserOnStart && !proc._opened) { proc._opened = true; openEfb(); } if (st === 'running' && S.copilotOnStart && !proc._cpOpened) { proc._cpOpened = true; openCopilot(); } });
   proc.on('log', (l) => send('log', l));
 
   ipcMain.handle('state', () => state());
@@ -147,6 +165,17 @@ app.whenReady().then(() => {
     }
     return state();
   });
+  ipcMain.handle('copilot:open', () => { if (proc.status !== 'running') throw new Error('Der Server läuft nicht.'); if (releases.cmp(efbVersion(), '1.2.0') < 0) throw new Error('Das Copilot-Fenster braucht EFB 1.2.0 oder neuer. Bitte unter „Updates“ zuerst die EFB aktualisieren.'); openCopilot(); });
+  ipcMain.handle('stt:status', () => sttState());
+  ipcMain.handle('stt:install', async (_e, id) => {
+    const prog = (what) => (p) => send('stt:progress', { what, p });
+    if (!whisperLib.status(WHISPER_DIR).binary) await whisperLib.installBinary(WHISPER_DIR, { readZip: updaterFor().readZip, onProgress: prog('Programm') });
+    await whisperLib.installModel(WHISPER_DIR, id, { onProgress: prog('Modell') });
+    S = { ...S, sttModel: id }; settingsStore.save(SETTINGS_FILE, S, safe);
+    await sttApply(); return sttState();
+  });
+  ipcMain.handle('stt:use', async (_e, id) => { S = { ...S, sttModel: id }; settingsStore.save(SETTINGS_FILE, S, safe); await sttApply(); return sttState(); });
+  ipcMain.handle('stt:remove', async (_e, id) => { whisperLib.removeModel(WHISPER_DIR, id); await sttApply(); return sttState(); });
   ipcMain.handle('copilot:get', () => readJson(copilotFile(), {}));
   ipcMain.handle('copilot:set', (_e, patch) => { const o = { ...readJson(copilotFile(), {}), ...patch }; if (patch.voice) o.voice = { ...(readJson(copilotFile(), {}).voice || {}), ...patch.voice }; fs.writeFileSync(copilotFile(), JSON.stringify(o, null, 2)); return o; });
   ipcMain.handle('voices:list', () => ({ voices: voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }), piper: !!PIPER_EXE }));
