@@ -28,3 +28,5 @@ code { background:#0f1a28; padding:2px 6px; border-radius:6px; }
 pre.log { margin:0; max-height:60vh; overflow:auto; background:#0a111b; padding:10px; border-radius:8px; font:12px/1.4 Consolas,monospace; white-space:pre-wrap; }
 pre.notes { margin:6px 0; white-space:pre-wrap; font:inherit; color:var(--dim); max-height:140px; overflow:auto; }
 .bar { height:8px; background:#0a111b; border-radius:6px; overflow:hidden; } .bar div { height:100%; width:0; background:var(--ac); transition:width .2s; }
+
+#err { position:fixed; left:0; right:0; top:0; z-index:99; background:#7a2323; color:#fff; padding:8px 14px; font:12px/1.4 Consolas,monospace; white-space:pre-wrap; }

@@ -118,6 +118,8 @@ app.whenReady().then(() => {
 
   win = new BrowserWindow({ width: 980, height: 720, minWidth: 760, minHeight: 560, title: 'Cockpit EFB', backgroundColor: '#0d1520', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  win.webContents.on('before-input-event', (e, i) => { if (i.type === 'keyDown' && (i.key === 'F12' || (i.control && i.shift && i.key.toLowerCase() === 'i'))) win.webContents.toggleDevTools(); });
+  win.webContents.on('preload-error', (_e, p, err) => { console.error('preload-error', p, err); });
   win.on('close', async (e) => { if (S.closeStopsServer && proc.child) { e.preventDefault(); await proc.stop(); win.destroy(); } });
 
   if (S.autoStartServer) proc.start();

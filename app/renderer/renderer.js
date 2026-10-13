@@ -1,4 +1,7 @@
 'use strict';
+window.addEventListener('error', (e) => { const b = document.getElementById('err'); if (b) { b.hidden = false; b.textContent += 'Fehler: ' + e.message + ' (' + (e.filename || '').split('/').pop() + ':' + e.lineno + ')\n'; } });
+window.addEventListener('unhandledrejection', (e) => { const b = document.getElementById('err'); if (b) { b.hidden = false; b.textContent += 'Fehler: ' + (e.reason && e.reason.message || e.reason) + '\n'; } });
+if (!window.api) { const b = document.getElementById('err'); b.hidden = false; b.textContent = 'Die Verbindung zur App fehlt (preload.js wurde nicht geladen).'; window.api = { invoke: async () => ({ settings: {}, logs: [], update: {} }), on() {} }; }
 const $ = (s) => document.querySelector(s);
 const api = window.api;
 let st = null;
