@@ -10,7 +10,7 @@ const { readZip } = require(process.env.EFB_UPDATER || '../../efb/updater.js');
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r)); const base = 'http://127.0.0.1:' + srv.address().port;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'w-'));
-  let s = W.status(dir); assert(!s.binary && !s.active && s.models.length === 2);
+  let s = W.status(dir); assert(!s.binary && !s.active && s.models.length === 3);
   assert.strictEqual(W.env(dir).EFB_WHISPER, '');
   let p = 0; await W.installBinary(dir, { readZip, binUrl: base + '/w.zip', onProgress: (x) => (p = x) });
   assert.strictEqual(p, 1); assert(fs.existsSync(path.join(dir, 'bin', 'whisper-cli.exe'))); assert(fs.existsSync(path.join(dir, 'bin', 'ggml.dll')));

@@ -139,7 +139,17 @@ class Gsx {
     return m ? { ok: true, menu: m, stale: true } : { ok: false, error: 'GSX hat kein Menü geliefert. Läuft Couatl?' };
   }
 
+  // Alternative zur Variablen-Auswahl: Ziffertaste an MSFS senden (GSX unterstützt die Menüsteuerung per Tastatur). Nur Windows.
+  _sendKey(n) {
+    if (process.platform !== 'win32' || !(n >= 0 && n <= 8)) return false;
+    const ps = `$w=New-Object -ComObject WScript.Shell; $null=$w.AppActivate('Microsoft Flight Simulator'); Start-Sleep -Milliseconds 200; $w.SendKeys('${n + 1}')`;
+    try { require('child_process').spawn('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-Command', ps], { windowsHide: true, stdio: 'ignore' }).on('error', () => {}); return true; } catch { return false; }
+  }
+
   choose(index) {
+    let keys = false;
+    try { keys = JSON.parse(fs.readFileSync(path.join(__dirname, 'copilot.json'), 'utf8')).gsxKeys === true; } catch { /* Standard */ }
+    if (keys && !this.demo) return this._sendKey(Number(index));
     const offset = Number(this.getConfig().gsxChoiceOffset || 0);
     return this.sim.setLVar('L:FSDT_GSX_MENU_CHOICE', Number(index) + offset);
   }

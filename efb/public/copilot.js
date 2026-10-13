@@ -29,6 +29,7 @@
       why: (now, want) => `Wir sind ${now}, die Liste gehört ${want}.`,
       before: (p) => `Davor fehlt noch die {{${p}}} Checkliste.`,
       done: (n) => `Die {{${n}}} Checkliste ist schon komplett.`,
+      snooze: (n, m) => `Okay, ich frage in ${m} Minuten wieder wegen der {{${n}}} Checkliste.`, snoozeQ: 'Welche Checkliste, und in wie vielen Minuten?',
       go: 'Okay, los.', no: 'Okay, dann nicht.', stop: 'Okay, abgebrochen.', skip: 'Übersprungen.',
       complete: (n) => `{{${n}}} Checkliste komplett.`,
       next: (n) => `Als Nächstes ist die {{${n}}} Checkliste dran. Soll ich weitermachen?`,
@@ -57,6 +58,7 @@
       why: (now, want) => `We are ${now}, this list belongs ${want}.`,
       before: (p) => `The ${p} checklist is still missing before it.`,
       done: (n) => `The ${n} checklist is already complete.`,
+      snooze: (n, m) => `Okay, I will ask you about the ${n} checklist again in ${m} minutes.`, snoozeQ: 'Which checklist, and in how many minutes?',
       go: 'Okay, here we go.', no: 'Okay, not now.', stop: 'Okay, cancelled.', skip: 'Skipped.',
       complete: (n) => `${n} checklist complete.`,
       next: (n) => `Next up is the ${n} checklist. Shall I continue?`,
@@ -97,7 +99,7 @@
     if (!s.onGround && (s.ias || 0) > 80) { lat.since = lat.since || now; if (now - lat.since > 8000) lat.flown = true; } else lat.since = 0; // Ladezeit des Sims (kurz „in der Luft“) zählt nicht als Flug
     if (lat.flown && s.onGround && (s.gs || 0) < 80) lat.landed = true;
     const gs = s.gs || 0;
-    if (lat.landed) return gs < 3 && s.parkingBrake !== false ? 'post' : 'in';
+    if (lat.landed) return gs < 3 && brk() !== false ? 'post' : 'in';
     if (!s.onGround) {
       if ((s.alt || 0) < 3500 && (s.vs || 0) < -200 && lat.flown) return 'final';
       if ((s.vs || 0) < -300 && (s.alt || 0) < 15000 && lat.flown) return 'desc';
@@ -106,6 +108,8 @@
     const pb = ((s.efb || {}).ground || {}).pushback; // beim Pushback sind wir noch am Gate
     return gs < 3 || (pb && gs < 8) ? 'pre' : 'out';
   }
+  // Parkbremse: true/false nur, wenn der Sim sie verlässlich meldet, sonst null (unbekannt)
+  const brk = () => { const s = app.sim || {}; if (!s.connected) return null; return s.parkingBrake === true ? true : (s.brakeKnown ? false : null); };
   const lists = () => app.checklists[checklistKey()] || [];
   const progOf = () => store.get('cl.' + checklistKey(), {});
   const isDone = (i) => { const l = lists()[i]; const t = progOf()[i] || []; return !!l && l.items.every((_, k) => t[k]); };
@@ -206,9 +210,27 @@
   // ---------- Spracherkennung ----------
   const useW = () => stt.available && window.WhisperMic && window.isSecureContext;
   const LISTNAMES = () => lists().map((l) => l.name).join(', ');
+  // Hinweistext für Whisper: passend zur Lage (offenes GSX-Menü, laufende Checkliste, Rückfrage, sonst allgemein) – so erkennt er genau die Wörter, die jetzt wahrscheinlich sind
+  function sttPrompt() {
+    const cut = (x, n) => String(x || '').replace(/\s+/g, ' ').trim().slice(0, n);
+    let p = 'Cockpit to ground. Ground to Cockpit. ';
+    try {
+      if (S.mode === 'gsxMenu') {
+        p += 'Nose left, tail right. Nose right, tail left. Straight pushback. Straight pull pushback. ' + cut((S.gsxItems || []).map((x) => itemSpoken(x)).join('. '), 260) + '. Left. Right. Cancel. ';
+      } else if (S.mode === 'run') {
+        const l = lists()[S.list] || {}, it = (l.items || [])[S.item] || {};
+        p += cut(l.name, 40) + '. ' + cut(it.item, 70) + '. ' + cut(String(it.resp || '').replace(/_+/g, ''), 60) + '. Checked. Set. Released. Confirmed. On. Off. Skip. Repeat. Stop. V1, VR, V2, QNH, flaps, runway. Zero one two three four five six seven eight nine. ';
+      } else if (/^ask/.test(S.mode)) {
+        p += cut((lists()[S.list] || {}).name, 40) + ' checklist. Yes. No. Not now. Later. Ask me again in five to ten minutes. In ten minutes. ';
+      } else {
+        p += 'Request pushback. Request boarding, catering, refueling. Ground power, chocks, start engines, disconnect. ' + cut(LISTNAMES(), 170) + '. Let\'s do the checklist. Frequency one two one decimal eight. Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel. ';
+      }
+    } catch (e) { /* weiter */ }
+    return p.slice(0, 640);
+  }
   const sttOpts = () => ({
     lang: S.mode === 'run' && checklistKey().startsWith('airbus') ? 'en' : 'auto',
-    prompt: (LISTNAMES() + '. Checked, V1, VR, V2, QNH, flaps, fuel, standard, let\'s do the checklist. Cockpit to ground, pushback approved S1 facing south, request boarding, catering, refueling. Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India Juliett Kilo Lima Mike November Oscar Papa Quebec Romeo Sierra Tango Uniform Victor Whiskey X-ray Yankee Zulu. Ja, nein, weiter, stopp.').slice(0, 780),
+    prompt: sttPrompt(),
   });
   function startRec() {
     if (!pref.mic || muted) return;
@@ -331,9 +353,9 @@
       const t = norm(said);
       const set = /\b(set|on|applied|apply|gesetzt|fest|angezogen|an)\b/.test(t), rel = /\b(released?|off|gelöst|geloest|offen|los|aus)\b/.test(t);
       if (!set && !rel) return { ok: false, msg: T().brake, retry: true };
-      if (s.connected && typeof s.parkingBrake === 'boolean') {
-        if (set && !rel && !s.parkingBrake) return { ok: false, msg: T().brakeIs(false) };
-        if (rel && !set && s.parkingBrake) return { ok: false, msg: T().brakeIs(true) };
+      if (brk() !== null) {
+        if (set && !rel && brk() === false) return { ok: false, msg: T().brakeIs(false) };
+        if (rel && !set && brk() === true) return { ok: false, msg: T().brakeIs(true) };
       }
       return { ok: true };
     }
@@ -355,13 +377,16 @@
     if (!hasVal) return { ok: true };
     if (/speeds|geschwindigkeiten/i.test(name) && /t\.?o|start/i.test(name) && !/land/i.test(name)) {
       const tl = String(said).toLowerCase().replace(/[:=]/g, ' ');
-      const nm = (re) => { const m = tl.match(re); return m ? parseInt(m[1], 10) : null; };
-      let v1 = nm(/\bv\s?1\D{0,3}(\d{2,3})/), vr = nm(/\bv\s?r\D{0,3}(\d{2,3})/), v2 = nm(/\bv\s?2\D{0,3}(\d{2,3})/);
-      if (v1 === null || vr === null || v2 === null) { const q = N.filter((n) => n >= 80 && n <= 250); if (q.length < 3) return { ok: false, msg: T().needSpeeds, retry: true }; [v1, vr, v2] = q; }
+      // Reihenfolge und Schreibweise frei: „V1 150, V2 150“, „V one 150“, „vee r 145“, „rotate 145“ …
+      const mk = tl.replace(/,/g, ' ').replace(/\b(?:v|vee|we)[\s-]*(?:1|one|eins|ein)\b/g, ' @v1 ').replace(/\b(?:v|vee|we)[\s-]*(?:2|two|zwei|zwo)\b/g, ' @v2 ').replace(/\b(?:v|vee)[\s-]*(?:r|are|rotate)\b|\brotate\b|\brotation\b/g, ' @vr ');
+      const got = {}; const segs = mk.split(/(@v1|@vr|@v2)/);
+      for (let i = 1; i < segs.length; i += 2) { const n = nums(segs[i + 1] || '').find((x) => x >= 80 && x <= 250); if (n !== undefined && got[segs[i].slice(1)] === undefined) got[segs[i].slice(1)] = n; }
+      let { v1 = null, vr = null, v2 = null } = got;
+      if (v1 === null && vr === null && v2 === null) { const q = N.filter((n) => n >= 80 && n <= 250); if (q.length < 3) return { ok: false, msg: T().needSpeeds, retry: true }; [v1, vr, v2] = q; }
       const P = perf();
       if (!P || !P.v1) return { ok: true, note: T().noPerf };
       const bad = [];
-      if (Math.abs(v1 - P.v1) > 1) bad.push('V1 ' + P.v1); if (Math.abs(vr - P.vr) > 1) bad.push('VR ' + P.vr); if (Math.abs(v2 - P.v2) > 1) bad.push('V2 ' + P.v2);
+      if (v1 !== null && Math.abs(v1 - P.v1) > 1) bad.push('V1 ' + P.v1); if (vr !== null && Math.abs(vr - P.vr) > 1) bad.push('VR ' + P.vr); if (v2 !== null && Math.abs(v2 - P.v2) > 1) bad.push('V2 ' + P.v2);
       const fl = tl.match(/\bflaps?\s*(1\s*(?:\+|plus)\s*f|\d)/); // Klappen sind optional; wenn genannt, werden sie mitgeprüft
       if (fl && P.conf) { const g = fl[1].replace(/\s|plus/g, '').replace('+', '+').toUpperCase(); if (String(P.conf).toUpperCase() !== (/\+F/.test(g) ? '1+F' : g)) bad.push((pref.lang === 'de' ? 'Klappen ' : 'flaps ') + P.conf); }
       if (bad.length) return { ok: false, msg: T().spdFix(bad.join(', ')) };
@@ -411,9 +436,12 @@
   async function handle(text, spoken) {
     text = String(text || '').trim(); if (!text || !S.on) return;
     log('Du', text);
+    text = fuzzyFix(text); // ähnlich Erkanntes gilt als verstanden
     { const gk = gsxCmd(text); if (gk) { clearTimeout(S.askT); if (S.mode === 'gsxMenu') S.mode = S.afterGsx === 'run' ? 'run' : 'idle'; else if (S.mode !== 'run') S.mode = 'idle'; return groundDo(gk, text, dirOf(text)); } }
     if (S.mode === 'gsxMenu') return groundPick(text);
+    { const lm = livePush(); if (lm && S.mode !== 'run' && (addressed(text) || pushSem(text, lm.items))) { S.gsxItems = lm.items; S.gsxTitle = lm.title; S.mode = 'gsxMenu'; armAsk(45000); return groundPick(text); } }
     if (FREQ_CMD.test(text) && (freqOf(text) || (SWAP_CMD.test(text) && /\b(frequenc\w*|frequenz\w*|stand\s?-?by)\b/i.test(text))) && !/\b(speeds?|checklist|checkliste)\b/i.test(text)) return radioCmd(text);
+    if (S.mode !== 'run' && await snoozeCmd(text)) return;
     if (S.mode !== 'run') {
       const li = intentList(text);
       if (li >= 0) { clearTimeout(S.askT); return begin(li); }
@@ -446,6 +474,34 @@
       if (v.retry) return;
     }
   }
+  // ---------- „Frag mich in 5–10 Minuten nochmal“ / „After Start Checkliste in 10 Minuten“ ----------
+  const snoozeUntil = {}; // Listenschlüssel → Zeitpunkt
+  const NUMW = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20, thirty: 30, eins: 1, ein: 1, eine: 1, zwei: 2, drei: 3, vier: 4, fünf: 5, fuenf: 5, sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10, elf: 11, zwölf: 12, zwoelf: 12, fünfzehn: 15, fuenfzehn: 15, zwanzig: 20, dreißig: 30, dreissig: 30, to: 2, for: 4 };
+  function parseDelay(text) { // → [min, max] Minuten oder null
+    let t = ' ' + String(text).toLowerCase().replace(/[-–]/g, ' bis ').replace(/\bhalf an hour\b|\beine halbe stunde\b/g, ' 30 minutes ').replace(/\ba quarter of an hour\b|\beine viertelstunde\b/g, ' 15 minutes ') + ' ';
+    if (!/\b(minutes?|mins?|minuten?)\b/.test(t)) return null;
+    t = t.replace(/[a-zäöüß]+/g, (w) => (NUMW[w] && w !== 'to' && w !== 'for' ? String(NUMW[w]) : w));
+    const m = t.match(/(\d{1,2})\s*(?:bis|to|or|oder|till)?\s*(\d{1,2})?\s*(?:minutes?|mins?|minuten?)/);
+    if (!m) return null;
+    const a = parseInt(m[1], 10), b = m[2] ? parseInt(m[2], 10) : a;
+    if (!(a > 0) || a > 90) return null;
+    return [Math.min(a, b), Math.max(a, b)];
+  }
+  const SNOOZE_CUE = /\b(in|again|nochmal|wieder|später|remind|erinner\w*|frag\w*|ask)\b/i;
+  async function snoozeCmd(text) {
+    const d = parseDelay(text); if (!d || !SNOOZE_CUE.test(text)) return false;
+    const ls = lists(); if (!ls.length) return false;
+    let i = -1; const tt = tokz(text);
+    ls.forEach((l, k) => { const nt = tokz(l.name).filter((w) => !STOPW.has(w)); if (nt.length && nt.every((w) => tt.some((x) => wordEq(x, w))) && (i < 0 || nt.length > tokz(ls[i].name).filter((w) => !STOPW.has(w)).length)) i = k; });
+    if (i < 0 && (S.mode === 'ask' || S.mode === 'askAnyway' || S.mode === 'askNext' || (S.list != null && S.list >= 0 && S.mode === 'idle'))) i = S.list;
+    if (i == null || i < 0 || !ls[i]) { await say(T().snoozeQ); return true; }
+    const mins = Math.round(d[0] + Math.random() * (d[1] - d[0]));
+    snoozeUntil[checklistKey() + '|' + i] = Date.now() + mins * 60000;
+    for (const k of [...asked]) if (k.endsWith('|' + i)) asked.delete(k);
+    clearTimeout(S.askT); S.mode = 'idle';
+    await say(T().snooze(ls[i].name, mins));
+    return true;
+  }
   // ---------- Funk: „Frequenz 1.2.2 decimal 8.0.0 eindrehen“ → Standby, „switch to …“ → aktiv (COM1) ----------
   const FREQ_CMD = /\b(frequenc\w*|frequenz\w*|freq|stand\s?-?by|com\s?1|tune|dial\w*|eindreh\w*|switch\w*|swap|wechsel\w*|umschalt\w*)\b/i;
   const SWAP_CMD = /\b(switch\w*|swap|wechsel\w*|umschalt\w*|activate|aktivier\w*)\b/i;
@@ -477,12 +533,24 @@
     const hz = freqOf(text), swap = SWAP_CMD.test(text);
     log('System', (pref.lang === 'de' ? 'Frequenz verstanden: ' : 'Frequency understood: ') + (hz ? freqTxt(hz) : '—'));
     if (!hz && !swap) return say(T().noFreq);
+    const near = (a, b) => a != null && Math.abs(a - b) <= 500;
+    // der Sim meldet COM nur einmal pro Sekunde: auf die Rückmeldung warten, statt sofort „nicht angenommen“ zu sagen
+    const until = async (pred, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (pred(app.sim || {})) return true; await new Promise((r) => setTimeout(r, 250)); } return pred(app.sim || {}); };
+    const shown = (v) => (v > 1e6 ? freqTxt(v) : '—');
+    const mismatch = async (what) => { const s2 = app.sim || {}; log('System', `COM1 aktiv ${shown(s2.com1)}, Standby ${shown(s2.com1s)}`); return say(pref.lang === 'de' ? `${what} Das Funkgerät zeigt aber ${shown(s2.com1)} aktiv und ${shown(s2.com1s)} Standby. Bitte am Funkgerät prüfen.` : `${what} But the radio shows ${shown(s2.com1)} active and ${shown(s2.com1s)} standby. Please check the radio panel.`); };
     const sim0 = app.sim || {};
-    if (hz && (!swap || Math.round(sim0.com1s || 0) !== hz)) { const r = await radioPost({ action: 'standby', hz }); if (!r.ok) return say(T().radioFail); if (!swap) return say(T().stby(freqSay(hz)), 'en'); await new Promise((res) => setTimeout(res, 400)); }
-    const r2 = await radioPost({ action: 'swap' }); if (!r2.ok) return say(T().radioFail);
-    await new Promise((res) => setTimeout(res, 900));
+    if (hz && (!swap || !near(sim0.com1s, hz))) {
+      const r = await radioPost({ action: 'standby', hz });
+      if (!r.ok) { log('System', 'Funk: ' + (r.error || 'Sim hat den Befehl nicht angenommen (nicht verbunden?)')); return say(T().radioFail); }
+      const ok = await until((x) => near(x.com1s, hz), 3500);
+      if (!swap) return ok ? say(T().stby(freqSay(hz)), 'en') : mismatch(pref.lang === 'de' ? `Standby ${freqSay(hz)} gesendet.` : `Standby ${freqSay(hz)} sent.`);
+      if (!ok) return mismatch(pref.lang === 'de' ? 'Standby gesendet, aber nicht übernommen.' : 'Standby sent, but not accepted.');
+    }
+    const r2 = await radioPost({ action: 'swap' }); if (!r2.ok) { log('System', 'Funk: ' + (r2.error || 'Umschalten nicht möglich')); return say(T().radioFail); }
+    if (!hz) await new Promise((r) => setTimeout(r, 1300));
+    const ok2 = await until((x) => (hz ? near(x.com1, hz) : true), 3500);
     const s = app.sim || {};
-    if (hz && s.com1 && Math.abs(s.com1 - hz) > 500 && s.com1s !== undefined && s.com1 !== null && s.connected) return say(T().radioFail);
+    if (hz && !ok2) return mismatch(pref.lang === 'de' ? 'Umschalten gesendet.' : 'Swap sent.');
     return say(T().act(hz ? freqSay(hz) : freqSay(s.com1 || 0)), 'en');
   }
   // ---------- Bodenpersonal (GSX): „Cockpit to ground, request boarding“ ----------
@@ -561,7 +629,30 @@
     if (dir) { const d = sc.filter((x) => x.d); if (d.length === 1) return { i: d[0].i, both: true, key: '' }; if (d.length > 1) return { i: -1, ties: d.map((x) => x.i) }; }
     return { i: -1 };
   }
-  const itemSpoken = (it) => String(it).replace(/[_()]/g, ' ').replace(/(\d)-(\d)/g, '$1 $2').replace(/\s+/g, ' ').trim();
+  // GSX-Pushback-Einträge: „Nose Left/Tail Right (Left)“, „Straight pushback (manual stop, max 100 m)“, „Straight Pull …“
+  function pushItem(it) {
+    const t = String(it).toLowerCase();
+    return { nose: (t.match(/nose\s*(left|right)/) || [])[1] || null, tail: (t.match(/tail\s*(left|right)/) || [])[1] || null, turn: (t.match(/\((left|right)\)/) || [])[1] || null, straight: /straight/.test(t), pull: /\bpull/.test(t) };
+  }
+  const isPushMenu = (items) => (items || []).some((x) => { const i = pushItem(x); return i.nose || i.tail || i.straight; });
+  // sinngemäß zuordnen: „nose left“, „tail right“, „left“ (= Drehrichtung in Klammern), „straight“, „straight pull“; Verhörer wie „tile“ (tail), „no“ (nose)
+  function pushSem(text, items) {
+    if (!isPushMenu(items)) return null;
+    const info = items.map(pushItem);
+    let t = ' ' + String(text).toLowerCase().replace(/[^a-zäöüß\s]/g, ' ') + ' ';
+    t = t.replace(/\b(tile|tale|teil|till|tell|tails)\b/g, ' tail ').replace(/\b(no|nos|nows|nose's|knows|know|nurse)\s+(?=(straight|left|right|links|rechts)\b)/g, ' nose ').replace(/\blinks\b/g, 'left').replace(/\brechts\b/g, 'right');
+    const side = (w) => { const m = t.match(new RegExp('\\b' + w + '\\s+(left|right)\\b')); return m ? m[1] : null; };
+    const wn = side('nose'), wt = side('tail'), straight = /\bstraight\b/.test(t), pull = /\bpull\b/.test(t);
+    const lr = t.match(/\b(left|right)\b/g) || [];
+    let c = info.map((_, i) => i);
+    if (wn) c = c.filter((i) => info[i].nose === wn);
+    else if (wt) c = c.filter((i) => info[i].tail === wt);
+    else if (straight) { c = c.filter((i) => info[i].straight); const p = c.filter((i) => info[i].pull === pull); if (p.length) c = p; }
+    else if (lr.length) { const want = lr[lr.length - 1]; c = c.filter((i) => info[i].turn === want || (!info[i].turn && info[i].nose === want)); }
+    else return null;
+    return c.length === 1 ? { i: c[0] } : c.length ? { i: -1, ties: c } : { i: -1, none: true };
+  }
+  const itemSpoken = (it) => { const pi = pushItem(it); if (pi.nose && pi.tail && String(it).length < 48) return 'nose ' + pi.nose + ', tail ' + pi.tail + (pi.turn ? ', turning ' + pi.turn : ''); return String(it).replace(/[_()]/g, ' ').replace(/\//g, ', ').replace(/(\d)-(\d)/g, '$1 $2').replace(/\s+/g, ' ').trim(); };
   // Sound-Namen für einen gewählten Eintrag (längste Übereinstimmung zuerst, mit Richtung zuerst)
   function soundKeys(svc, item, dir) {
     const ws = [...windows(itemTok(item))].filter((w) => w.length >= 2).sort((a, b) => b.length - a.length);
@@ -577,13 +668,21 @@
   const loadSounds = () => fetch('/api/sounds').then((r) => r.json()).then((l) => { sounds.clear(); (l || []).forEach((x) => sounds.set(x.key.toLowerCase(), x.file)); }).catch(() => {});
 
   // Ground wird nur angesprochen, wenn „Cockpit“ und „Ground“ im selben Satz vorkommen – sonst hört der Copilot
-  const addressed = (t) => /cock\s?-?\s?pit|kokpit/i.test(t) && GROUND.test(t);
+  // Whisper hört „Cockpit to ground“ oft als „cockpots of ground“, „cock pit two ground“ …
+  const addressed = (t) => /\b(?:cock|kok|cop)\s?-?\s?p\w{0,5}\b[\s\S]{0,18}?\b(?:ground|grounds|bodendienst\w*|bodenpersonal|bodencrew|gsx)\b/i.test(t);
+  // Offenes GSX-Richtungsmenü (frisch, Pushback kürzlich angefordert)?
+  function livePush() {
+    const m = app.sim && app.sim.gsxInfo && app.sim.gsxInfo.menu;
+    if (!m || !m.items || !m.items.length || !(m.age < 120) || !isPushMenu(m.items)) return null;
+    if (S.pushAt && Date.now() - S.pushAt > 5 * 60000) return null;
+    return m;
+  }
   function gsxCmd(text) {
     if (!addressed(text)) return null;
     const hit = GSX_WORDS.find(([, re]) => re.test(text));
     if (hit) return hit[0];
     if (HELLO.test(text)) return 'hello';
-    return S.mode === 'gsxMenu' ? null : 'unknown'; // an Ground gerichtet, aber Dienst nicht verstanden → nicht an die Checkliste weiterreichen
+    return (S.mode === 'gsxMenu' || livePush()) ? null : 'unknown'; // an Ground gerichtet, aber Dienst nicht verstanden → nicht an die Checkliste weiterreichen
   }
   // Standplatz aus dem GSX-Menütitel („GSX – Leipzig/Halle Stand 12“, „Gate B27“ …)
   function standOf(title) {
@@ -628,7 +727,19 @@
     if (A && HOST) { try { A.radioOn(); A.maybe(); } catch (e) {} }
     return say(t, 'en', f ? { url: '/sounds/' + encodeURIComponent(f), who: 'Ground' } : { voiceId: groundVoice(), pitch: 0.7, who: 'Ground' }).finally(() => { if (A && HOST) { try { A.radioOff(); } catch (e) {} } });
   }
-  const call = (t, keys) => groundLine(t, keys, { call: true });
+  const lifeOn = (k) => !!(pref.life && pref.life[k] === true);
+  // Von „request pushback“ bis zum Ende des Pushbacks redet GSX selbst; unsere Zwischenrufe würden sich mit seinem Ablauf überschneiden
+  const pushBusy = () => !!S.pushAt && !S.pushOver && Date.now() - S.pushAt < 25 * 60000;
+  const call = (t, keys) => (pushBusy() && !lifeOn('groundPush') ? Promise.resolve() : groundLine(t, keys, { call: true }));
+  // GSX trennt nach dem Laden die Bodenstrom-Anlage des Fliegers: vorher ist der Zustand nicht verlässlich
+  const gx = { since: 0 };
+  function gsxReady() {
+    const s = app.sim || {}, info = s.gsxInfo || {};
+    if (!info.menuFile || info.menuFile === '(Demo)') return true; // GSX nicht vorhanden
+    if (!((s.gsx || {}).couatl > 0)) { gx.since = 0; return false; }
+    gx.since = gx.since || Date.now();
+    return Date.now() - gx.since > 25000;
+  }
   const efbAct = (action) => fetch('/api/efb/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }).then((x) => x.json()).catch(() => ({ ok: false }));
   const gnd = () => ((app.sim || {}).efb || {}).ground || {};
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -636,6 +747,7 @@
   async function localDo(key, text) {
     const off = /(disconnect|remove|\boff\b|unplug|weg|trenn|ab\b)/i.test(text);
     if (key === 'gpu' || key === 'chocks') {
+      if (!gsxReady()) return groundLine('Stand by, ground services are still starting up.', ['again']);
       const name = key === 'gpu' ? 'Ground power' : 'Chocks';
       const wantOn = key === 'gpu' ? !off : !(off || /\b(remove|removed|out|take|entfern\w*)\b/i.test(text));
       const cur = gnd()[key];
@@ -643,8 +755,9 @@
       const r = await efbAct(key);
       if (!r.ok) { const g = await fetch('/api/gsx/service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: key }) }).then((x) => x.json()).catch(() => ({ ok: false })); if (!g.ok) return groundLine('Negative. ' + name + ' is not available at this stand.', [key + '.negative', 'negative']); }
       let now = gnd()[key];
-      for (let i = 0; i < 10 && now != null && now !== wantOn; i++) { await wait(500); now = gnd()[key]; } // Status des EFB kommt verzögert
-      if (now != null && now !== wantOn) return groundLine(name + ' requested, but I cannot confirm it. Please check the panel.', ['again']);
+      for (let i = 0; i < 10 && now !== wantOn; i++) { await wait(500); now = gnd()[key]; } // Status des EFB kommt verzögert
+      // nur bestätigen, was der Sim wirklich meldet – unbekannter oder falscher Zustand wird nicht als „verbunden“ ausgegeben
+      if (now !== wantOn) return groundLine(name + ' requested, but I cannot confirm it' + (now == null ? ', I get no status from this aircraft' : '') + '. Please check the panel.', ['again']);
       const txt = key === 'gpu' ? (wantOn ? 'Ground power connected, external power available.' : 'Ground power disconnected.') : (wantOn ? 'Chocks are in place.' : 'Chocks removed.');
       return groundLine(txt, [key + (wantOn ? '.on' : '.off'), key + '.ack', 'ack']);
     }
@@ -656,7 +769,7 @@
     const s = app.sim || {}, g = gnd();
     if (g.enginesRunning) return groundLine('Engines are already running.', ['ack']);
     if (g.pushback) return groundLine('Negative, pushback is not complete yet. Stand by.', ['negative']);
-    if (s.parkingBrake === false) return groundLine('Negative, set parking brake first.', ['negative']);
+    if (brk() === false) return groundLine('Negative, set parking brake first.', ['negative']);
     S.engCleared = Date.now();
     return groundLine('Cleared to start engines, ' + (asked ? 'call me when stable.' : 'call me when both engines are stable.'), ['enginestart.ack', 'enginestart', 'ack'], asked ? undefined : { call: true });
   }
@@ -684,12 +797,15 @@
     const r = await fetch('/api/gsx/service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: key }) }).then((x) => x.json()).catch(() => ({ ok: false, error: 'PC-Brücke nicht erreichbar.' }));
     if (!r.ok) { log('System', r.error || 'GSX-Fehler'); return groundLine('Negative. ' + GS_LABEL[key] + ' is not available right now.', [key + '.negative', 'negative']); }
     gsxAsked.add(key);
+    if (key === 'pushback') { S.pushAt = Date.now(); S.pushOver = false; }
+    if (r.menu) log('System', 'GSX-Menü: ' + r.menu.title + ' | ' + (r.menu.items || []).join(' | '));
     const m = r.menu && r.menu.items && r.menu.items.length ? r.menu : null;
-    const spec = key === 'pushback' && !!m && (!!dir || hasSpecific(text));
-    const pk = spec ? pickIdx(m.items, text, dir) : { i: -1 };
+    const sem = key === 'pushback' && m ? pushSem(text, m.items) : null;
+    const spec = key === 'pushback' && !!m && (!!sem || !!dir || hasSpecific(text));
+    const pk = sem ? (sem.i >= 0 ? { i: sem.i, both: true } : { i: -1, ties: sem.ties, none: sem.none }) : spec ? pickIdx(m.items, text, dir) : { i: -1 };
     if (spec && pk.i < 0) {
-      if (pk.ties) { await groundLine('Which one? ' + pk.ties.map((i) => itemSpoken(m.items[i])).join(', or ') + '.', ['again']); return groundMenu(m, true, pk.ties); }
-      if (dir) { await groundLine('Negative. That pushback position is not available.', [key + '.negative', 'negative']); return groundMenu(m); }
+      if (pk.ties) { await groundLine('Which one?', ['again']); return groundMenu(m, false, undefined, ' '); }
+      if (dir || pk.none) { await groundLine('Negative. That pushback position is not available.', [key + '.negative', 'negative']); return groundMenu(m); }
     }
     const stand = standOf(r.stand);
     const it = pk.i >= 0 ? m.items[pk.i] : '';
@@ -736,7 +852,11 @@
     const items = S.gsxItems || [];
     let idx = -1;
     const dr = dirOf(text);
-    if (hasSpecific(text) || dr) { const k = pickIdx(items, text, dr); idx = k.i; S.wantDir = dr && idx >= 0 && !k.both ? dr : null; if (k.ties) { await groundLine('Which one? ' + k.ties.map((i) => itemSpoken(items[i])).join(', or ') + '.', ['again']); return; } }
+    const sem = pushSem(text, items);
+    if (sem) {
+      if (sem.i >= 0) idx = sem.i;
+      else { await groundLine(sem.none ? 'Negative, that one is not available. Your options:' : 'Which one?', ['again']); return groundMenu({ items, title: S.gsxTitle }, false, undefined, ' '); }
+    } else if (hasSpecific(text) || dr) { const k = pickIdx(items, text, dr); idx = k.i; S.wantDir = dr && idx >= 0 && !k.both ? dr : null; if (k.ties) { await groundLine('Which one?', ['again']); return groundMenu({ items, title: S.gsxTitle }, false, undefined, ' '); } }
     if (idx < 0) {
       const N = nums(text).filter((n) => n >= 1 && n <= items.length);
       const ORD = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, erste: 1, erster: 1, zweite: 2, zweiter: 2, dritte: 3, dritter: 3, vierte: 4, fünfte: 5 };
@@ -752,16 +872,17 @@
     return afterChoose(S.gsxTitle, idx);
   }
   // Pushback beginnt: Schlepper angeschlossen → Bremse lösen lassen, dann Beginn melden
-  let pushBusy = false;
+  let pushRun = false;
   async function pushStart() {
-    if (pushBusy) return; pushBusy = true;
+    if (pushRun) return; pushRun = true;
     try {
       await call('Tug is connected' + (S.pushStand ? ' at ' + S.pushStand : '') + ', release the parking brake when ready.', ['pushback.connected']);
-      for (let i = 0; i < 80 && (app.sim || {}).parkingBrake !== false; i++) await wait(500);
-      if ((app.sim || {}).parkingBrake === false) await call('Brakes released, starting pushback.', ['pushback.start']);
-    } finally { pushBusy = false; }
+      if (brk() !== null) for (let i = 0; i < 80 && brk() !== false; i++) await wait(500);
+      if (brk() === false) await call('Brakes released, starting pushback.', ['pushback.start']);
+    } finally { pushRun = false; }
   }
   function gsxWatch() {
+    gsxReady();
     if (!S.on) return;
     const g = (app.sim && app.sim.gsx) || {};
     for (const [svc, v] of Object.entries(GS_VAR)) {
@@ -772,11 +893,11 @@
       gsPrev[svc] = st;
       if (!gsxAsked.has(svc)) continue;
       if (svc === 'pushback' && st === 4) call('Tug is on its way.', ['pushback.tug']);
-      if (svc === 'pushback' && st === 5) pushStart();
+      if (svc === 'pushback' && st === 5) { if (lifeOn('groundPush')) pushStart(); }
       else if (st === 5) call(GS_LABEL[svc] + ' in progress.', [svc + '.progress']);
       if (st === 6) {
         gsxAsked.delete(svc);
-        if (svc === 'pushback') { S.pushDone = Date.now(); call('Pushback complete, set parking brake.', ['pushback.done']); }
+        if (svc === 'pushback') { const quiet = pushBusy() && !lifeOn('groundPush'); S.pushDone = Date.now(); S.pushOver = true; if (!quiet) call('Pushback complete, set parking brake.', ['pushback.done']); }
         else if (svc === 'boarding') call('Boarding complete, doors are being closed.', ['boarding.done']);
         else if (svc === 'refueling') call('Refueling complete, fuel truck is leaving.', ['refueling.done']);
         else call(GS_LABEL[svc] + ' complete.', [svc + '.done']);
@@ -787,7 +908,34 @@
   // „let's do the cockpit preparation checklist“ / „starte die Before Start Checkliste“ / „next checklist“
   const STOPW = new Set(['checklist', 'checkliste', 'list', 'liste', 'the', 'die', 'der', 'das', 'und', 'and', 'of', 'to', 'a']);
   const tokz = (x) => norm(x).replace(/[^\p{L}\p{N}\s-]/gu, ' ').split(/[\s-]+/).filter(Boolean);
-  const wordEq = (a, b) => a === b || (a.length > 3 && b.length > 3 && a.slice(0, 4) === b.slice(0, 4));
+  // Ähnliches gilt als gleich: gleiche ersten 4 Buchstaben oder kleiner Tippfehler-/Verhör-Abstand
+  function lev(a, b, max) { // Damerau-Levenshtein (Buchstabendreher zählen als 1)
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    const d = [];
+    for (let i = 0; i <= a.length; i++) { d[i] = [i]; }
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+      let v = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, d[i - 2][j - 2] + 1);
+      d[i][j] = v;
+    }
+    return d[a.length][b.length];
+  }
+  const tol = (n) => (n >= 8 ? 2 : n >= 5 ? 1 : 0);
+  const wordEq = (a, b) => a === b || (a.length > 3 && b.length > 3 && a.slice(0, 4) === b.slice(0, 4)) || (Math.min(a.length, b.length) >= 5 && lev(a, b, tol(Math.min(a.length, b.length))) <= tol(Math.min(a.length, b.length)));
+  // Befehlswörter: Verhörer/Tippfehler im Satz werden auf das nächstliegende Befehlswort gesetzt (nur ab 5 Buchstaben, sonst zu riskant)
+  const CMD_VOCAB = ['checklist', 'checkliste', 'checked', 'confirmed', 'affirmative', 'affirm', 'negative', 'cancel', 'abort', 'repeat', 'again', 'skip', 'later', 'please', 'standby', 'stand', 'frequency', 'frequenz', 'runway', 'startbahn', 'parking', 'parkbremse', 'brake', 'released', 'release', 'pushback', 'boarding', 'deboarding', 'catering', 'refueling', 'refuel', 'fueling', 'disconnect', 'connect', 'external', 'power', 'chocks', 'engine', 'engines', 'start', 'minutes', 'minuten', 'remind', 'erinnere', 'nochmal', 'wiederholen', 'überspringen', 'abbrechen', 'später', 'bitte', 'gesetzt', 'gelöst', 'weiter', 'descent', 'approach', 'landing', 'takeoff', 'taxi', 'before', 'after', 'cockpit', 'preparation', 'straight', 'left', 'right', 'ground', 'nose', 'tail'];
+  const SAFE = new Set(['around', 'found', 'round', 'sound', 'ground', 'rights', 'lefts', 'start', 'stars', 'power', 'tower', 'lower', 'rather', 'later', 'water', 'taxi', 'taxis', 'light', 'right', 'might', 'night', 'flight', 'again', 'agent', 'brake', 'break', 'brave', 'check', 'chuck', 'chunk', 'state', 'stats', 'stage', 'speed', 'spend', 'spent', 'flaps', 'flags', 'clear', 'cleared', 'clean', 'close', 'closed', 'cloud', 'gear', 'gears', 'heading', 'headings']);
+  function fuzzyFix(text) {
+    const vocab = new Set(CMD_VOCAB); try { for (const l of lists()) for (const w of tokz(l.name)) if (w.length >= 5) vocab.add(w); } catch (e) { /* weiter */ }
+    const V = [...vocab];
+    return String(text).replace(/[A-Za-zÄÖÜäöüß]{5,}/g, (w) => {
+      const lw = w.toLowerCase(); if (vocab.has(lw) || SAFE.has(lw)) return w;
+      const t = tol(lw.length); let best = null, bd = t + 1;
+      for (const v of V) { if (Math.abs(v.length - lw.length) > t) continue; const d = lev(lw, v, t); if (d < bd) { bd = d; best = v; } }
+      return best && bd <= t ? best : w;
+    });
+  }
   const INTENT = /(checkl|check list|liste\b|\blist\b|let'?s|lass|mach|start|beginn|begin|\bdo\b|\brun\b)/i;
   function intentList(text) {
     if (!INTENT.test(text)) return -1;
@@ -881,21 +1029,47 @@
     if (prep.gpuAt) return now - prep.gpuAt >= prep.wait;
     return now - prep.since >= 15 * 60000;
   }
-  // Erinnerung: neue Phase → fällige Checkliste anbieten
+  // Erinnerung: fällige Checkliste anbieten – aber erst, wenn der Ablauf wirklich so weit ist (nicht schon beim Phasenwechsel)
+  const clDoneAt = {}, ph0 = { ph: null, at: 0 }, eng0 = { on: false, at: 0 }, air0 = { on: false, at: 0 };
+  function trackProgress() {
+    const now = Date.now(), ls = lists(), key = checklistKey();
+    ls.forEach((_, i) => { const k = key + '|' + i; if (isDone(i)) { if (!clDoneAt[k]) clDoneAt[k] = now; } else delete clDoneAt[k]; });
+    const s = app.sim || {}, g = (s.efb || {}).ground;
+    const er = !!(g && g.enginesRunning); if (er !== eng0.on) { eng0.on = er; eng0.at = now; }
+    const ar = !s.onGround && s.connected; if (ar !== air0.on) { air0.on = ar; air0.at = now; }
+    const ph = phase(); if (ph !== ph0.ph) { ph0.ph = ph; ph0.at = now; }
+  }
+  function ready(i, ph) { // true = jetzt anbieten
+    const now = Date.now(), name = lists()[i].name, s = app.sim || {}, g = (s.efb || {}).ground, key = checklistKey();
+    if (now - ph0.at < 20000) return false; // Phase muss kurz stabil sein
+    if ((snoozeUntil[key + '|' + i] || 0) > now) return false; // von dir vertagt
+    let prev = 0; for (let k = 0; k < i; k++) { const d = clDoneAt[key + '|' + k]; if (d) prev = Math.max(prev, d); }
+    const since = (ms) => !prev || now - prev >= ms;
+    const gx = s.gsx || {}, busy = ['boarding', 'refueling', 'catering', 'deboarding'].some((v) => { const st = Math.round(gx[v] || 0); return st === 4 || st === 5; });
+    if (/before start/i.test(name)) return !busy && !pushBusy() && (prev ? now - prev >= 60000 : now - prep.since >= 180000);
+    if (/after start/i.test(name)) { if (!g) return since(20000); return !!g.enginesRunning && now - eng0.at >= 40000 && !g.pushback && !pushBusy() && since(15000); }
+    if (/before taxi|^taxi/i.test(name)) return ph === 'out' && now - ph0.at >= 25000 && since(20000);
+    if (/line-?up|before takeoff/i.test(name)) return ph === 'out' && now - ph0.at >= 60000 && since(45000);
+    if (/after takeoff/i.test(name)) return !s.onGround && now - air0.at >= 90000 && (s.vs || 0) > -200 && (s.alt || 0) > 2500;
+    if (/descent|approach/i.test(name)) return now - ph0.at >= 10000;
+    if (/after landing/i.test(name)) return now - ph0.at >= 25000 && (s.gs || 0) < 30;
+    if (/parking|shutdown|secur/i.test(name)) return now - ph0.at >= 30000 && since(15000);
+    return true;
+  }
   function watch() {
     if (!S.on || muted) return;
     gsxWatch();
     const ph = phase(); if (!ph) return;
+    trackProgress();
     if (lat.landed && ph === 'post' && lists().length && isDone(lists().length - 1)) { lat.flown = lat.landed = false; asked.clear(); }
-    if (ph === lastPhase) return;
-    lastPhase = ph;
-    if (S.mode !== 'idle' || S.speaking) { lastPhase = null; return; }
+    if (S.mode !== 'idle' || S.speaking) return;
     const ls = lists();
     for (let i = 0; i < ls.length; i++) {
       const p = listPhases(ls[i].name);
       if (isDone(i) || !p || !p.includes(ph)) continue;
-      if (/cockpit prep|preflight/i.test(ls[i].name) && !prepDue()) { lastPhase = null; return; }
-      const k = ph + '|' + i; if (asked.has(k)) return;
+      if (/cockpit prep|preflight/i.test(ls[i].name) && (!prepDue() || (snoozeUntil[checklistKey() + '|' + i] || 0) > Date.now())) return;
+      const k = ph + '|' + i; if (asked.has(k)) continue; // diese Liste wurde in dieser Phase schon angeboten
+      if (!ready(i, ph)) continue;                      // noch zu früh → später erneut prüfen
       asked.add(k);
       S.list = i; S.mode = 'ask'; armAsk();
       say(T().remind(T().ph[ph], ls[i].name));
@@ -958,12 +1132,14 @@
         <label class="cp-rate">Tempo <input type="range" id="cpRate" min="0.8" max="1.4" step="0.05"></label>
         <label class="cp-chk"><input type="checkbox" id="cpMic"> Mikrofon</label>
         <label class="cp-chk"><input type="checkbox" id="cpAuto"> Automatisch starten</label>
-        <label class="cp-chk"><input type="checkbox" id="cpPacks"> Start mit Packs AUS (Performance)</label></div></div>
+        <label class="cp-chk"><input type="checkbox" id="cpPacks"> Start mit Packs AUS (Performance)</label>
+        <label class="cp-chk"><input type="checkbox" id="cpGsxKeys"> GSX-Menü per Zifferntaste bedienen (nur wenn die Auswahl, z. B. beim Pushback, sonst nicht ankommt; MSFS muss laufen)</label></div></div>
       <div class="cpv-card"><h3>Mehr Leben</h3><small>Der Copilot spricht auch von sich aus. Gilt nur, solange er an und nicht stumm ist.</small><div class="cp-row">
         <label class="cp-chk"><input type="checkbox" id="cpLifeTaxi"> Rollweg-Ansagen (aus der Route in der Karte)</label>
         <label class="cp-chk"><input type="checkbox" id="cpLifeTraffic"> Verkehrshinweise (VATSIM)</label>
         <label class="cp-chk"><input type="checkbox" id="cpLifeCalls"> Callouts (80 Knoten, V1, Rotate, 10.000 ft)</label>
-        <label class="cp-chk"><input type="checkbox" id="cpLifeGround"> Bodencrew meldet sich selbst (Pushback fertig, Triebwerksstart frei, Abkoppeln, Ankunft)</label></div></div>
+        <label class="cp-chk"><input type="checkbox" id="cpLifeGround"> Bodencrew meldet sich selbst (Triebwerksstart frei, Abkoppeln, Ankunft)</label>
+        <label class="cp-chk"><input type="checkbox" id="cpLifePush"> Bodencrew spricht auch während des Pushbacks (sonst übernimmt GSX)</label></div></div>
       <div class="cpv-card" id="cpAmb"></div>
       <div class="cpv-card" id="cpDev"><small id="cpDevHint"><b>Audio-Geräte:</b> Mikrofon und Lautsprecher stellst du im Copilot-Fenster am PC ein.</small></div>
       <div class="cpv-card"><h3>Verlauf</h3><div id="cpLog" class="cp-log"></div>
@@ -1003,11 +1179,12 @@
     $('#cpVoiceEn').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice.en = e.target.value; save(); setTimeout(() => preview('voiceEn'), 500); };
     $('#cpAuto').checked = !!pref.autostart;
     $('#cpAuto').onchange = (e) => { pref.autostart = e.target.checked; save(); };
-    const lifeSet = () => { const L = pref.life || {}; $('#cpLifeTaxi').checked = L.taxi !== false; $('#cpLifeTraffic').checked = L.traffic !== false; $('#cpLifeCalls').checked = L.calls !== false; $('#cpLifeGround').checked = L.ground !== false; };
+    const lifeSet = () => { const L = pref.life || {}; $('#cpLifeTaxi').checked = L.taxi !== false; $('#cpLifeTraffic').checked = L.traffic !== false; $('#cpLifeCalls').checked = L.calls !== false; $('#cpLifeGround').checked = L.ground !== false; $('#cpLifePush').checked = L.groundPush === true; };
     lifeSet(); window._cpLifeSet = lifeSet;
-    [['#cpLifeTaxi', 'taxi'], ['#cpLifeTraffic', 'traffic'], ['#cpLifeCalls', 'calls'], ['#cpLifeGround', 'ground']].forEach(([id, k]) => { $(id).onchange = (e) => { pref.life = Object.assign({ taxi: true, traffic: true, calls: true, ground: true }, pref.life || {}); pref.life[k] = e.target.checked; save(); }; });
+    [['#cpLifeTaxi', 'taxi'], ['#cpLifeTraffic', 'traffic'], ['#cpLifeCalls', 'calls'], ['#cpLifeGround', 'ground'], ['#cpLifePush', 'groundPush']].forEach(([id, k]) => { $(id).onchange = (e) => { pref.life = Object.assign({ taxi: true, traffic: true, calls: true, ground: true, groundPush: false }, pref.life || {}); pref.life[k] = e.target.checked; save(); }; });
     $('#cpPacks').checked = !!pref.packsOff;
     $('#cpPacks').onchange = (e) => { pref.packsOff = e.target.checked; save(); };
+    $('#cpGsxKeys').checked = !!pref.gsxKeys; $('#cpGsxKeys').onchange = (e) => { pref.gsxKeys = e.target.checked; save(); };
     $('#cpToggle').onclick = () => { if (remote()) { cmd(hostActive ? 'stop' : 'start'); const st = panel.querySelector('#cpState'); st.textContent = hostActive ? '…' : (pref.lang === 'de' ? 'Starte am PC …' : 'Starting on the PC …'); setTimeout(pollHost, 2500); setTimeout(pollHost, 6000); } else (S.on ? stop() : start()); };
     $('#cpLang').onchange = (e) => { pref.lang = e.target.value; save(); fillVoices(); if (rec) { pauseRec(); } ui(); };
     $('#cpRate').oninput = (e) => { pref.rate = parseFloat(e.target.value); save(); };
@@ -1079,7 +1256,7 @@
     if (!HOST || !S.on || S.mode !== 'run' || S.speaking || k !== 'cl.' + checklistKey()) return;
     if ((progOf()[S.list] || [])[S.item]) advance();
   }
-  window.Copilot = { _core: { say: (t, l, o) => say(t, l, o), groundLine, call, engineClear, disconnectNow, efbAct, S, pref, isMuted: () => muted, spoken, rwySay, rwyTxt, itemLang, post }, freqOf, rwyOf, spellOut, setMuted, plannedRwy, parts, handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
+  window.Copilot = { _core: { say: (t, l, o) => say(t, l, o), groundLine, call, brk, gsxReady, lifeOn, pushBusy, engineClear, disconnectNow, efbAct, S, pref, isMuted: () => muted, spoken, rwySay, rwyTxt, itemLang, post }, freqOf, rwyOf, spellOut, setMuted, plannedRwy, parts, handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
   const boot = () => { build(); muteBtn(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

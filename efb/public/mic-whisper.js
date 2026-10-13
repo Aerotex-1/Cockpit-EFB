@@ -55,7 +55,7 @@
       noiseThr = Math.min(0.12, (sumRms / Math.max(1, nRms)) * 1.25); noiseUntil = now + 90000;
       if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); reset(); return;
     }
-    if (silent >= 0.45) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
+    if (silent >= 0.55) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
   }
   window.WhisperMic = {
     async start(onText, getOpts) {

@@ -273,7 +273,8 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.mic === 'boolean') o.mic = b.mic;
         if (typeof b.autostart === 'boolean') o.autostart = b.autostart;
         if (typeof b.packsOff === 'boolean') o.packsOff = b.packsOff;
-        if (b.life && typeof b.life === 'object') o.life = { taxi: b.life.taxi !== false, traffic: b.life.traffic !== false, calls: b.life.calls !== false, ground: b.life.ground !== false };
+        if (typeof b.gsxKeys === 'boolean') o.gsxKeys = b.gsxKeys;
+        if (b.life && typeof b.life === 'object') o.life = { taxi: b.life.taxi !== false, traffic: b.life.traffic !== false, calls: b.life.calls !== false, ground: b.life.ground !== false, groundPush: b.life.groundPush === true };
         if (b.voice && typeof b.voice === 'object') { o.voice = o.voice || {}; for (const k of ['de', 'en', 'ground']) if (typeof b.voice[k] === 'string') o.voice[k] = b.voice[k].slice(0, 200); }
         if (b.amb && typeof b.amb === 'object') {
           const a = b.amb, n = (x, lo, hi, d) => (typeof x === 'number' && x >= lo && x <= hi ? x : d);

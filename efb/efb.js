@@ -107,7 +107,7 @@ class Efb {
       for (let i = 1; i <= 8; i++) add(`EXIT OPEN:${i}`, 'percent over 100');
       add('PAYLOAD STATION COUNT'); add('MAX GROSS WEIGHT', 'kilograms'); add('EMPTY WEIGHT', 'kilograms'); add('TOTAL WEIGHT', 'kilograms');
       for (let i = 1; i <= 24; i++) add(`PAYLOAD STATION WEIGHT:${i}`, 'kilograms');
-      add('PUSHBACK ATTACHED', 'bool');
+      add('PUSHBACK ATTACHED', 'bool'); add('EXTERNAL POWER AVAILABLE:1', 'bool'); add('EXTERNAL POWER ON:1', 'bool');
       for (let i = 1; i <= 4; i++) add(`ENG COMBUSTION:${i}`, 'bool');
       return w;
     }
@@ -217,7 +217,7 @@ class Efb {
       doors: d.doors.map((door, i) => ({ i, name: door.name, open: g(`EXIT OPEN:${this._doorIdx(i)}`) })),
       doorRaw: Array.from({ length: 8 }, (_, i) => Math.round(g(`EXIT OPEN:${i + 1}`) * 100)),
       doorMsg: this.doorMsg && Date.now() < this.doorMsg.until ? this.doorMsg.text : '',
-      fuelTruck: null, gpu: null, asu: null, chocks: null, cones: null, eqpVisible: null,
+      fuelTruck: null, gpu: g('EXTERNAL POWER AVAILABLE:1') > 0 || g('EXTERNAL POWER ON:1') > 0, asu: null, chocks: null, cones: null, eqpVisible: null,
       pushback: g('PUSHBACK ATTACHED') > 0,
       enginesRunning: [1, 2, 3, 4].some((i) => g(`ENG COMBUSTION:${i}`) > 0),
     };

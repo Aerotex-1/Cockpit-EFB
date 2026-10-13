@@ -89,7 +89,7 @@ async function transcribe(wav, { lang = 'auto', prompt = '' } = {}) {
   if (!available()) throw new Error('Spracherkennung nicht installiert.');
   if (!Buffer.isBuffer(wav) || wav.length < 1000 || wav.length > 8e6) throw new Error('Audio ungültig.');
   lang = /^(auto|de|en)$/.test(lang) ? lang : 'auto';
-  prompt = String(prompt || '').slice(0, 500);
+  prompt = String(prompt || '').slice(0, 700);
   await slot();
   const t0 = Date.now();
   try {

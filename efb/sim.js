@@ -35,7 +35,7 @@ class SimLink extends EventEmitter {
       demo,
       title: '',
       lat: null, lon: null, alt: 0, hdg: 0, gs: 0, ias: 0, vs: 0, onGround: true,
-      weightKg: null, fuelKg: null, parkingBrake: null, com1: null, com1s: null,
+      weightKg: null, fuelKg: null, parkingBrake: null, brakeKnown: false, com1: null, com1s: null,
       oat: null, windDir: null, windSpd: null, qnh: null,
       gsx: { installed: false },
       vars: {},
@@ -103,6 +103,7 @@ class SimLink extends EventEmitter {
     h.addToDataDefinition(DEF.MISC, 'BRAKE PARKING POSITION', 'bool', F);
     h.addToDataDefinition(DEF.MISC, 'COM ACTIVE FREQUENCY:1', 'hertz', F);
     h.addToDataDefinition(DEF.MISC, 'COM STANDBY FREQUENCY:1', 'hertz', F);
+    h.addToDataDefinition(DEF.MISC, 'L:A32NX_PARK_BRAKE_LEVER_POS', 'number', F); // FBW A32NX/A380X: der Standard-Wert BRAKE PARKING POSITION bleibt dort oft 0
     const gsxKeys = Object.keys(GSX_VARS);
     for (const k of gsxKeys) h.addToDataDefinition(DEF.MISC, GSX_VARS[k], 'number', F);
 
@@ -124,12 +125,15 @@ class SimLink extends EventEmitter {
       } else if (recv.requestID === REQ.MISC) {
         const title = d.readString256();
         const oat = d.readFloat64(), windDir = d.readFloat64(), windSpd = d.readFloat64(), qnh = d.readFloat64();
-        const weightKg = d.readFloat64(), fuelKg = d.readFloat64(), parkingBrake = d.readFloat64() > 0.5;
+        const weightKg = d.readFloat64(), fuelKg = d.readFloat64(), parkingBrake0 = d.readFloat64() > 0.5;
         const com1 = d.readFloat64(), com1s = d.readFloat64();
+        const brakeL = d.readFloat64();
+        const parkingBrake = parkingBrake0 || brakeL > 0.5;
+        if (parkingBrake) this._brakeSeen = true; // erst wenn der Sim die Bremse einmal als gesetzt gemeldet hat, gilt „gelöst“ als verlässlich
         const gsx = {};
         for (const k of gsxKeys) gsx[k] = d.readFloat64();
         gsx.installed = gsx.couatl > 0 || gsxKeys.some((k) => k.endsWith('ing') && gsx[k] > 0);
-        this._patch({ title, oat, windDir, windSpd, qnh, weightKg, fuelKg, parkingBrake, com1, com1s, gsx });
+        this._patch({ title, oat, windDir, windSpd, qnh, weightKg, fuelKg, parkingBrake, brakeKnown: !!this._brakeSeen, com1, com1s, gsx });
       }
     });
     h.on('exception', (ex) => console.log('[SIM] SimConnect-Ausnahme:', ex.exception, ex.sendId));
@@ -262,7 +266,7 @@ class SimLink extends EventEmitter {
         lon: start.lon + Math.sin(rad) * dist,
         alt, hdg, gs, ias: gs, vs, onGround,
         oat: 14, windDir: 250, windSpd: 9, qnh: 1018,
-        weightKg: 62000 - (5200 - fuel) , fuelKg: fuel, parkingBrake: brake,
+        weightKg: 62000 - (5200 - fuel) , fuelKg: fuel, parkingBrake: brake, brakeKnown: true,
         com1: this.state.com1 || 121700000, com1s: this.state.com1s || 118000000,
         gsx: { ...gsx }, vars,
       });

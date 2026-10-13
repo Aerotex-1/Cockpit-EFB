@@ -8,6 +8,7 @@ const HF = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
 const MODELS = [
   { id: 'base', file: 'ggml-base-q5_1.bin', name: 'Basis', desc: 'schnell, gut für Befehle und kurze Antworten', mb: 57 },
   { id: 'small', file: 'ggml-small-q5_1.bin', name: 'Klein (genauer)', desc: 'erkennt auch Akzent und Fachwörter besser, braucht etwas länger', mb: 182 },
+  { id: 'medium', file: 'ggml-medium-q5_0.bin', name: 'Mittel (sehr genau)', desc: 'beste Erkennung, braucht einen starken PC und ist spürbar langsamer', mb: 539 },
 ];
 const exe = (dir) => path.join(dir, 'bin', 'whisper-cli.exe');
 const modelFile = (dir, id) => { const m = MODELS.find((x) => x.id === id); return m ? path.join(dir, 'models', m.file) : ''; };
