@@ -1,0 +1,28 @@
+# Baut den Windows-Installer, sobald ein Tag "app-v…" gepusht wird (z. B. app-v1.0.1),
+# und hängt ihn an ein Release mit diesem Tag an.
+name: Build App
+on:
+  push:
+    tags: ['app-v*']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Version aus dem Tag übernehmen
+        shell: bash
+        run: |
+          V="${GITHUB_REF_NAME#app-v}"
+          cd app && npm version "$V" --no-git-tag-version --allow-same-version
+      - name: Abhängigkeiten installieren
+        run: cd app && npm install
+      - name: Installer bauen
+        run: cd app && npm run dist
+      - name: An Release anhängen
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/dist/Cockpit-EFB-Setup-*.exe

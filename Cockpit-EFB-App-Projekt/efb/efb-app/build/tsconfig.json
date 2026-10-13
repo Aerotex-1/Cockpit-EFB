@@ -1,0 +1,1 @@
+{ "compilerOptions": { "jsx": "react", "jsxFactory": "FSComponent.buildComponent", "jsxFragmentFactory": "FSComponent.Fragment", "target": "es2017", "module": "esnext", "moduleResolution": "bundler" } }

@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cockpit EFB">
+  <meta name="theme-color" content="#0b1016">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <title>Cockpit EFB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <meta name="format-detection" content="telephone=no">
+  <!-- Schrift ohne Blockieren laden: fehlt Internet, wird die Systemschrift genutzt -->
+  <link href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="style.css?v=1.1.7">
+  <script src="i18n-en.js?v=1.1.7"></script>
+  <script src="i18n.js?v=1.1.7"></script>
+  <script>try{var c=JSON.parse(localStorage.getItem('efb.settingsCache')||'null');if(c&&c.t)document.documentElement.dataset.theme=c.t;}catch(e){}</script>
+</head>
+<body>
+  <div id="dim"></div>
+  <div id="errBox" hidden><span></span><button type="button" onclick="location.reload()">Neu laden</button></div>
+
+  <header class="strip">
+    <div class="strip-ac">
+      <span class="lamp" id="simLamp" title="Verbindung zum Sim"></span>
+      <select id="acSelect" aria-label="Flieger wählen"></select>
+    </div>
+    <div class="strip-flight" id="stripFlight">Kein OFP geladen</div>
+    <button class="strip-atc" id="stripAtc" type="button" hidden title="Aktive Frequenz"></button>
+    <div class="strip-live" id="stripLive"></div>
+    <div class="strip-clock"><span id="utc">--:--</span><small>UTC</small></div>
+  </header>
+
+  <nav class="rail" id="rail">
+    <button data-tab="flight" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(-0.76 -0.3)"><path d="M18 2l2.4 11 12 6.5v3l-12-3.2-.9 8 3.8 2.8v2.4L18 31l-5.3 1.5v-2.4l3.8-2.8-.9-8-12 3.2v-3l12-6.5z" transform="translate(1.6 1.6) scale(.62)"/></g></svg><span class="leg">Flug</span></button>
+    <button data-tab="efb" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17.5h4"/></svg><span class="leg">EFB</span></button>
+    <button data-tab="ofp" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(-0.5 0)"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h6M9.5 15.5h6"/></g></svg><span class="leg">OFP</span></button>
+    <button data-tab="perf" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 0.4)"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="M12 14.5l3.6-4.2"/><circle cx="12" cy="14.5" r="1.2"/></g></svg><span class="leg">Perf</span></button>
+    <button data-tab="finder" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17.5" r="2"/><circle cx="18" cy="6.5" r="2"/><path d="M8 17.5h5.5a3 3 0 0 0 0-6h-3a3 3 0 0 1 0-6H16"/></svg><span class="leg">Finder</span></button>
+    <button data-tab="atc" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 -1.25)"><path d="M5 14v-2a7 7 0 0 1 14 0v2"/><rect x="3.5" y="13.5" width="4" height="6" rx="1.6"/><rect x="16.5" y="13.5" width="4" height="6" rx="1.6"/><path d="M18.5 19.5c0 1.4-1.6 2-4 2h-1.5"/></g></svg><span class="leg">ATC</span></button>
+    <button data-tab="map" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span class="leg">Karte</span></button>
+    <button data-tab="charts" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 16l3-4 2.5 2.5L17 9"/></svg><span class="leg">Charts</span></button>
+    <button data-tab="check" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 0.85)"><path d="M4.5 7l1.8 1.8L9.5 5.5M4.5 15l1.8 1.8 3.2-3.3M13 7.5h6.5M13 15.5h6.5"/></g></svg><span class="leg">Checklisten</span></button>
+    <button data-tab="wx" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 0.5)"><path d="M7 17.5h10.5a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.6 1.2A3 3 0 0 0 7 17.5z"/></g></svg><span class="leg">Wetter</span></button>
+    <button data-tab="gsx" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0.5 -1.45)"><rect x="2.5" y="7.5" width="11" height="9" rx="1.5"/><path d="M13.5 10.5h4l3 3.5v2.5h-7"/><circle cx="7" cy="17.5" r="1.9"/><circle cx="17" cy="17.5" r="1.9"/></g></svg><span class="leg">GSX</span></button>
+    <div class="rail-gap"></div>
+    <button data-tab="logbook" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14.5H7.5A1.5 1.5 0 0 1 6 18z"/><path d="M6 18a1.5 1.5 0 0 1 1.5-1.5h11M10 8h5M10 11h3.5"/></svg><span class="leg">Logbuch</span></button>
+    <button data-tab="music" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0.5 -0.25)"><path d="M9 17.5V6.5l10-2v11"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/></g></svg><span class="leg">Musik</span></button>
+    <button data-tab="setup" class="pb pb-small"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h8M17 8h3M4 16h3M11 16h9"/><circle cx="14.5" cy="8" r="2.2"/><circle cx="9" cy="16" r="2.2"/></svg><span class="leg">Setup</span></button>
+  </nav>
+
+  <main id="main">
+    <!-- FLUG -->
+    <section class="tab" id="tab-flight">
+      <div class="screen flight-grid">
+        <div class="route-block" id="routeBlock">
+          <p class="empty">Noch kein Flugplan. Trag unter Setup deinen SimBrief-Namen ein und lade den OFP.</p>
+        </div>
+        <div class="panel">
+          <h3>Live</h3>
+          <dl class="kv" id="liveKv"></dl>
+        </div>
+        <div class="panel">
+          <h3>Gewichte und Fuel</h3>
+          <dl class="kv" id="wtKv"><dt>–</dt><dd></dd></dl>
+        </div>
+        <div class="panel wide">
+          <h3>Wetter</h3>
+          <div id="wxBox" class="metar"><span class="dim-t">Wird mit dem OFP geladen.</span></div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="btnLoadOfp">OFP von SimBrief laden</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- EFB -->
+    <section class="tab frame-tab" id="tab-efb">
+      <div class="frame-bar">
+        <span id="efbTitle"></span>
+        <span class="spacer"></span>
+        <button class="btn-s" data-reload="efb">Neu laden</button>
+        <a class="btn-s" id="efbOpen" target="_blank">Im eigenen Fenster</a>
+      </div>
+      <div class="frame-wrap" id="efbFrameWrap"><iframe id="efbFrame" title="Flieger-EFB"></iframe>
+        <div class="frame-empty" id="efbEmpty"></div></div>
+      <div class="remote" id="remoteEfb" hidden>
+        <nav class="subnav" id="remoteNav">
+          <button data-rtab="ground" class="on">Boden</button>
+          <button data-rtab="fuel">Fuel</button>
+          <button data-rtab="payload">Payload</button>
+          <button data-rtab="presets">Presets</button>
+          <button data-rtab="failures">Störungen</button>
+        </nav>
+        <div class="screen remote-body" id="remoteBody"></div>
+      </div>
+    </section>
+
+    <!-- OFP -->
+    <section class="tab" id="tab-ofp">
+      <div class="screen">
+        <div class="ofp-head"><button class="btn" data-action="loadOfp">OFP neu laden</button><span id="ofpInfo" class="dim-t"></span></div>
+        <div id="ofpBody" class="ofp"><p class="empty">Kein OFP geladen.</p></div>
+      </div>
+    </section>
+
+    <!-- PERF -->
+    <section class="tab" id="tab-perf">
+      <div class="screen perf-grid">
+        <div class="panel wide" id="calcHead"></div>
+        <div class="panel" id="calcTo"></div>
+        <div class="panel" id="calcLdg"></div>
+        <div class="panel">
+          <h3>Takeoff (SimBrief)</h3>
+          <div id="perfTo"><p class="empty">Keine Takeoff-Daten. In SimBrief beim Planen die Takeoff-Performance aktivieren.</p></div>
+        </div>
+        <div class="panel">
+          <h3>Landing (SimBrief)</h3>
+          <div id="perfLdg"><p class="empty">Keine Landing-Daten im OFP.</p></div>
+        </div>
+        <div class="panel wide">
+          <h3>Windkomponenten</h3>
+          <div class="wind-calc">
+            <label>Pistenkurs <input id="rwyHdg" inputmode="numeric" maxlength="3" placeholder="263"></label>
+            <label>Wind aus <input id="windDir" inputmode="numeric" maxlength="3"></label>
+            <label>Wind kt <input id="windSpd" inputmode="numeric" maxlength="3"></label>
+            <button class="btn-s" id="windLive">Live-Wind</button>
+            <div class="wind-out" id="windOut"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINDER -->
+    <section class="tab" id="tab-finder">
+      <div class="screen finder">
+        <div class="panel"><h3>Flight Finder</h3><div id="finderForm"></div></div>
+        <div id="fResults" class="finder-results"></div>
+      </div>
+    </section>
+
+    <!-- ATC -->
+    <section class="tab" id="tab-atc">
+      <div class="screen atc-grid">
+        <div class="panel" id="clrPanel"></div>
+        <div class="atc-right">
+          <div class="panel" id="radioPanel"></div>
+          <div class="panel" id="freqPanel"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MUSIK -->
+    <section class="tab" id="tab-music">
+      <div class="screen" id="musicBody"></div>
+    </section>
+
+    <!-- KARTE -->
+    <section class="tab" id="tab-map">
+      <div id="map"></div>
+      <div class="map-ctl">
+        <button class="btn-s on" id="mapFollow">Folgen</button>
+        <button class="btn-s" id="mapRoute">Route zeigen</button>
+        <button class="btn-s" id="mapStyle">Hell</button>
+      </div>
+      <div class="map-layers">
+        <button class="btn-s" data-layer="ground">Bodenkarte</button>
+        <button class="btn-s" data-layer="vatsim">VATSIM</button>
+        <button class="btn-s" data-layer="radar">Wetter-Radar</button>
+        <button class="btn-s" id="btnWind">Wind &amp; Wolken</button>
+        <button class="btn-s" id="btnTaxi">Rollweg</button>
+      </div>
+      <div class="map-info" id="mapInfo" hidden></div>
+    </section>
+
+    <!-- CHARTS -->
+    <section class="tab" id="tab-charts">
+      <div class="charts-layout">
+        <aside class="charts-side">
+          <div class="seg" id="chartSource">
+            <button data-src="chartfox" class="on">ChartFox</button>
+            <button data-src="local">Gespeichert</button>
+          </div>
+          <div class="chart-search">
+            <div class="chips" id="chartAirports"></div>
+            <input id="chartIcao" maxlength="4" placeholder="ICAO" autocapitalize="characters" autocorrect="off">
+          </div>
+          <div id="chartList" class="chart-list"></div>
+          <p class="note" id="chartNote"></p>
+        </aside>
+        <div class="chart-view" id="chartView">
+          <div class="chart-tools" id="chartTools" hidden>
+            <button class="btn-s" data-zoom="-1">−</button>
+            <button class="btn-s" data-zoom="0">Einpassen</button>
+            <button class="btn-s" data-zoom="1">+</button>
+            <button class="btn-s" id="chartTheme">Nacht</button>
+            <button class="btn-s" id="chartPage" hidden></button>
+            <a class="btn-s" id="chartOpen" target="_blank">Im eigenen Fenster</a>
+          </div>
+          <div class="chart-tools" id="cfTools" hidden>
+            <a class="btn-s" id="cfTab" target="_blank" rel="noopener">ChartFox öffnen</a>
+            <label class="btn-s" for="cfFile">Bild/PDF ablegen</label>
+            <input type="file" id="cfFile" accept="image/png,image/jpeg,application/pdf" multiple hidden>
+            <button class="btn-s" id="cfPaste">Aus Zwischenablage</button>
+            <button class="btn-s" id="cfDelete" hidden>Löschen</button>
+          </div>
+          <div class="chart-canvas" id="chartCanvas"><p class="empty">Wähle links einen Flughafen und eine Karte.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECKLISTEN -->
+    <section class="tab" id="tab-check">
+      <div class="check-layout">
+        <aside class="check-side" id="checkSide"></aside>
+        <div class="check-main screen" id="checkMain"></div>
+      </div>
+    </section>
+
+    <!-- WETTER -->
+    <section class="tab" id="tab-wx">
+      <div class="screen" id="wxBody"></div>
+    </section>
+
+    <!-- GSX -->
+    <section class="tab" id="tab-gsx">
+      <div class="screen gsx-page">
+        <div class="gsx-tiles" id="gsxTiles"></div>
+        <div class="gsx-ask" id="gsxAsk" hidden>
+          <h3>Aktuelles GSX-Menü: <span id="gsxAskTitle"></span></h3>
+          <div class="gsx-tiles small" id="gsxAskItems"></div>
+        </div>
+        <div class="gsx-foot">
+          <span class="note" id="gsxNote"></span>
+          <span class="spacer"></span>
+          <button class="btn-s" id="gsxRefresh">GSX-Hauptmenü abrufen</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- LOGBUCH -->
+    <section class="tab" id="tab-logbook">
+      <div class="screen" id="logBody"></div>
+    </section>
+
+    <!-- SETUP -->
+    <section class="tab" id="tab-setup">
+      <div class="setup-layout">
+        <nav class="set-nav" id="setNav" aria-label="Einstellungen">
+          <button data-sec="airlines" class="on">Airlines</button>
+          <button data-sec="design">Design</button>
+          <button data-sec="tabs">Tabs</button>
+          <button data-sec="presets">Presets</button>
+          <button data-sec="logbook">Logbuch</button>
+          <button data-sec="lang">Sprache</button>
+          <button data-sec="connect">Verbindungen</button>
+          <button data-sec="aircraft">Flieger</button>
+          <button data-sec="access">Zugang</button>
+          <button data-sec="about">Info</button>
+        </nav>
+        <div class="screen set-body">
+          <section class="set-sec on" id="sec-airlines"></section>
+          <section class="set-sec" id="sec-design">
+            <div id="designDyn" class="set-dyn"></div>
+            <div class="panel">
+              <h3>Helligkeit</h3>
+              <input type="range" id="dimRange" min="0" max="70" value="0" aria-label="Abdunkeln">
+              <p class="note">Dunkelt die Oberfläche für Nachtflüge ab.</p>
+            </div>
+          </section>
+          <section class="set-sec" id="sec-tabs"></section>
+          <section class="set-sec" id="sec-presets"></section>
+          <section class="set-sec" id="sec-logbook"></section>
+          <section class="set-sec" id="sec-lang"></section>
+          <section class="set-sec" id="sec-connect">
+            <h2>Verbindungen</h2>
+            <div class="panel">
+              <h3>SimBrief</h3>
+              <label class="field">Benutzername oder Pilot-ID <input id="sbUser" autocomplete="off" autocapitalize="off"></label>
+            </div>
+            <div class="panel">
+              <h3>Spotify (freiwillig)</h3>
+              <label class="field">Client-ID der Spotify-App <input id="spClient" autocomplete="off" autocapitalize="off" autocorrect="off"></label>
+              <p class="note">So bekommst du sie: Auf developer.spotify.com/dashboard eine App anlegen und als Redirect-URI <b>http://127.0.0.1:8090/api/spotify/callback</b> eintragen. Danach im Tab Musik anmelden.</p>
+            </div>
+            <div class="panel">
+              <h3>GSX</h3>
+              <label class="field">Pfad zur GSX-Menüdatei (leer lassen = automatisch suchen)
+                <input id="gsxFile" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="…\fsdreamteam-gsx-pro\html_ui\InGamePanels\FSDT_GSX_Panel\menu"></label>
+              <p class="note" id="gsxFileInfo"></p>
+            </div>
+            <div class="actions"><button class="btn" id="btnSave">Einstellungen speichern</button><span id="saveMsg" class="dim-t"></span></div>
+          </section>
+          <section class="set-sec" id="sec-aircraft">
+            <h2>Flieger-Profile</h2>
+            <p class="note"><code>{host}</code> wird durch die Adresse deines PCs ersetzt. Erkannt wird ein Flieger, wenn einer der Suchbegriffe im Sim-Titel vorkommt.</p>
+            <div id="acEditor"></div>
+            <div class="actions"><button class="btn" id="btnSave2">Einstellungen speichern</button></div>
+          </section>
+          <section class="set-sec" id="sec-access">
+            <h2>Zugang</h2>
+            <div class="panel" id="authPanel">
+              <p class="note" id="authText">Wird geladen …</p>
+              <div id="pinSet" hidden>
+                <div class="row-gap"><input id="pinNew" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="Eigene PIN (4–8 Ziffern)"><button class="btn-s" id="pinSave">PIN speichern</button></div>
+                <p class="note">Gekoppelte Geräte bleiben gekoppelt. Vergisst du die PIN, steht sie hier am PC.</p>
+              </div>
+              <div class="actions" id="authActions" hidden><button class="btn-s" id="authReset">Zufällige neue PIN, alle Geräte abmelden</button></div>
+            </div>
+          </section>
+          <section class="set-sec" id="sec-about">
+            <h2>Info</h2>
+        <div class="panel" id="aboutPanel">
+          <h3>Quellen und Hinweise</h3>
+          <p class="note"><b>Nur für die Flugsimulation.</b> Leistungsrechner, Flughafen- und Wetterdaten sind Näherungen und dürfen nicht für echte Flüge oder echte Navigation verwendet werden. Cockpit EFB steht in keiner Verbindung zu Microsoft, Asobo, FlyByWire, Headwind, Fenix, FSDreamTeam (GSX), Navigraph/Lido, SimBrief, ChartFox, VATSIM oder Spotify. Alle Namen gehören ihren Inhabern.</p>
+          <ul class="note about-list">
+            <li>Karte: © OpenStreetMap-Mitwirkende (ODbL), Bodenkarte aus OpenStreetMap über Overpass, Kartendarstellung mit Leaflet (BSD-2-Clause)</li>
+            <li>Wind und Wolken: Wetterdaten von Open-Meteo.com (CC BY 4.0)</li>
+            <li>Wetter-Radar: RainViewer</li>
+            <li>VATSIM-Daten: öffentlicher VATSIM-Datenfeed, FIR-Grenzen aus dem VATSpy-Datenprojekt (werden beim ersten Aufruf vom PC geladen)</li>
+            <li>Flugplan: SimBrief (mit deinem eigenen Konto). Charts: Verknüpfung zu ChartFox, eigene Dateien</li>
+            <li>Musik: Steuerung deines eigenen Spotify-Kontos über die Spotify Web API. Premium nötig. Spotify ist eine Marke von Spotify AB</li>
+            <li>Sim-Modul: enthält die EFB-API aus dem MSFS-SDK (Asobo Studio, MIT-Lizenz)</li>
+          </ul>
+          <p class="note">Cockpit EFB sammelt keine Daten und sendet nichts an den Entwickler. Details stehen in PRIVACY.md und THIRD-PARTY-NOTICES.md.</p>
+        </div>
+            <p class="dim-t" id="verInfo"></p>
+            <div class="upd" id="updBox">
+              <h3>Update installieren</h3>
+              <p class="note">Neue ZIP-Version wählen (am PC geöffnet). Deine Einstellungen, Logbuch, PIN und Hintergründe bleiben erhalten; ersetzte Dateien werden in _backup gesichert.</p>
+              <div class="cp-row"><input type="file" id="updFile" accept=".zip"><button class="btn" id="updGo" disabled>Installieren</button></div>
+              <p id="updMsg" class="note"></p>
+              <button class="btn" id="updRestart" hidden>Jetzt neu starten</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js?v=1.1.7"></script>
+  <script src="remote-efb.js?v=1.1.7"></script>
+  <script src="perf-model.js?v=1.1.7"></script>
+  <script src="perf-calc.js?v=1.1.7"></script>
+  <script src="finder.js?v=1.1.7"></script>
+  <script src="atc-tab.js?v=1.1.7"></script>
+  <script src="music-tab.js?v=1.1.7"></script>
+  <script src="settings.js?v=1.1.7"></script>
+  <script src="logbook-tab.js?v=1.1.7"></script>
+  <script src="wx-tab.js?v=1.1.7"></script>
+  <script src="copilot.js?v=1.1.7"></script>
+  <script src="update-ui.js?v=1.1.7"></script>
+  <script src="setup-ui.js?v=1.1.7"></script>
+  <script src="about.js?v=1.1.7"></script>
+  <script src="charts.js?v=1.1.7"></script>
+  <script src="map-layers.js?v=1.1.7"></script>
+  <script src="map-extras.js?v=1.1.7"></script>
+</body>
+</html>

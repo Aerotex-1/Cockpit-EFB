@@ -1,0 +1,916 @@
+{
+ "airbus-narrow": [
+  {
+   "name": "Cockpit Preparation",
+   "items": [
+    {
+     "item": "Gear Pins & Covers",
+     "resp": "REMOVED"
+    },
+    {
+     "item": "Fuel Quantity",
+     "resp": "___ KG CHECK"
+    },
+    {
+     "item": "Seat Belts",
+     "resp": "ON"
+    },
+    {
+     "item": "ADIRS",
+     "resp": "NAV"
+    },
+    {
+     "item": "Baro Ref",
+     "resp": "___ SET (BOTH)"
+    }
+   ]
+  },
+  {
+   "name": "Before Start",
+   "items": [
+    {
+     "item": "Parking Brake",
+     "resp": "AS RQRD"
+    },
+    {
+     "item": "T.O Speeds & Thrust",
+     "resp": "___ (BOTH) SET"
+    },
+    {
+     "item": "Windows / Doors",
+     "resp": "CLOSED (BOTH)"
+    },
+    {
+     "item": "Beacon",
+     "resp": "ON"
+    }
+   ]
+  },
+  {
+   "name": "After Start",
+   "items": [
+    {
+     "item": "Anti Ice",
+     "resp": "AS RQRD"
+    },
+    {
+     "item": "ECAM Status",
+     "resp": "CHECKED"
+    },
+    {
+     "item": "Pitch Trim",
+     "resp": "___ SET"
+    },
+    {
+     "item": "Rudder Trim",
+     "resp": "ZERO"
+    }
+   ]
+  },
+  {
+   "name": "Taxi",
+   "items": [
+    {
+     "item": "Flight Controls",
+     "resp": "CHECKED (BOTH)"
+    },
+    {
+     "item": "Flight Instruments",
+     "resp": "CHECKED (BOTH)"
+    },
+    {
+     "item": "Briefing",
+     "resp": "CONFIRMED"
+    },
+    {
+     "item": "Flap Setting",
+     "resp": "CONF ___ (BOTH)"
+    },
+    {
+     "item": "Radar & PWS",
+     "resp": "ON & AUTO"
+    },
+    {
+     "item": "ENG Mode Sel",
+     "resp": "AS RQRD"
+    },
+    {
+     "item": "ECAM Memo",
+     "resp": "T.O NO BLUE"
+    }
+   ]
+  },
+  {
+   "name": "Line-Up",
+   "items": [
+    {
+     "item": "T.O Runway",
+     "resp": "___ CONFIRMED (BOTH)"
+    },
+    {
+     "item": "TCAS",
+     "resp": "TA OR TA/RA"
+    },
+    {
+     "item": "Packs",
+     "resp": "AS RQRD"
+    }
+   ]
+  },
+  {
+   "name": "Approach",
+   "items": [
+    {
+     "item": "Briefing",
+     "resp": "CONFIRMED"
+    },
+    {
+     "item": "ECAM Status",
+     "resp": "CHECKED"
+    },
+    {
+     "item": "Seat Belts",
+     "resp": "ON"
+    },
+    {
+     "item": "Baro Ref",
+     "resp": "___ SET (BOTH)"
+    },
+    {
+     "item": "Minimum",
+     "resp": "___ SET (BOTH)"
+    },
+    {
+     "item": "ENG Mode Sel",
+     "resp": "AS RQRD"
+    }
+   ]
+  },
+  {
+   "name": "Landing",
+   "items": [
+    {
+     "item": "ECAM Memo",
+     "resp": "LDG NO BLUE"
+    }
+   ]
+  },
+  {
+   "name": "After Landing",
+   "items": [
+    {
+     "item": "Flaps",
+     "resp": "RETRACTED"
+    },
+    {
+     "item": "Spoilers",
+     "resp": "DISARMED"
+    },
+    {
+     "item": "APU",
+     "resp": "START"
+    },
+    {
+     "item": "Radar & PWS",
+     "resp": "OFF"
+    }
+   ]
+  },
+  {
+   "name": "Parking",
+   "items": [
+    {
+     "item": "APU Bleed",
+     "resp": "ON"
+    },
+    {
+     "item": "Engines",
+     "resp": "OFF"
+    },
+    {
+     "item": "Seat Belts",
+     "resp": "OFF"
+    },
+    {
+     "item": "External Lights",
+     "resp": "OFF"
+    },
+    {
+     "item": "Fuel Pumps",
+     "resp": "OFF"
+    },
+    {
+     "item": "Park Brk & Chocks",
+     "resp": "AS RQRD"
+    }
+   ]
+  },
+  {
+   "name": "Securing the Aircraft",
+   "items": [
+    {
+     "item": "Oxygen",
+     "resp": "OFF"
+    },
+    {
+     "item": "ADIRS",
+     "resp": "OFF"
+    },
+    {
+     "item": "APU Bleed",
+     "resp": "OFF"
+    },
+    {
+     "item": "Emer Exit Lt",
+     "resp": "OFF"
+    },
+    {
+     "item": "Signs",
+     "resp": "OFF"
+    },
+    {
+     "item": "APU & BAT",
+     "resp": "OFF"
+    }
+   ]
+  }
+ ],
+ "airbus-wide": [
+  {
+   "name": "Cockpit Preparation",
+   "items": [
+    {
+     "item": "Gear Pins & Covers",
+     "resp": "REMOVED"
+    },
+    {
+     "item": "Fuel Quantity",
+     "resp": "___ KG CHECK"
+    },
+    {
+     "item": "Oxygen",
+     "resp": "CHECKED"
+    },
+    {
+     "item": "Seat Belts",
+     "resp": "ON"
+    },
+    {
+     "item": "ADIRS",
+     "resp": "NAV"
+    },
+    {
+     "item": "Baro Ref",
+     "resp": "___ SET (BOTH)"
+    }
+   ]
+  },
+  {
+   "name": "Before Start",
+   "items": [
+    {
+     "item": "Parking Brake",
+     "resp": "AS RQRD"
+    },
+    {
+     "item": "T.O Speeds & Thrust",
+     "resp": "___ (BOTH) SET"
+    },
+    {
+     "item": "Windows / Doors",
+     "resp": "CLOSED (BOTH)"
+    },
+    {
+     "item": "Beacon",
+     "resp": "ON"
+    }
+   ]
+  },
+  {
+   "name": "After Start",
+   "items": [
+    {
+     "item": "Anti Ice",
+     "resp": "AS RQRD"
+    },
+    {
+     "item": "ECAM Status",
+     "resp": "CHECKED"
+    },
+    {
+     "item": "Pitch Trim",
+     "resp": "___ SET"
+    },
+    {
+     "item": "Rudder Trim",
+     "resp": "ZERO"
+    }
+   ]
+  },
+  {
+   "name": "Taxi",
+   "items": [
+    {
+     "item": "Flight Controls",
+     "resp": "CHECKED (BOTH)"
+    },
+    {
+     "item": "Flight Instruments",
+     "resp": "CHECKED (BOTH)"
+    },
+    {
+     "item": "Briefing",
+     "resp": "CONFIRMED"
+    },
+    {
+     "item": "Flap Setting",
+     "resp": "CONF ___ (BOTH)"
+    },
+    {
+     "item": "Radar & PWS",
+     "resp": "ON & AUTO"
+    },
+    {
+     "item": "Auto Brake",
+     "resp": "RTO"
+    },
+    {
+     "item": "ENG Mode Sel",
+     "resp": "AS RQRD"
+    },
+    {
+     "item": "ECAM Memo",
+     "resp": "T.O NO BLUE"
+    }
+   ]
+  },
+  {
+   "name": "Line-Up",
+   "items": [
+    {
+     "item": "T.O Runway",
+     "resp": "___ CONFIRMED (BOTH)"
+    },
+    {
+     "item": "TCAS",
+     "resp": "TA OR TA/RA"
+    },
+    {
+     "item": "Packs",
+     "resp": "AS RQRD"
+    }
+   ]
+  },
+  {
+   "name": "Approach",
+   "items": [
+    {
+     "item": "Briefing",
+     "resp": "CONFIRMED"
+    },
+    {
+     "item": "ECAM Status",
+     "resp": "CHECKED"
+    },
+    {
+     "item": "Seat Belts",
+     "resp": "ON"
+    },
+    {
+     "item": "Baro Ref",
+     "resp": "___ SET (BOTH)"
+    },
+    {
+     "item": "Minimum",
+     "resp": "___ SET (BOTH)"
+    },
+    {
+     "item": "ENG Mode Sel",
+     "resp": "AS RQRD"
+    }
+   ]
+  },
+  {
+   "name": "Landing",
+   "items": [
+    {
+     "item": "ECAM Memo",
+     "resp": "LDG NO BLUE"
+    }
+   ]
+  },
+  {
+   "name": "After Landing",
+   "items": [
+    {
+     "item": "Flaps",
+     "resp": "RETRACTED"
+    },
+    {
+     "item": "Spoilers",
+     "resp": "DISARMED"
+    },
+    {
+     "item": "APU",
+     "resp": "START"
+    },
+    {
+     "item": "Radar & PWS",
+     "resp": "OFF"
+    }
+   ]
+  },
+  {
+   "name": "Parking",
+   "items": [
+    {
+     "item": "APU Bleed",
+     "resp": "ON"
+    },
+    {
+     "item": "Engines",
+     "resp": "OFF"
+    },
+    {
+     "item": "Seat Belts",
+     "resp": "OFF"
+    },
+    {
+     "item": "External Lights",
+     "resp": "OFF"
+    },
+    {
+     "item": "Fuel Pumps",
+     "resp": "OFF"
+    },
+    {
+     "item": "Park Brk & Chocks",
+     "resp": "AS RQRD"
+    }
+   ]
+  },
+  {
+   "name": "Securing the Aircraft",
+   "items": [
+    {
+     "item": "Oxygen",
+     "resp": "OFF"
+    },
+    {
+     "item": "ADIRS",
+     "resp": "OFF"
+    },
+    {
+     "item": "APU Bleed",
+     "resp": "OFF"
+    },
+    {
+     "item": "Emer Exit Lt",
+     "resp": "OFF"
+    },
+    {
+     "item": "Signs",
+     "resp": "OFF"
+    },
+    {
+     "item": "APU & BAT",
+     "resp": "OFF"
+    }
+   ]
+  }
+ ],
+ "boeing-narrow": [
+  {
+   "name": "Preflight",
+   "items": [
+    {
+     "item": "Batterie / Stromversorgung",
+     "resp": "ON / PRÜFEN"
+    },
+    {
+     "item": "Hydraulikpumpen",
+     "resp": "AUS / ON ARM"
+    },
+    {
+     "item": "Treibstoffmenge",
+     "resp": "___ KG PRÜFEN"
+    },
+    {
+     "item": "Flugsteuerung / Instrumente",
+     "resp": "PRÜFEN"
+    },
+    {
+     "item": "Sauerstoff",
+     "resp": "GETESTET"
+    },
+    {
+     "item": "Notausrüstung",
+     "resp": "PRÜFEN"
+    },
+    {
+     "item": "FMC / Flugplan",
+     "resp": "EINGEGEBEN"
+    },
+    {
+     "item": "Anschnallzeichen",
+     "resp": "AUTO / ON"
+    }
+   ]
+  },
+  {
+   "name": "Before Start",
+   "items": [
+    {
+     "item": "Flugdeck-Vorbereitung",
+     "resp": "ERLEDIGT"
+    },
+    {
+     "item": "Fenster / Türen",
+     "resp": "GESCHLOSSEN"
+    },
+    {
+     "item": "Planen / Lasten",
+     "resp": "LOADSHEET PRÜFEN"
+    },
+    {
+     "item": "Startgeschwindigkeiten / Schub",
+     "resp": "___ GESETZT (BEIDE)"
+    },
+    {
+     "item": "Parkbremse",
+     "resp": "GESETZT"
+    },
+    {
+     "item": "Beacon",
+     "resp": "ON"
+    }
+   ]
+  },
+  {
+   "name": "Before Taxi",
+   "items": [
+    {
+     "item": "Triebwerke",
+     "resp": "LAUFEN"
+    },
+    {
+     "item": "Generatoren",
+     "resp": "ON"
+    },
+    {
+     "item": "Anti-Ice",
+     "resp": "NACH BEDARF"
+    },
+    {
+     "item": "Klappen",
+     "resp": "___ GESETZT"
+    },
+    {
+     "item": "Trimmung",
+     "resp": "___ GESETZT"
+    },
+    {
+     "item": "Flugsteuerung",
+     "resp": "FREI"
+    }
+   ]
+  },
+  {
+   "name": "Before Takeoff",
+   "items": [
+    {
+     "item": "Briefing",
+     "resp": "ERLEDIGT"
+    },
+    {
+     "item": "Landelichter / Strobe",
+     "resp": "ON"
+    },
+    {
+     "item": "Transponder",
+     "resp": "TA/RA"
+    },
+    {
+     "item": "Klappen",
+     "resp": "___ GRÜN"
+    },
+    {
+     "item": "Rollbahn",
+     "resp": "FREI"
+    }
+   ]
+  },
+  {
+   "name": "After Takeoff",
+   "items": [
+    {
+     "item": "Fahrwerk",
+     "resp": "EINGEFAHREN, AUS"
+    },
+    {
+     "item": "Klappen",
+     "resp": "EINGEFAHREN"
+    },
+    {
+     "item": "Packs / Bleed",
+     "resp": "NACH BEDARF"
+    },
+    {
+     "item": "Altimeter",
+     "resp": "STD / ___"
+    }
+   ]
+  },
+  {
+   "name": "Descent",
+   "items": [
+    {
+     "item": "Anflugbriefing",
+     "resp": "ERLEDIGT"
+    },
+    {
+     "item": "Landegeschwindigkeit",
+     "resp": "___ GESETZT"
+    },
+    {
+     "item": "Autobrake",
+     "resp": "___"
+    },
+    {
+     "item": "Altimeter",
+     "resp": "___ GESETZT (BEIDE)"
+    },
+    {
+     "item": "Anschnallzeichen",
+     "resp": "ON"
+    }
+   ]
+  },
+  {
+   "name": "Landing",
+   "items": [
+    {
+     "item": "Fahrwerk",
+     "resp": "AUSGEFAHREN, 3 GRÜN"
+    },
+    {
+     "item": "Speedbrake",
+     "resp": "ARMED"
+    },
+    {
+     "item": "Klappen",
+     "resp": "___, GRÜN"
+    }
+   ]
+  },
+  {
+   "name": "Shutdown",
+   "items": [
+    {
+     "item": "Parkbremse",
+     "resp": "GESETZT"
+    },
+    {
+     "item": "Triebwerke",
+     "resp": "AUS"
+    },
+    {
+     "item": "Anschnallzeichen",
+     "resp": "OFF"
+    },
+    {
+     "item": "Beacon",
+     "resp": "OFF"
+    },
+    {
+     "item": "Fuel Pumps",
+     "resp": "OFF"
+    }
+   ]
+  },
+  {
+   "name": "Secure",
+   "items": [
+    {
+     "item": "IRS / Navigation",
+     "resp": "AUS"
+    },
+    {
+     "item": "Stromversorgung",
+     "resp": "AUS"
+    },
+    {
+     "item": "Türen",
+     "resp": "NACH BEDARF"
+    }
+   ]
+  }
+ ],
+ "boeing-wide": [
+  {
+   "name": "Preflight",
+   "items": [
+    {
+     "item": "Batterie / Stromversorgung",
+     "resp": "ON / PRÜFEN"
+    },
+    {
+     "item": "Treibstoffmenge",
+     "resp": "___ KG PRÜFEN"
+    },
+    {
+     "item": "Hydraulik",
+     "resp": "PRÜFEN"
+    },
+    {
+     "item": "Sauerstoff",
+     "resp": "GETESTET"
+    },
+    {
+     "item": "FMC / Flugplan",
+     "resp": "EINGEGEBEN"
+    },
+    {
+     "item": "Notausrüstung",
+     "resp": "PRÜFEN"
+    }
+   ]
+  },
+  {
+   "name": "Before Start",
+   "items": [
+    {
+     "item": "Fenster / Türen",
+     "resp": "GESCHLOSSEN"
+    },
+    {
+     "item": "Loadsheet / Gewichte",
+     "resp": "PRÜFEN"
+    },
+    {
+     "item": "Startgeschwindigkeiten / Schub",
+     "resp": "___ GESETZT (BEIDE)"
+    },
+    {
+     "item": "Parkbremse",
+     "resp": "GESETZT"
+    },
+    {
+     "item": "Beacon",
+     "resp": "ON"
+    }
+   ]
+  },
+  {
+   "name": "Before Taxi",
+   "items": [
+    {
+     "item": "Triebwerke",
+     "resp": "LAUFEN"
+    },
+    {
+     "item": "Generatoren",
+     "resp": "ON"
+    },
+    {
+     "item": "Anti-Ice",
+     "resp": "NACH BEDARF"
+    },
+    {
+     "item": "Klappen",
+     "resp": "___ GESETZT"
+    },
+    {
+     "item": "Trimmung",
+     "resp": "___ GESETZT"
+    },
+    {
+     "item": "Flugsteuerung",
+     "resp": "FREI"
+    }
+   ]
+  },
+  {
+   "name": "Before Takeoff",
+   "items": [
+    {
+     "item": "Briefing",
+     "resp": "ERLEDIGT"
+    },
+    {
+     "item": "Lichter",
+     "resp": "ON"
+    },
+    {
+     "item": "Transponder",
+     "resp": "TA/RA"
+    },
+    {
+     "item": "Klappen",
+     "resp": "___ GRÜN"
+    },
+    {
+     "item": "Rollbahn",
+     "resp": "FREI"
+    }
+   ]
+  },
+  {
+   "name": "After Takeoff",
+   "items": [
+    {
+     "item": "Fahrwerk",
+     "resp": "EINGEFAHREN"
+    },
+    {
+     "item": "Klappen",
+     "resp": "EINGEFAHREN"
+    },
+    {
+     "item": "Altimeter",
+     "resp": "STD / ___"
+    }
+   ]
+  },
+  {
+   "name": "Descent",
+   "items": [
+    {
+     "item": "Anflugbriefing",
+     "resp": "ERLEDIGT"
+    },
+    {
+     "item": "Landegeschwindigkeit",
+     "resp": "___ GESETZT"
+    },
+    {
+     "item": "Autobrake",
+     "resp": "___"
+    },
+    {
+     "item": "Altimeter",
+     "resp": "___ GESETZT (BEIDE)"
+    }
+   ]
+  },
+  {
+   "name": "Landing",
+   "items": [
+    {
+     "item": "Fahrwerk",
+     "resp": "AUSGEFAHREN"
+    },
+    {
+     "item": "Speedbrake",
+     "resp": "ARMED"
+    },
+    {
+     "item": "Klappen",
+     "resp": "___, GRÜN"
+    }
+   ]
+  },
+  {
+   "name": "Shutdown",
+   "items": [
+    {
+     "item": "Parkbremse",
+     "resp": "GESETZT"
+    },
+    {
+     "item": "Triebwerke",
+     "resp": "AUS"
+    },
+    {
+     "item": "Anschnallzeichen",
+     "resp": "OFF"
+    },
+    {
+     "item": "Beacon",
+     "resp": "OFF"
+    },
+    {
+     "item": "Fuel Pumps",
+     "resp": "OFF"
+    }
+   ]
+  },
+  {
+   "name": "Secure",
+   "items": [
+    {
+     "item": "IRS / Navigation",
+     "resp": "AUS"
+    },
+    {
+     "item": "Stromversorgung",
+     "resp": "AUS"
+    },
+    {
+     "item": "Türen",
+     "resp": "NACH BEDARF"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "cockpit-efb-app",
+  "productName": "Cockpit EFB",
+  "version": "1.0.0",
+  "description": "Cockpit EFB – Windows-App zum Starten, Einstellen und Aktualisieren",
+  "main": "main.js",
+  "author": "Cockpit EFB",
+  "license": "MIT",
+  "scripts": {
+    "prepare-bundle": "node tools/prepare-bundle.js",
+    "start": "node tools/prepare-bundle.js && electron .",
+    "dist": "node tools/prepare-bundle.js && electron-builder --win --publish never",
+    "test": "node tools/test-lib.js"
+  },
+  "dependencies": {
+    "node-simconnect": "^4.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "de.cockpit-efb.app",
+    "productName": "Cockpit EFB",
+    "asar": false,
+    "files": ["main.js", "preload.js", "lib/**", "renderer/**", "package.json"],
+    "extraResources": [{ "from": "efb-bundle", "to": "efb" }],
+    "win": { "target": "nsis" },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Cockpit-EFB-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

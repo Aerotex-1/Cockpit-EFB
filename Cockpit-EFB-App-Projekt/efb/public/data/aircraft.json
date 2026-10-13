@@ -1,0 +1,501 @@
+{
+ "_info": "Flieger-Definitionen für das Remote-EFB. Variablennamen stammen aus den Quellcodes von FlyByWire (flyPad) und Headwind.",
+ "kinds": {
+  "fbw-a320": {
+   "name": "A320neo (FBW)",
+   "fuel": {
+    "mode": "tanks5",
+    "fixed": {
+     "outer": 228,
+     "inner": 1816,
+     "center": 2179
+    },
+    "order": "a320"
+   },
+   "seats": [
+    {
+     "name": "Reihe 1–6",
+     "var": "A32NX_PAX_A",
+     "cap": 36
+    },
+    {
+     "name": "Reihe 7–13",
+     "var": "A32NX_PAX_B",
+     "cap": 42
+    },
+    {
+     "name": "Reihe 14–21",
+     "var": "A32NX_PAX_C",
+     "cap": 48
+    },
+    {
+     "name": "Reihe 22–29",
+     "var": "A32NX_PAX_D",
+     "cap": 48
+    }
+   ],
+   "cargo": [
+    {
+     "name": "FWD Baggage/Container",
+     "var": "A32NX_CARGO_FWD_BAGGAGE_CONTAINER",
+     "max": 3402
+    },
+    {
+     "name": "AFT Container",
+     "var": "A32NX_CARGO_AFT_CONTAINER",
+     "max": 2426
+    },
+    {
+     "name": "AFT Baggage",
+     "var": "A32NX_CARGO_AFT_BAGGAGE",
+     "max": 2110
+    },
+    {
+     "name": "AFT Bulk/Loose",
+     "var": "A32NX_CARGO_AFT_BULK_LOOSE",
+     "max": 1497
+    }
+   ],
+   "doors": [
+    {
+     "name": "Tür 1L",
+     "exit": 1,
+     "point": 0
+    },
+    {
+     "name": "Tür 1R",
+     "exit": 2,
+     "point": 1
+    },
+    {
+     "name": "Tür 2L",
+     "exit": 3,
+     "point": 2
+    },
+    {
+     "name": "Tür 2R",
+     "exit": 4,
+     "point": 3
+    },
+    {
+     "name": "Frachttür",
+     "exit": 6,
+     "point": 5
+    }
+   ],
+   "fuelPoint": 9,
+   "gpus": 1,
+   "asu": true,
+   "perf": {
+    "takeoff": "A320251NTakeoffPerformanceCalculator",
+    "landing": "A320251NLandingCalculator"
+   },
+   "failures": "a320"
+  },
+  "hdw-a339": {
+   "name": "A330-900neo (Headwind)",
+   "fuel": {
+    "mode": "tanks5",
+    "order": "a330"
+   },
+   "seats": [
+    {
+     "name": "Reihe 1–4",
+     "var": "A32NX_PAX_A",
+     "cap": 36
+    },
+    {
+     "name": "Reihe 5–8",
+     "var": "A32NX_PAX_B",
+     "cap": 36
+    },
+    {
+     "name": "Reihe 9–15",
+     "var": "A32NX_PAX_C",
+     "cap": 39
+    },
+    {
+     "name": "Reihe 16–21",
+     "var": "A32NX_PAX_D",
+     "cap": 48
+    },
+    {
+     "name": "Reihe 22–26",
+     "var": "A32NX_PAX_E",
+     "cap": 45
+    },
+    {
+     "name": "Reihe 27–31",
+     "var": "A32NX_PAX_F",
+     "cap": 45
+    },
+    {
+     "name": "Reihe 32–36",
+     "var": "A32NX_PAX_G",
+     "cap": 45
+    },
+    {
+     "name": "Reihe 37–41",
+     "var": "A32NX_PAX_H",
+     "cap": 45
+    },
+    {
+     "name": "Reihe 42–46",
+     "var": "A32NX_PAX_I",
+     "cap": 45
+    },
+    {
+     "name": "Reihe 47–54",
+     "var": "A32NX_PAX_J",
+     "cap": 52
+    }
+   ],
+   "cargo": [
+    {
+     "name": "FWD Baggage/Container",
+     "var": "A32NX_CARGO_FWD_BAGGAGE_CONTAINER",
+     "max": 5800
+    },
+    {
+     "name": "FWD Container CPT 1/2",
+     "var": "A32NX_CARGO_AFT_CONTAINER",
+     "max": 17061
+    },
+    {
+     "name": "AFT Container CPT 3/4",
+     "var": "A32NX_CARGO_AFT_BAGGAGE",
+     "max": 18507
+    },
+    {
+     "name": "AFT Bulk/Loose CPT 5",
+     "var": "A32NX_CARGO_AFT_BULK_LOOSE",
+     "max": 3468
+    }
+   ],
+   "doors": [
+    {
+     "name": "Tür 2L",
+     "exit": 1,
+     "point": 0
+    },
+    {
+     "name": "Tür 1R",
+     "exit": 2,
+     "point": 1
+    },
+    {
+     "name": "Tür 4L",
+     "exit": 3,
+     "point": 2
+    },
+    {
+     "name": "Tür 2R",
+     "exit": 4,
+     "point": 3
+    },
+    {
+     "name": "Frachttür",
+     "exit": 5,
+     "point": 4
+    }
+   ],
+   "fuelPoint": 11,
+   "gpus": 1,
+   "asu": true,
+   "perf": {
+    "takeoff": null,
+    "landing": "A330941LandingCalculator"
+   },
+   "failures": "a320"
+  },
+  "fbw-a380": {
+   "name": "A380 (FBW)",
+   "fuel": {
+    "mode": "total",
+    "maxKg": 259755
+   },
+   "seats": [
+    {
+     "name": "Main FWD A",
+     "var": "A32NX_PAX_MAIN_FWD_A",
+     "cap": 28
+    },
+    {
+     "name": "Main FWD B",
+     "var": "A32NX_PAX_MAIN_FWD_B",
+     "cap": 28
+    },
+    {
+     "name": "Main MID 1A",
+     "var": "A32NX_PAX_MAIN_MID_1A",
+     "cap": 39
+    },
+    {
+     "name": "Main MID 1B",
+     "var": "A32NX_PAX_MAIN_MID_1B",
+     "cap": 50
+    },
+    {
+     "name": "Main MID 1C",
+     "var": "A32NX_PAX_MAIN_MID_1C",
+     "cap": 43
+    },
+    {
+     "name": "Main MID 2A",
+     "var": "A32NX_PAX_MAIN_MID_2A",
+     "cap": 48
+    },
+    {
+     "name": "Main MID 2B",
+     "var": "A32NX_PAX_MAIN_MID_2B",
+     "cap": 40
+    },
+    {
+     "name": "Main MID 2C",
+     "var": "A32NX_PAX_MAIN_MID_2C",
+     "cap": 36
+    },
+    {
+     "name": "Main AFT A",
+     "var": "A32NX_PAX_MAIN_AFT_A",
+     "cap": 42
+    },
+    {
+     "name": "Main AFT B",
+     "var": "A32NX_PAX_MAIN_AFT_B",
+     "cap": 40
+    },
+    {
+     "name": "Upper FWD",
+     "var": "A32NX_PAX_UPPER_FWD",
+     "cap": 14
+    },
+    {
+     "name": "Upper MID A",
+     "var": "A32NX_PAX_UPPER_MID_A",
+     "cap": 30
+    },
+    {
+     "name": "Upper MID B",
+     "var": "A32NX_PAX_UPPER_MID_B",
+     "cap": 28
+    },
+    {
+     "name": "Upper AFT",
+     "var": "A32NX_PAX_UPPER_AFT",
+     "cap": 18
+    }
+   ],
+   "cargo": [
+    {
+     "name": "FWD Baggage/Container",
+     "var": "A32NX_CARGO_FWD",
+     "max": 28577
+    },
+    {
+     "name": "AFT Baggage",
+     "var": "A32NX_CARGO_AFT",
+     "max": 20310
+    },
+    {
+     "name": "AFT Bulk/Loose",
+     "var": "A32NX_CARGO_BULK",
+     "max": 2513
+    }
+   ],
+   "doors": [
+    {
+     "name": "Main 1L",
+     "exit": 1,
+     "point": 0
+    },
+    {
+     "name": "Main 2L",
+     "exit": 3,
+     "point": 2
+    },
+    {
+     "name": "Main 4R",
+     "exit": 10,
+     "point": 9
+    },
+    {
+     "name": "Upper 1L",
+     "exit": 11,
+     "point": 10
+    },
+    {
+     "name": "Frachttür FWD",
+     "exit": 17,
+     "point": 16
+    }
+   ],
+   "fuelPoint": 18,
+   "gpus": 4,
+   "asu": false,
+   "perf": {
+    "takeoff": null,
+    "landing": null
+   },
+   "failures": "a380"
+  },
+  "msfs-std": {
+   "name": "Standard (Boeing & Co.)",
+   "std": true,
+   "fuel": {
+    "mode": "direct"
+   },
+   "seats": [],
+   "cargo": [],
+   "doors": [
+    {
+     "name": "Tür 1",
+     "exit": 1,
+     "point": -1
+    },
+    {
+     "name": "Tür 2",
+     "exit": 2,
+     "point": -1
+    },
+    {
+     "name": "Tür 3",
+     "exit": 3,
+     "point": -1
+    },
+    {
+     "name": "Tür 4",
+     "exit": 4,
+     "point": -1
+    },
+    {
+     "name": "Tür 5",
+     "exit": 5,
+     "point": -1
+    },
+    {
+     "name": "Tür 6",
+     "exit": 6,
+     "point": -1
+    }
+   ],
+   "fuelPoint": null,
+   "gpus": 0,
+   "asu": false,
+   "failures": "",
+   "engines": 2
+  },
+  "msfs-std4": {
+   "name": "Standard 4-Triebwerker (747)",
+   "std": true,
+   "fuel": {
+    "mode": "direct"
+   },
+   "seats": [],
+   "cargo": [],
+   "doors": [
+    {
+     "name": "Tür 1",
+     "exit": 1,
+     "point": -1
+    },
+    {
+     "name": "Tür 2",
+     "exit": 2,
+     "point": -1
+    },
+    {
+     "name": "Tür 3",
+     "exit": 3,
+     "point": -1
+    },
+    {
+     "name": "Tür 4",
+     "exit": 4,
+     "point": -1
+    },
+    {
+     "name": "Tür 5",
+     "exit": 5,
+     "point": -1
+    },
+    {
+     "name": "Tür 6",
+     "exit": 6,
+     "point": -1
+    }
+   ],
+   "fuelPoint": null,
+   "gpus": 0,
+   "asu": false,
+   "failures": "",
+   "engines": 4
+  }
+ },
+ "presets": [
+  {
+   "id": 1,
+   "name": "Cold & Dark"
+  },
+  {
+   "id": 2,
+   "name": "Strom an (Powered)"
+  },
+  {
+   "id": 3,
+   "name": "Bereit für Pushback"
+  },
+  {
+   "id": 4,
+   "name": "Bereit zum Rollen"
+  },
+  {
+   "id": 5,
+   "name": "Bereit zum Start"
+  }
+ ],
+ "simFailures": [
+  {
+   "id": "eng1",
+   "name": "Triebwerk 1 Ausfall",
+   "event": "TOGGLE_ENGINE1_FAILURE"
+  },
+  {
+   "id": "eng2",
+   "name": "Triebwerk 2 Ausfall",
+   "event": "TOGGLE_ENGINE2_FAILURE"
+  },
+  {
+   "id": "eng3",
+   "name": "Triebwerk 3 Ausfall",
+   "event": "TOGGLE_ENGINE3_FAILURE",
+   "engines": 4
+  },
+  {
+   "id": "eng4",
+   "name": "Triebwerk 4 Ausfall",
+   "event": "TOGGLE_ENGINE4_FAILURE",
+   "engines": 4
+  },
+  {
+   "id": "pitot",
+   "name": "Pitot-Vereisung",
+   "event": "TOGGLE_PITOT_BLOCKAGE"
+  },
+  {
+   "id": "static",
+   "name": "Static-Port verstopft",
+   "event": "TOGGLE_STATIC_PORT_BLOCKAGE"
+  },
+  {
+   "id": "brakeL",
+   "name": "Bremse links",
+   "event": "TOGGLE_LEFT_BRAKE_FAILURE"
+  },
+  {
+   "id": "brakeR",
+   "name": "Bremse rechts",
+   "event": "TOGGLE_RIGHT_BRAKE_FAILURE"
+  }
+ ]
+}

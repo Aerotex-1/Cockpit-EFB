@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Cockpit EFB</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<aside>
+  <h1>Cockpit EFB</h1>
+  <nav>
+    <button data-p="home" class="on">Start</button>
+    <button data-p="copilot">Copilot</button>
+    <button data-p="settings">Einstellungen</button>
+    <button data-p="updates">Updates <span id="badge" hidden>●</span></button>
+    <button data-p="log">Protokoll</button>
+  </nav>
+  <p class="ver" id="ver"></p>
+</aside>
+<main>
+  <section id="p-home" class="page on">
+    <div class="card status"><div><span id="dot" class="dot"></span><b id="stText">–</b><div class="sub" id="stSub"></div></div>
+      <div class="row"><button id="bStart" class="primary">Server starten</button><button id="bStop">Stoppen</button><button id="bRestart">Neustart</button></div></div>
+    <div class="card"><h2>EFB öffnen</h2>
+      <div class="row"><button id="bBrowser" class="primary">Im Browser öffnen</button><button id="bWindow">Im App-Fenster öffnen</button></div>
+      <p class="note">Für den Sprach-Copiloten den <b>Browser</b> (Edge oder Chrome) nehmen: Die Spracherkennung funktioniert nur dort. Das iPad verbindet sich mit der Adresse unten.</p>
+      <p class="sub">Adresse am iPad: <code id="addr">–</code></p></div>
+    <div class="card"><h2>Daten</h2><p class="note">Logbuch, Charts, Einstellungen und PIN liegen in diesem Ordner und bleiben bei Updates erhalten.</p><button id="bFolder">Ordner öffnen</button></div>
+  </section>
+
+  <section id="p-copilot" class="page">
+    <div class="card"><h2>Sprach-Copilot</h2>
+      <p class="note">Der Copilot läuft in der EFB im Browser. Hier stellst du Sprache und Stimme ein; die Einstellungen gelten sofort dort.</p>
+      <label>Sprache<select id="cLang"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+      <label>Stimme<select id="cVoice"></select></label>
+      <div class="row"><button id="cTest">Stimme anhören</button></div>
+      <label>Tempo <span id="cRateV"></span><input type="range" id="cRate" min="0.8" max="1.4" step="0.05"></label>
+      <label class="chk"><input type="checkbox" id="cMic"> Mikrofon benutzen</label>
+      <label class="chk"><input type="checkbox" id="cAuto"> Copilot beim Öffnen der EFB automatisch einschalten (nach dem ersten Klick)</label>
+      <p class="note">Weitere Stimmen kannst du in Windows installieren (Einstellungen → Zeit und Sprache → Sprache). Sie erscheinen danach hier.</p>
+    </div>
+  </section>
+
+  <section id="p-settings" class="page">
+    <div class="card"><h2>Allgemein</h2>
+      <label class="chk"><input type="checkbox" id="sAutoStart"> Server beim Start der App starten</label>
+      <label class="chk"><input type="checkbox" id="sBrowser"> Browser mit der EFB beim Serverstart öffnen</label>
+      <label class="chk"><input type="checkbox" id="sLogin"> App mit Windows starten</label>
+      <label class="chk"><input type="checkbox" id="sClose"> Server beenden, wenn ich das Fenster schließe</label>
+      <label>„EFB öffnen“ standardmäßig<select id="sOpenIn"><option value="browser">im Browser</option><option value="window">im App-Fenster</option></select></label>
+      <label>Port des Servers<input type="number" id="sPort" min="1024" max="65535"></label>
+      <div class="row"><button id="sSave" class="primary">Speichern</button><span id="sMsg" class="note"></span></div></div>
+  </section>
+
+  <section id="p-updates" class="page">
+    <div class="card"><h2>Update-Quelle</h2>
+      <p class="note">Neue Versionen werden von GitHub (Releases) geholt. Trage das Repository ein, in das der Entwickler seine Versionen hochlädt.</p>
+      <label>Repository<input id="uRepo" placeholder="besitzer/repository" autocomplete="off"></label>
+      <label>Zugriffstoken (nur bei privatem Repository)<input id="uToken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+      <label>Ausgabe<select id="uEdition"><option value="public">Öffentlich</option><option value="privat">Privat (mit Lichter-Tab)</option></select></label>
+      <label class="chk"><input type="checkbox" id="uCheck"> Beim Start nach Updates suchen</label>
+      <div class="row"><button id="uSave">Speichern</button><button id="uGo" class="primary">Nach Updates suchen</button></div></div>
+    <div class="card"><h2>Stand</h2><p id="uState" class="note">–</p>
+      <div id="uEfb" hidden><b></b><pre class="notes"></pre><button class="primary" id="uInstEfb">EFB-Update installieren</button></div>
+      <div id="uApp" hidden><b></b><pre class="notes"></pre><button class="primary" id="uInstApp">App-Update installieren</button></div>
+      <div class="bar" id="uBar" hidden><div></div></div><p id="uProg" class="note"></p></div>
+  </section>
+
+  <section id="p-log" class="page"><div class="card"><h2>Protokoll des Servers</h2><pre id="logBox" class="log"></pre></div></section>
+</main>
+<script src="renderer.js"></script>
+</body></html>

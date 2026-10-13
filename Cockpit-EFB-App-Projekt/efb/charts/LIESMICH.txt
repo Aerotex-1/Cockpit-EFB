@@ -1,0 +1,1 @@
+Hier PDFs oder Bilder ablegen, ein Ordner pro Flughafen (z. B. charts/EDDP/).
