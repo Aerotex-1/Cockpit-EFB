@@ -35,7 +35,7 @@ class SimLink extends EventEmitter {
       demo,
       title: '',
       lat: null, lon: null, alt: 0, hdg: 0, gs: 0, ias: 0, vs: 0, onGround: true,
-      weightKg: null, fuelKg: null, parkingBrake: null,
+      weightKg: null, fuelKg: null, parkingBrake: null, com1: null, com1s: null,
       oat: null, windDir: null, windSpd: null, qnh: null,
       gsx: { installed: false },
       vars: {},
@@ -101,6 +101,8 @@ class SimLink extends EventEmitter {
     h.addToDataDefinition(DEF.MISC, 'TOTAL WEIGHT', 'kilograms', F);
     h.addToDataDefinition(DEF.MISC, 'FUEL TOTAL QUANTITY WEIGHT', 'kilograms', F);
     h.addToDataDefinition(DEF.MISC, 'BRAKE PARKING POSITION', 'bool', F);
+    h.addToDataDefinition(DEF.MISC, 'COM ACTIVE FREQUENCY:1', 'hertz', F);
+    h.addToDataDefinition(DEF.MISC, 'COM STANDBY FREQUENCY:1', 'hertz', F);
     const gsxKeys = Object.keys(GSX_VARS);
     for (const k of gsxKeys) h.addToDataDefinition(DEF.MISC, GSX_VARS[k], 'number', F);
 
@@ -123,10 +125,11 @@ class SimLink extends EventEmitter {
         const title = d.readString256();
         const oat = d.readFloat64(), windDir = d.readFloat64(), windSpd = d.readFloat64(), qnh = d.readFloat64();
         const weightKg = d.readFloat64(), fuelKg = d.readFloat64(), parkingBrake = d.readFloat64() > 0.5;
+        const com1 = d.readFloat64(), com1s = d.readFloat64();
         const gsx = {};
         for (const k of gsxKeys) gsx[k] = d.readFloat64();
         gsx.installed = gsx.couatl > 0 || gsxKeys.some((k) => k.endsWith('ing') && gsx[k] > 0);
-        this._patch({ title, oat, windDir, windSpd, qnh, weightKg, fuelKg, parkingBrake, gsx });
+        this._patch({ title, oat, windDir, windSpd, qnh, weightKg, fuelKg, parkingBrake, com1, com1s, gsx });
       }
     });
     h.on('exception', (ex) => console.log('[SIM] SimConnect-Ausnahme:', ex.exception, ex.sendId));
@@ -260,6 +263,7 @@ class SimLink extends EventEmitter {
         alt, hdg, gs, ias: gs, vs, onGround,
         oat: 14, windDir: 250, windSpd: 9, qnh: 1018,
         weightKg: 62000 - (5200 - fuel) , fuelKg: fuel, parkingBrake: brake,
+        com1: this.state.com1 || 121700000, com1s: this.state.com1s || 118000000,
         gsx: { ...gsx }, vars,
       });
     }, 250);
@@ -308,6 +312,8 @@ class SimLink extends EventEmitter {
       const k = `INTERACTIVE POINT OPEN:${Number(value) - 1}`;
       dv[k] = dv[k] ? 0 : 1;
     }
+    if (name === 'COM_STBY_RADIO_SET_HZ') this.state.com1s = Number(value);
+    if (name === 'COM_RADIO_SWAP') { const a = this.state.com1; this.state.com1 = this.state.com1s; this.state.com1s = a; }
     if (name === 'REQUEST_POWER_SUPPLY') dv['L:A32NX_EXT_PWR_AVAIL:1'] = dv['L:A32NX_EXT_PWR_AVAIL:1'] ? 0 : 1;
     return true;
   }

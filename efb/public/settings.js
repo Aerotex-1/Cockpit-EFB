@@ -4,7 +4,7 @@
 
 const TAB_LABELS = {
   flight: 'Flug', efb: 'EFB', ofp: 'OFP', perf: 'Perf', finder: 'Finder', atc: 'ATC', map: 'Karte', charts: 'Charts',
-  check: 'Checklisten', wx: 'Wetter', gsx: 'GSX', lights: 'Lichter', logbook: 'Logbuch', music: 'Musik', setup: 'Setup',
+  check: 'Checklisten', copilot: 'Copilot', wx: 'Wetter', gsx: 'GSX', lights: 'Lichter', logbook: 'Logbuch', music: 'Musik', setup: 'Setup',
 };
 const THEME_INFO = {
   cockpit: { name: 'Cockpit', desc: 'Dunkel wie ein Airbus-Display' },

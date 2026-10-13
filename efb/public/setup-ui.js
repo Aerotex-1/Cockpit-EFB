@@ -235,7 +235,7 @@ const SetupUi = (() => {
         Settings.change((d) => { const o = d.tabs.order, i = o.indexOf(k), j = i + dir; if (j >= 0 && j < o.length - 1) { [o[i], o[j]] = [o[j], o[i]]; } }, true); renderTabs();
       }
       if (t.id === 'tabAll') { Settings.change((d) => { d.tabs.hidden = []; }); renderTabs(); }
-      if (t.id === 'tabReset') { Settings.change((d) => { d.tabs.order = ['flight', 'efb', 'ofp', 'perf', 'finder', 'atc', 'map', 'charts', 'check', 'gsx', 'logbook', 'music', 'setup']; }); renderTabs(); }
+      if (t.id === 'tabReset') { Settings.change((d) => { d.tabs.order = ['flight', 'efb', 'ofp', 'perf', 'finder', 'atc', 'map', 'charts', 'check', 'copilot', 'gsx', 'logbook', 'music', 'setup']; }); renderTabs(); }
       // Presets
       if (t.id === 'prSave') {
         const name = $('#prName').value.trim(); if (!name) return Settings.toast('Bitte einen Namen eingeben', true);

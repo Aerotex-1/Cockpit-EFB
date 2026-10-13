@@ -1,11 +1,12 @@
 // Funk-Effekt für das Bodenpersonal und Hintergrundgeräusche (Jetway-Piepen, Rückfahrwarner …).
 // Die eingebauten Geräusche werden im Browser erzeugt, brauchen also keine Dateien. Eigene MP3/WAV/OGG lassen sich hochladen.
 (function () {
-  const KEY = 'efb.amb';
   const def = { radio: true, radioVol: 0.35, amb: true, ambVol: 0.4, chance: 0.5, off: [] };
   let cfg = Object.assign({}, def);
-  try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* egal */ }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* egal */ } };
+  // Der Copilot hängt sich hier ein: host = dieses Fenster spielt die Geräusche (PC), save = Einstellungen auf den Server, test = Test am PC auslösen
+  const hooks = { host: false, save: () => {}, test: () => {} };
+  let curBox = null;
+  const save = () => { cfg.off = cfg.off.slice(); hooks.save(cfg); };
   let ctx = null, noiseBuf = null, custom = [];
   const AC = window.AudioContext || window.webkitAudioContext;
   function ac() {
@@ -80,7 +81,8 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
   async function render(box) {
     await loadCustom();
-    const rows = BUILT.concat(custom).map((s) => `<div class="amb-row"><label><input type="checkbox" data-amb="${esc(s.id)}" ${cfg.off.includes(s.id) ? '' : 'checked'}> ${esc(s.name)}${s.file ? ' <small>(eigene Datei)</small>' : ''}</label><button class="btn-s" data-test="${esc(s.id)}">Test</button>${s.file ? `<button class="btn-s" data-del="${esc(s.file)}">Löschen</button>` : ''}</div>`).join('');
+    const rows = BUILT.concat(custom).map((s) => `<div class="amb-row"><label><input type="checkbox" data-amb="${esc(s.id)}" ${cfg.off.includes(s.id) ? '' : 'checked'}> ${esc(s.name)}${s.file ? ' <small>(eigene Datei)</small>' : ''}</label><button class="btn-s" data-test="${esc(s.id)}">${hooks.host ? 'Test' : 'Test am PC'}</button>${s.file && hooks.host ? `<button class="btn-s" data-del="${esc(s.file)}">Löschen</button>` : ''}</div>`).join('');
+    curBox = box;
     box.innerHTML = `<summary>Funk &amp; Geräusche</summary><div class="amb-body">
       <label class="cp-chk"><input type="checkbox" id="ambRadio" ${cfg.radio ? 'checked' : ''}> Funkgerät-Effekt beim Bodenpersonal</label>
       <label class="cp-rate">Lautstärke <input type="range" id="ambRadioVol" min="0.05" max="1" step="0.05" value="${cfg.radioVol}"></label>
@@ -88,18 +90,18 @@
       <label class="cp-rate">Lautstärke <input type="range" id="ambVol" min="0.05" max="1" step="0.05" value="${cfg.ambVol}"></label>
       <label class="cp-rate">Häufigkeit <input type="range" id="ambChance" min="0.1" max="1" step="0.05" value="${cfg.chance}"></label>
       <div class="amb-list">${rows}</div>
-      <div class="amb-up"><label class="btn-s">Eigene Datei hinzufügen (MP3/WAV/OGG)<input type="file" id="ambFile" accept=".mp3,.wav,.ogg,audio/*" hidden></label> <span id="ambMsg"></span></div></div>`;
+      ${hooks.host ? `<div class="amb-up"><label class="btn-s">Eigene Datei hinzufügen (MP3/WAV/OGG)<input type="file" id="ambFile" accept=".mp3,.wav,.ogg,audio/*" hidden></label> <span id="ambMsg"></span></div>` : '<small>Eigene Dateien lädst du im Copilot-Fenster am PC hoch. Töne und Tests laufen immer am PC, nie auf diesem Gerät.</small>'}</div>`;
     const q = (s) => box.querySelector(s);
     q('#ambRadio').onchange = (e) => { cfg.radio = e.target.checked; save(); };
     q('#ambRadioVol').oninput = (e) => { cfg.radioVol = +e.target.value; save(); };
-    q('#ambRadioVol').onchange = () => { radioOn(); setTimeout(radioOff, 900); };
+    q('#ambRadioVol').onchange = () => { if (hooks.host) { radioOn(); setTimeout(radioOff, 900); } else hooks.test('test-radio'); };
     q('#ambOn').onchange = (e) => { cfg.amb = e.target.checked; save(); };
     q('#ambVol').oninput = (e) => { cfg.ambVol = +e.target.value; save(); };
     q('#ambChance').oninput = (e) => { cfg.chance = +e.target.value; save(); };
     box.querySelectorAll('[data-amb]').forEach((cb) => { cb.onchange = () => { const id = cb.dataset.amb; cfg.off = cfg.off.filter((x) => x !== id); if (!cb.checked) cfg.off.push(id); save(); }; });
-    box.querySelectorAll('[data-test]').forEach((b) => { b.onclick = () => { const s = BUILT.concat(custom).find((x) => x.id === b.dataset.test); if (s) play(s); }; });
+    box.querySelectorAll('[data-test]').forEach((b) => { b.onclick = () => { const s = BUILT.concat(custom).find((x) => x.id === b.dataset.test); if (!s) return; if (hooks.host) play(s); else hooks.test('test-amb', s.id); }; });
     box.querySelectorAll('[data-del]').forEach((b) => { b.onclick = async () => { await fetch('/api/sounds/delete?file=' + encodeURIComponent(b.dataset.del), { method: 'POST' }).catch(() => {}); render(box); }; });
-    q('#ambFile').onchange = async (e) => {
+    if (q('#ambFile')) q('#ambFile').onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
       q('#ambMsg').textContent = 'Lade hoch …';
       try {
@@ -115,8 +117,9 @@
     return box;
   }
   const css = document.createElement('style');
-  css.textContent = '.amb-box{margin:6px 0;font-size:13px}.amb-box summary{cursor:pointer;opacity:.8}.amb-body{display:flex;flex-direction:column;gap:6px;padding:8px 0}.amb-row{display:flex;gap:8px;align-items:center;justify-content:space-between}.amb-row label{flex:1}.cp-remote .amb-box{display:none}';
+  css.textContent = '.amb-box{margin:6px 0;font-size:13px}.amb-box summary{cursor:pointer;opacity:.8}.amb-body{display:flex;flex-direction:column;gap:6px;padding:8px 0}.amb-row{display:flex;gap:8px;align-items:center;justify-content:space-between}.amb-row label{flex:1}';
   document.head.appendChild(css);
   if (window.AudioDev) window.AudioDev.onChange((w) => { if (w === 'out' && ctx) window.AudioDev.sinkCtx(ctx); });
-  window.Ambience = { radioOn, radioOff, maybe, mount, cfg: () => cfg, reload: loadCustom };
+  function setCfg(o) { if (o && typeof o === 'object') { cfg = Object.assign({}, def, o, { off: Array.isArray(o.off) ? o.off.slice() : [] }); if (curBox && !curBox.contains(document.activeElement)) render(curBox); } }
+  window.Ambience = { radioOn, radioOff, maybe, mount, play: (id) => { const s = BUILT.concat(custom).find((x) => x.id === id); if (s) play(s); }, setCfg, hook: (h) => Object.assign(hooks, h), cfg: () => cfg, reload: loadCustom };
 })();

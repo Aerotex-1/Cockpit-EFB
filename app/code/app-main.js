@@ -164,7 +164,11 @@ app.whenReady().then(() => {
   ses.setPermissionRequestHandler((wc, perm, cb, det) => cb(perm === 'media' && okOrigin(det && det.requestingUrl)));
   ses.setPermissionCheckHandler((wc, perm, origin) => perm === 'media' && okOrigin(origin + '/'));
   proc.on('status', (st) => { send('status', st); if (st === 'running' && S.openBrowserOnStart && !proc._opened) { proc._opened = true; openEfb(); } if (st === 'running' && S.copilotOnStart && !proc._cpOpened) { proc._cpOpened = true; openCopilot(); } });
-  proc.on('log', (l) => send('log', l));
+  proc.on('log', (l) => {
+    // Vom iPad aus „Copilot starten“ gedrückt, aber am PC läuft kein Copilot-Fenster: öffnen
+    if (String(l).includes('@@EFB:COPILOT_OPEN@@')) { try { if (proc.status === 'running' && releases.cmp(efbVersion(), '1.2.0') >= 0) openCopilot(); } catch { /* egal */ } return; }
+    send('log', l);
+  });
 
   ipcMain.handle('state', () => state());
   ipcMain.handle('server:start', () => { proc.start(); });

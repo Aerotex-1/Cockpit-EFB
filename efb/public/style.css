@@ -820,19 +820,40 @@ input[type=range] { accent-color: var(--cyan); }
 .taxi-bar .tb-x { margin-left: auto; background: transparent; border: 1px solid var(--line); color: var(--grey); border-radius: 50%; width: 28px; height: 28px; font-size: 18px; line-height: 1; cursor: pointer; }
 .route-line span.rl-pct.below { left: 50%; top: 30px; transform: translateX(-50%); color: var(--grey); }
 
-/* Sprach-Copilot */
-.cp-panel { padding: 8px 12px; border-bottom: 1px solid var(--line, #ffffff22); font-size: 13px; }
+/* Sprach-Copilot (eigener Tab) */
+.cpv { max-width: 780px; margin: 0 auto; padding: 14px 16px 28px; display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
+.cpv-card { background: var(--surface-2, #ffffff0d); border: 1px solid var(--line, #ffffff22); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.cpv-card h3 { margin: 0; font-size: 15px; }
+.cpv small { opacity: .75; }
 .cp-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.cp-state { min-width: 18px; font-size: 16px; }
+.cp-state { font-size: 14px; opacity: .9; }
 #cpToggle.on { background: var(--accent, #2a7); color: #fff; }
 .cp-rate, .cp-chk { display: flex; gap: 6px; align-items: center; }
-.cp-rate input { width: 90px; }
-#cpForm { display: flex; gap: 6px; margin-left: auto; }
-#cpText { min-width: 180px; }
-.cp-log { margin-top: 6px; max-height: 84px; overflow: auto; opacity: .85; }
+.cp-rate input { width: 120px; }
+#cpForm { display: flex; gap: 6px; }
+#cpText { flex: 1; min-width: 0; }
+.cp-log { max-height: 320px; overflow: auto; opacity: .95; display: flex; flex-direction: column; gap: 3px; }
 .cp-log .cp-me b { color: var(--accent, #2a7); }
 .cp-log b { margin-right: 6px; font-weight: 600; }
-.cp-panel:not(.on) .cp-log { display: none; }
+.cp-empty { opacity: .6; }
 #tab-check .check-layout { flex: 1; height: auto; min-height: 0; }
-.cp-panel select { width: auto; } .cp-panel input[type=range] { padding: 0; }
+.cp-panel select { width: auto; max-width: 100%; } .cp-panel input[type=range] { padding: 0; }
+#tab-copilot { overflow: auto; }
 .upd { margin-top: 14px; display: grid; gap: 8px; }
+
+/* Stumm-Knopf für den Copilot (Kopfleiste) */
+.strip-mute { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: rgba(var(--ink-rgb), .06); color: var(--white); cursor: pointer; flex: none; }
+.strip-mute svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.strip-mute .sl { display: none; }
+.strip-mute.on { background: #c8372d; border-color: #ff6a5e; color: #fff; }
+.strip-mute.on .sl { display: inline; }
+
+.tx-turn { color: #04202b; background: #34c6f4; border-radius: 12px; padding: 3px 9px; font-weight: 700; font-size: 13px; white-space: nowrap; transform: translate(-50%, -150%); box-shadow: 0 1px 4px #0008; }
+
+/* COM1-Anzeige im ATC-Tab */
+.com1 { margin: 0 0 12px; }
+.com1-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.com1-row span { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; }
+.com1-row small { font-size: 11px; letter-spacing: .06em; opacity: .65; }
+.com1-row b { font-size: 26px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.com1-row span:first-child b { color: #6fe08a; }

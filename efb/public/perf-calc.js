@@ -92,7 +92,7 @@ const PerfCalc = (() => {
     const r = M.takeoff(p);
     if (r.error) { out.innerHTML = `<p class="bad">${esc(r.error)}</p>`; return; }
     const bad = !r.fits;
-    if (!bad) { window.PerfLast = { v1: r.v1, vr: r.vr, v2: r.v2, flex: r.flex, conf: p.conf, t: Date.now() }; store.set('perfLast', window.PerfLast); }
+    if (!bad) { window.PerfLast = { v1: r.v1, vr: r.vr, v2: r.v2, flex: r.flex, conf: p.conf, rwy: ($('#tRwy').value || '').trim().toUpperCase(), icao: ($('#tIcao').value || '').trim().toUpperCase(), t: Date.now() }; store.set('perfLast', window.PerfLast); }
     const pct = Math.min(100, (r.req / p.tora) * 100);
     out.innerHTML = `
       ${bad ? `<p class="bad strong">Zu schwer für diese Piste – höchstens ${kg(r.maxTow)}.</p>` : ''}

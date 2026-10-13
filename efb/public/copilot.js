@@ -6,11 +6,14 @@
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const TTS = window.speechSynthesis;
   const pref = Object.assign({ lang: 'de', rate: 1.05, mic: true, autostart: false, voice: {} }, store.get('copilot', {}));
-  const persist = () => { store.set('copilot', pref); fetch('/api/copilot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pref) }).catch(() => {}); };
+  let persistT = 0;
+  const persist = () => { store.set('copilot', pref); clearTimeout(persistT); persistT = setTimeout(() => fetch('/api/copilot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({}, pref, { from: window.EFB_ID })) }).catch(() => {}), 300); };
   const HOST = /[?&]host=1\b/.test(location.search); // PC-App: dieses Fenster spricht und hört zu
   const stt = { available: false };
   let hostActive = false; // läuft irgendwo ein Copilot-Fenster am PC?
-  const remote = () => !HOST && hostActive;
+  let isLocal = false; // Gerät ist der PC selbst (nicht das iPad)? Nur der PC darf sprechen und zuhören
+  const remote = () => !HOST && (hostActive || !isLocal);
+  let muted = false; // stumm: weder sprechen noch zuhören (gilt für alle Geräte)
   const post = (u, b) => (window.efbPost ? window.efbPost(u, b) : Promise.resolve());
   const S = { on: false, mode: 'idle', list: -1, item: -1, listening: false, speaking: false, log: [], askT: 0 };
   let rec = null, wantRec = false, recTimer = 0, lastPhase = null;
@@ -38,6 +41,11 @@
       fuel: (a, b) => `Fuel stimmt nicht. Ich sehe ${a} Kilo, du sagst ${b}.`,
       conf: (a, b) => `Klappen stimmen nicht. Berechnet ist ${a}, du sagst ${b}.`,
       noPerf: 'Ich habe keine Performance-Berechnung und nehme die Werte unbesehen.',
+      correct: 'Stimmt.', brake: 'Gesetzt oder gelöst?', brakeIs: (set) => `Laut Sim ist die Parkbremse ${set ? 'gesetzt' : 'gelöst'}.`,
+      spdFix: (l) => `Nicht ganz. Laut Performance-Rechner: ${l}.`, needRwy: 'Welche Piste?',
+      rwyBad: (want, got) => `Falsch. Geplant ist Piste ${want}, du sagst ${got}.`, rwyHdg: (want, hdg) => `Wir stehen nicht auf Piste ${want}. Der Kurs ist ${hdg}.`,
+      rwyOk: (r) => `Stimmt, Piste ${r}.`, mute: 'Copilot ist stumm.', unmute: 'Copilot ist wieder da.',
+      stby: (f) => `Standby ${f}.`, act: (f) => `${f} active.`, radioFail: 'Das Funkgerät hat die Frequenz nicht angenommen.', noFreq: 'Welche Frequenz?',
       noMic: 'Kein Mikrofon verfügbar – bitte per Texteingabe antworten.',
       ph: { pre: 'am Gate vor dem Start', out: 'auf dem Rollweg zur Piste', air: 'im Flug', desc: 'im Sinkflug', final: 'im Endanflug', in: 'auf dem Rollweg zum Gate', post: 'am Gate nach der Landung' },
       wantPh: { pre: 'an das Gate vor dem Start', out: 'auf den Rollweg zur Piste', air: 'in den Flug', desc: 'in den Sinkflug', final: 'in den Endanflug', in: 'auf den Rollweg zum Gate', post: 'ans Gate nach der Landung' },
@@ -61,6 +69,11 @@
       fuel: (a, b) => `Fuel does not match. I see ${a} kilos, you said ${b}.`,
       conf: (a, b) => `Flaps do not match. Calculated is ${a}, you said ${b}.`,
       noPerf: 'I have no performance calculation and take the values as given.',
+      correct: 'Correct.', brake: 'Set or released?', brakeIs: (set) => `The sim shows the parking brake ${set ? 'set' : 'released'}.`,
+      spdFix: (l) => `Not quite. According to the performance calculator: ${l}.`, needRwy: 'Which runway?',
+      rwyBad: (want, got) => `Negative. Planned runway is ${want}, you said ${got}.`, rwyHdg: (want, hdg) => `We are not lined up with runway ${want}. Heading is ${hdg}.`,
+      rwyOk: (r) => `Correct, runway ${r}.`, mute: 'Copilot muted.', unmute: 'Copilot is back.',
+      stby: (f) => `Standby ${f}.`, act: (f) => `${f} active.`, radioFail: 'The radio did not accept the frequency.', noFreq: 'Which frequency?',
       noMic: 'No microphone available – please answer by typing.',
       ph: { pre: 'at the gate before departure', out: 'taxiing out', air: 'airborne', desc: 'in the descent', final: 'on final', in: 'taxiing in', post: 'at the gate after landing' },
       wantPh: { pre: 'at the gate before departure', out: 'to taxiing out', air: 'to the flight', desc: 'to the descent', final: 'to final', in: 'to taxiing in', post: 'to the gate after landing' },
@@ -137,16 +150,20 @@
   function autoMark(text) {
     return String(text).split(/(\{\{.*?\}\})/).map((seg) => (seg.startsWith('{{') ? seg : seg.replace(EN_RE, '{{$1}}'))).join('');
   }
+  // Abkürzungen, die man buchstabiert (ADIRS → A.D.I.R.S.); Wörter wie ECAM oder TOGA bleiben
+  const SPELL = ['ADIRS', 'APU', 'FMGC', 'MCDU', 'FCU', 'GPU', 'IRS', 'ADR', 'ILS', 'QNH', 'QFE', 'ATC', 'TCAS', 'GPWS', 'EGPWS', 'EFIS', 'PFD', 'ISIS', 'ELAC', 'EFB', 'VHF', 'VOR', 'DME', 'NDB', 'RNAV', 'FMA', 'CVR', 'EWD', 'RMP'];
+  const SPELL_RE = new RegExp('(?<![\\w.])(' + SPELL.join('|') + ')(?![\\w.])', 'g');
+  const spellOut = (t) => String(t).replace(SPELL_RE, (m) => m.split('').join('.') + '.');
   function parts(text, lang) {
     if (lang === 'de') text = autoMark(text);
     const out = [];
-    String(text).split(/\{\{(.*?)\}\}/).forEach((t, i) => { t = t.trim(); if (t) out.push({ text: t, lang: i % 2 ? 'en' : lang }); });
+    String(text).split(/\{\{(.*?)\}\}/).forEach((t, i) => { t = spellOut(t.trim()); if (t) out.push({ text: t, lang: i % 2 ? 'en' : lang }); });
     return out;
   }
   async function say(text, lang, opt) {
     lang = lang || pref.lang; opt = opt || {};
     log(opt.who || 'Copilot', String(text).replace(/\{\{|\}\}/g, ''));
-    if (!S.on) return;
+    if (!S.on || muted) return;
     const ps = parts(text, lang); if (!ps.length) return;
     S.speaking = true; ui(); pauseRec();
     const vid = (p) => opt.voiceId || piperFor(p.lang);
@@ -184,7 +201,7 @@
     prompt: (LISTNAMES() + '. Checked, V1, VR, V2, QNH, flaps, fuel, standard, let\'s do the checklist. Cockpit to ground, pushback approved S1 facing south, request boarding, catering, refueling. Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India Juliett Kilo Lima Mike November Oscar Papa Quebec Romeo Sierra Tango Uniform Victor Whiskey X-ray Yankee Zulu. Ja, nein, weiter, stopp.').slice(0, 780),
   });
   function startRec() {
-    if (!pref.mic) return;
+    if (!pref.mic || muted) return;
     if (useW()) {
       wantRec = true;
       window.WhisperMic.start((t) => handle(t, true), sttOpts)
@@ -208,11 +225,11 @@
     try { rec.start(); } catch (e) { rec = null; }
   }
   function pauseRec() { if (useW()) { window.WhisperMic.pause(); return; } if (rec) { try { rec.abort(); } catch (e) {} } }
-  function resumeRec() { if (useW()) { if (wantRec && S.on) window.WhisperMic.resume(); return; } if (wantRec && S.on && !rec) { clearTimeout(recTimer); recTimer = setTimeout(startRec, 250); } }
+  function resumeRec() { if (muted) return; if (useW()) { if (wantRec && S.on) window.WhisperMic.resume(); return; } if (wantRec && S.on && !rec) { clearTimeout(recTimer); recTimer = setTimeout(startRec, 250); } }
   function stopRec() { wantRec = false; clearTimeout(recTimer); if (window.WhisperMic) window.WhisperMic.stop(); if (rec) { try { rec.abort(); } catch (e) {} } S.listening = false; }
 
   // ---------- Zahlen verstehen ----------
-  const DW = { null: 0, zero: 0, eins: 1, ein: 1, eine: 1, one: 1, zwei: 2, zwo: 2, two: 2, drei: 3, three: 3, vier: 4, four: 4, fünf: 5, fuenf: 5, five: 5, sechs: 6, six: 6, sieben: 7, seven: 7, acht: 8, eight: 8, neun: 9, nine: 9, niner: 9 };
+  const DW = { null: 0, zero: 0, eins: 1, ein: 1, eine: 1, one: 1, zwei: 2, zwo: 2, two: 2, drei: 3, three: 3, vier: 4, four: 4, fünf: 5, fuenf: 5, five: 5, sechs: 6, six: 6, sieben: 7, seven: 7, acht: 8, eight: 8, neun: 9, nine: 9, niner: 9, tree: 3, fife: 5, fower: 4 };
   const TEEN = { zehn: 10, elf: 11, zwölf: 12, zwoelf: 12, dreizehn: 13, vierzehn: 14, fünfzehn: 15, fuenfzehn: 15, sechzehn: 16, siebzehn: 17, achtzehn: 18, neunzehn: 19 };
   const TENS = { zwanzig: 20, dreißig: 30, dreissig: 30, vierzig: 40, fünfzig: 50, fuenfzig: 50, sechzig: 60, siebzig: 70, achtzig: 80, neunzig: 90 };
   function wordNum(w) { // "einhundertvierzig", "dreiundvierzig", "hundert" …
@@ -230,7 +247,10 @@
     }
     return got ? total + cur : null;
   }
+  // „1.0.2.1.“, „1 0 2 1“ → „1021“
+  const collapseDigits = (t) => String(t).replace(/(?<![\d.,])(\d)(?:[\s.,-]+\d){2,}(?!\d)/g, (m) => m.replace(/\D/g, '')).replace(/(\d)\.(?=\s|$)/g, '$1');
   function nums(text) {
+    text = collapseDigits(text);
     const toks = String(text).toLowerCase().replace(/(\d),(\d)/g, '$1.$2').replace(/\bkomma\b|\bpoint\b/g, '.').replace(/[^\p{L}\p{N}.+\s]/gu, ' ').split(/\s+/).filter(Boolean);
     const out = [];
     let run = '';
@@ -264,6 +284,30 @@
     return out;
   }
 
+  // „2.3“, „two three left“, „26 rechts“ → { n: 23, side: '' }
+  function rwyOf(text) {
+    const t = String(text).toLowerCase().replace(/\b(runway|piste|bahn)\b/g, ' ');
+    const sd = (w, l) => new RegExp('\\b(' + w + ')\\b|\\d\\s?' + l + '\\b|\\b' + l + '\\b').test(t);
+    const side = sd('left|links', 'l') ? 'L' : sd('right|rechts', 'r') ? 'R' : sd('center|centre|mitte', 'c') ? 'C' : '';
+    const dig = t.replace(/[a-zäöüß]+/g, (w) => (Object.prototype.hasOwnProperty.call(DW, w) && !/^(ein|eine)$/.test(w) ? String(DW[w]) : w));
+    const m = dig.replace(/(?<!\d)(\d)(?:[\s.,-]+\d)+(?!\d)/g, (x) => x.replace(/\D/g, '')).match(/(?<!\d)(\d{1,2})(?!\d)/);
+    const n = m ? parseInt(m[1], 10) : 0;
+    return n >= 1 && n <= 36 ? { n, side } : null;
+  }
+  // Geplante Startbahn: Rollweg-Eingabe (Karte) → Performance-Rechner → OFP
+  function plannedRwy() {
+    const o = app.ofp || {}, ic = o.origin && o.origin.icao_code;
+    const pick = (s) => { const m = String(s || '').toUpperCase().match(/^(\d{1,2})([LRC]?)/); return m ? { n: parseInt(m[1], 10), side: m[2] || '' } : null; };
+    const tx = (store.get('taxi', {}) || {})[ic + ':dep'];
+    const P = perf();
+    return pick(tx && tx.rwy) || (P && P.rwy && (!P.icao || !ic || P.icao === ic) ? pick(P.rwy) : null) || pick(o.origin && o.origin.plan_rwy);
+  }
+  const rwyName = (r) => String(r.n).padStart(2, '0') + (r.side === 'L' ? ' left' : r.side === 'R' ? ' right' : r.side === 'C' ? ' center' : '');
+  const rwySay = (r) => spokenDigits(String(r.n).padStart(2, '0')) + (r.side === 'L' ? ' left' : r.side === 'R' ? ' right' : r.side === 'C' ? ' center' : '');
+  const spokenDigitsDe = (s) => String(s).split('').map((d) => ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun'][+d]).join(' ');
+  // Piste für die Sprachausgabe in der Sprache des Copiloten („zwei sechs rechts“ / „two six right“)
+  const rwyTxt = (r) => (pref.lang === 'de' ? spokenDigitsDe(String(r.n).padStart(2, '0')) + (r.side === 'L' ? ' links' : r.side === 'R' ? ' rechts' : r.side === 'C' ? ' Mitte' : '') : rwySay(r));
+  const spokenDigits = (s) => String(s).split('').map((d) => ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'niner'][+d]).join(' ');
   // ---------- Prüfen der Antworten ----------
   function perf() { return window.PerfLast || store.get('perfLast', null); }
   const norm = (s) => String(s).toLowerCase().replace(/[.,!?]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -272,15 +316,46 @@
     const s = app.sim || {};
     const ph = listPhases((lists()[S.list] || {}).name || '') || [];
     const N = nums(said);
+    // Parkbremse: „set“ oder „released“ genügt; wenn der Sim es meldet, wird verglichen
+    if (/park(ing)?\s*(brake|brk)|parkbremse/i.test(name)) {
+      const t = norm(said);
+      const set = /\b(set|on|applied|apply|gesetzt|fest|angezogen|an)\b/.test(t), rel = /\b(released?|off|gelöst|geloest|offen|los|aus)\b/.test(t);
+      if (!set && !rel) return { ok: false, msg: T().brake, retry: true };
+      if (s.connected && typeof s.parkingBrake === 'boolean') {
+        if (set && !rel && !s.parkingBrake) return { ok: false, msg: T().brakeIs(false) };
+        if (rel && !set && s.parkingBrake) return { ok: false, msg: T().brakeIs(true) };
+      }
+      return { ok: true };
+    }
+    // Startbahn: „2.3“ / „two three left“ gegen die geplante Piste (sonst gegen den Kurs)
+    if (/(t\.?o|takeoff)\s*runway|startbahn|start-?piste/i.test(name)) {
+      const got = rwyOf(said); if (!got) return { ok: false, msg: T().needRwy, retry: true };
+      const want = plannedRwy();
+      if (want) {
+        if (got.n !== want.n || (got.side && want.side && got.side !== want.side)) return { ok: false, msg: T().rwyBad(rwyTxt(want), rwyTxt(got)) };
+        return { ok: true, good: T().rwyOk(rwyTxt(want)) };
+      }
+      if (s.connected && s.onGround && Number.isFinite(s.hdg)) {
+        const d = Math.abs(((s.hdg - got.n * 10 + 540) % 360) - 180);
+        if (d > 30) return { ok: false, msg: T().rwyHdg(rwyTxt(got), String(Math.round(s.hdg)).padStart(3, '0')) };
+        return { ok: true, good: T().rwyOk(rwyTxt(got)) };
+      }
+      return { ok: true };
+    }
     if (!hasVal) return { ok: true };
     if (/speeds|geschwindigkeiten/i.test(name) && /t\.?o|start/i.test(name) && !/land/i.test(name)) {
-      const v = N.filter((n) => n >= 80 && n <= 250);
-      if (v.length < 3) return { ok: false, msg: T().needSpeeds, retry: true };
+      const tl = String(said).toLowerCase().replace(/[:=]/g, ' ');
+      const nm = (re) => { const m = tl.match(re); return m ? parseInt(m[1], 10) : null; };
+      let v1 = nm(/\bv\s?1\D{0,3}(\d{2,3})/), vr = nm(/\bv\s?r\D{0,3}(\d{2,3})/), v2 = nm(/\bv\s?2\D{0,3}(\d{2,3})/);
+      if (v1 === null || vr === null || v2 === null) { const q = N.filter((n) => n >= 80 && n <= 250); if (q.length < 3) return { ok: false, msg: T().needSpeeds, retry: true }; [v1, vr, v2] = q; }
       const P = perf();
       if (!P || !P.v1) return { ok: true, note: T().noPerf };
-      const want = [P.v1, P.vr, P.v2];
-      if (v.slice(0, 3).every((n, k) => Math.abs(n - want[k]) <= 1)) return { ok: true };
-      return { ok: false, msg: T().spd(want.join(', '), v.slice(0, 3).join(', ')) };
+      const bad = [];
+      if (Math.abs(v1 - P.v1) > 1) bad.push('V1 ' + P.v1); if (Math.abs(vr - P.vr) > 1) bad.push('VR ' + P.vr); if (Math.abs(v2 - P.v2) > 1) bad.push('V2 ' + P.v2);
+      const fl = tl.match(/\bflaps?\s*(1\s*(?:\+|plus)\s*f|\d)/); // Klappen sind optional; wenn genannt, werden sie mitgeprüft
+      if (fl && P.conf) { const g = fl[1].replace(/\s|plus/g, '').replace('+', '+').toUpperCase(); if (String(P.conf).toUpperCase() !== (/\+F/.test(g) ? '1+F' : g)) bad.push((pref.lang === 'de' ? 'Klappen ' : 'flaps ') + P.conf); }
+      if (bad.length) return { ok: false, msg: T().spdFix(bad.join(', ')) };
+      return { ok: true, good: T().correct };
     }
     if (/fuel quantity|treibstoffmenge/i.test(name)) {
       let n = N.find((x) => x > 0); if (n === undefined) return { ok: false, msg: T().yn, retry: true };
@@ -290,13 +365,13 @@
       return { ok: false, msg: T().fuel(Math.round(s.fuelKg / 10) * 10, Math.round(n)) };
     }
     if (/baro ref|altimeter/i.test(name) && ph.some((p) => ['pre', 'desc', 'final'].includes(p))) {
-      if (/\b(std|standard)\b/i.test(said)) return { ok: true };
+      if (/\b(std|standard)\b/i.test(said)) return { ok: true, good: T().correct };
       let n = N.find((x) => x > 20); if (n === undefined) return { ok: false, msg: T().yn, retry: true };
       if (n >= 2800 && n <= 3100) n /= 100;
       else if (n >= 28 && n <= 31) { const k = N[N.indexOf(n) + 1]; if (k !== undefined && k < 100 && Number.isInteger(k)) n += k / 100; }
       const hpa = n < 40 ? n * 33.8639 : n;
       if (s.qnh == null || !isFinite(s.qnh)) return { ok: true };
-      if (Math.abs(hpa - s.qnh) <= 2) return { ok: true };
+      if (Math.abs(hpa - s.qnh) <= 2) return { ok: true, good: T().correct };
       return { ok: false, msg: T().qnh(Math.round(s.qnh), n < 40 ? n.toFixed(2) : Math.round(n)) };
     }
     if (/flap setting|^klappen/i.test(name) && ph.includes('out')) {
@@ -304,7 +379,7 @@
       const t = norm(said);
       const got = /(1\s*(\+|plus)\s*(f|ef)|eins\s*plus\s*(f|ef)|one\s*plus\s*(f|ef))/.test(t) ? '1+F' : (N.find((x) => x >= 0 && x <= 40) !== undefined ? String(N.find((x) => x >= 0 && x <= 40)) : '');
       if (!got) return { ok: false, msg: T().yn, retry: true };
-      if (String(P.conf).toUpperCase() === got) return { ok: true };
+      if (String(P.conf).toUpperCase() === got) return { ok: true, good: T().correct };
       return { ok: false, msg: T().conf(P.conf, got) };
     }
     return { ok: true };
@@ -318,7 +393,7 @@
   const REP = /\b(wiederholen|nochmal|noch mal|repeat|again|wie bitte|say again)\b/i;
 
   function log(who, text, noRelay) {
-    S.log.push({ who, text }); if (S.log.length > 5) S.log.shift(); ui();
+    S.log.push({ who, text }); if (S.log.length > 40) S.log.shift(); ui();
     if (HOST && !noRelay) post('/api/cp/event', { type: 'log', who, text, from: window.EFB_ID });
   }
   const itemLang = () => (checklistKey().startsWith('airbus') ? 'en' : pref.lang);
@@ -328,6 +403,7 @@
     log('Du', text);
     { const gk = gsxCmd(text); if (gk) { clearTimeout(S.askT); if (S.mode === 'gsxMenu') S.mode = S.afterGsx === 'run' ? 'run' : 'idle'; else if (S.mode !== 'run') S.mode = 'idle'; return groundDo(gk, text, dirOf(text)); } }
     if (S.mode === 'gsxMenu') return groundPick(text);
+    if (FREQ_CMD.test(text) && (freqOf(text) || (SWAP_CMD.test(text) && /\b(frequenc\w*|frequenz\w*|stand\s?-?by)\b/i.test(text))) && !/\b(speeds?|checklist|checkliste)\b/i.test(text)) return radioCmd(text);
     if (S.mode !== 'run') {
       const li = intentList(text);
       if (li >= 0) { clearTimeout(S.askT); return begin(li); }
@@ -352,6 +428,7 @@
       if (v.ok) {
         tick(S.list, S.item);
         if (v.note) await say(v.note);
+        if (v.good) await say(v.good);
         await say(T().checked, itemLang() === 'en' ? 'en' : pref.lang);
         return advance(true);
       }
@@ -359,17 +436,49 @@
       if (v.retry) return;
     }
   }
+  // ---------- Funk: „Frequenz 1.2.2 decimal 8.0.0 eindrehen“ → Standby, „switch to …“ → aktiv (COM1) ----------
+  const FREQ_CMD = /\b(frequenc\w*|frequenz\w*|freq|stand\s?-?by|com\s?1|tune|dial\w*|eindreh\w*|switch\w*|swap|wechsel\w*|umschalt\w*)\b/i;
+  const SWAP_CMD = /\b(switch\w*|swap|wechsel\w*|umschalt\w*|activate|aktivier\w*)\b/i;
+  function freqOf(text) { // → Hz oder null
+    let t = String(text).toLowerCase();
+    let m = t.match(/(?<!\d)(1[123]\d)\s?[.,]\s?(\d{1,3})(?!\d)/);
+    let ip, fp;
+    if (m) { ip = m[1]; fp = m[2]; } else {
+      t = t.replace(/\b(decimal|dezimal|point|komma|punkt|dot)\b/g, ' ~ ');
+      t = t.replace(/[a-zäöüß]+/g, (w) => (Object.prototype.hasOwnProperty.call(DW, w) && !/^(ein|eine)$/.test(w) ? String(DW[w]) : w));
+      const s = t.replace(/[^\d~]/g, '');
+      if (s.includes('~')) { const q = s.split('~').filter((x, i) => x !== '' || i > 0); ip = q[0]; fp = q.slice(1).join(''); } else if (s.length >= 5) { ip = s.slice(0, 3); fp = s.slice(3); } else return null;
+    }
+    if (!ip || ip.length !== 3) return null;
+    fp = (String(fp || '') + '000').slice(0, 3);
+    const hz = parseInt(ip, 10) * 1e6 + parseInt(fp, 10) * 1e3;
+    return hz >= 118e6 && hz <= 136.99e6 ? hz : null;
+  }
+  const freqTxt = (hz) => (hz / 1e6).toFixed(3);
+  const freqSay = (hz) => { const [a, b] = freqTxt(hz).split('.'); return spokenDigits(a) + ' decimal ' + spokenDigits(b.replace(/0+$/, '') || '0'); };
+  const radioPost = (b) => fetch('/api/radio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json()).catch(() => ({ ok: false }));
+  async function radioCmd(text) {
+    const hz = freqOf(text), swap = SWAP_CMD.test(text);
+    if (!hz && !swap) return say(T().noFreq);
+    const sim0 = app.sim || {};
+    if (hz && (!swap || Math.round(sim0.com1s || 0) !== hz)) { const r = await radioPost({ action: 'standby', hz }); if (!r.ok) return say(T().radioFail); if (!swap) return say(T().stby(freqSay(hz)), 'en'); await new Promise((res) => setTimeout(res, 400)); }
+    const r2 = await radioPost({ action: 'swap' }); if (!r2.ok) return say(T().radioFail);
+    await new Promise((res) => setTimeout(res, 900));
+    const s = app.sim || {};
+    if (hz && s.com1 && Math.abs(s.com1 - hz) > 500 && s.com1s !== undefined && s.com1 !== null && s.connected) return say(T().radioFail);
+    return say(T().act(hz ? freqSay(hz) : freqSay(s.com1 || 0)), 'en');
+  }
   // ---------- Bodenpersonal (GSX): „Cockpit to ground, request boarding“ ----------
   const GROUND = /\b(ground|grounds|bodendienst\w*|bodenpersonal|bodencrew|gsx)\b/i;
   const REQ = /\b(request|approved?|cleared?|anfordern|bestell\w*|genehmigt|freigegeben)\b/i;
   const GSX_WORDS = [
     ['deboarding', /de-?\s?board|aussteig/i], ['boarding', /\bboarding|einsteig/i], ['catering', /cater/i],
     ['refueling', /refuel|fuel truck|fueling|betank|tanken/i], ['pushback', /push\s?-?back|zurückschieb/i],
-    ['jetway', /jet\s?-?way|jet bridge|fluggastbr/i], ['stairs', /stair|treppe/i], ['gpu', /\bgpu\b|ground power|bodenstrom/i],
+    ['jetway', /jet\s?-?way|jet bridge|fluggastbr/i], ['stairs', /stair|treppe/i], ['gpu', /\bgpu\b|ground power|external power|bodenstrom|landstrom/i], ['chocks', /chock|bremskeil/i], ['enginestart', /(start|starting)\s+(up\s+)?(the\s+|my\s+|both\s+)?engines?|engines?\s+start|start-?\s?up|anlassen|triebwerk\w*\s+(an|start)/i], ['disconnect', /disconnect|abkoppel|abstecken|trennen/i],
     ['deice', /de-?\s?ic|enteis/i], ['followme', /follow\s?-?me/i], ['cleaning', /clean|reinig/i], ['lavatory', /lavator|toilet/i],
     ['water', /water service|wasserservice|wasser/i], ['crewbus', /crew\s?-?bus/i],
   ];
-  const GS_LABEL = { deboarding: 'Deboarding', boarding: 'Boarding', catering: 'Catering', refueling: 'Refueling', pushback: 'Pushback', jetway: 'Jetway', stairs: 'Stairs', gpu: 'Ground power', deice: 'De-icing', followme: 'Follow me', cleaning: 'Cleaning', lavatory: 'Lavatory service', water: 'Water service', crewbus: 'Crew bus' };
+  const GS_LABEL = { deboarding: 'Deboarding', boarding: 'Boarding', catering: 'Catering', refueling: 'Refueling', pushback: 'Pushback', jetway: 'Jetway', stairs: 'Stairs', gpu: 'Ground power', chocks: 'Chocks', enginestart: 'Engine start', disconnect: 'Disconnect', deice: 'De-icing', followme: 'Follow me', cleaning: 'Cleaning', lavatory: 'Lavatory service', water: 'Water service', crewbus: 'Crew bus' };
   const GS_VAR = { boarding: 'boarding', deboarding: 'deboarding', catering: 'catering', refueling: 'refueling', pushback: 'departure' };
   const gsxAsked = new Set(), gsPrev = {};
 
@@ -454,6 +563,7 @@
     const strong = /cockpit to ground|\b(request|approved?|cleared?|anfordern|bestell\w*|genehmigt|freigegeben|gsx|bodenpersonal|bodendienst\w*|bodencrew)\b/i;
     if (!(S.mode === 'run' ? strong.test(text) : (GROUND.test(text) || REQ.test(text)))) return null;
     const hit = GSX_WORDS.find(([, re]) => re.test(text));
+    if (!hit && S.mode !== 'run' && GROUND.test(text) && HELLO.test(text)) return 'hello';
     return hit ? hit[0] : null;
   }
   function groundVoice() {
@@ -464,14 +574,72 @@
     return (en.find((v) => /ryan/.test(v.id) && v.id !== mine) || en.find((v) => v.id !== mine) || en[0] || {}).id || null;
   }
   // keys: Sound-Namen in der Reihenfolge, in der nach einer eigenen Datei gesucht wird
-  function groundLine(t, keys) {
+  const HELLO = /\b(hello|hallo|hi|hey|good\s+(morning|afternoon|evening|day)|guten\s+(morgen|tag|abend)|moin|servus)\b/i;
+  let helloAt = 0;
+  const lc = (x) => x.charAt(0).toLowerCase() + x.slice(1);
+  // o.call: Ground meldet sich von selbst → „Ground to Cockpit, …“. Sonst Antwort; hat der Pilot gegrüßt, grüßt Ground einmal zurück.
+  function groundLine(t, keys, o) {
     const f = (keys || []).map((k) => sounds.get(String(k).toLowerCase())).find(Boolean);
     const A = window.Ambience;
+    if (!f) {
+      if (o && o.call) t = 'Ground to Cockpit, ' + lc(t);
+      else if (Date.now() - helloAt < 25000) { helloAt = 0; t = 'Ground, hello, ' + lc(t); }
+    }
     if (A && HOST) { try { A.radioOn(); A.maybe(); } catch (e) {} }
     return say(t, 'en', f ? { url: '/sounds/' + encodeURIComponent(f), who: 'Ground' } : { voiceId: groundVoice(), pitch: 0.7, who: 'Ground' }).finally(() => { if (A && HOST) { try { A.radioOff(); } catch (e) {} } });
   }
+  const call = (t, keys) => groundLine(t, keys, { call: true });
+  const efbAct = (action) => fetch('/api/efb/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }).then((x) => x.json()).catch(() => ({ ok: false }));
+  const gnd = () => ((app.sim || {}).efb || {}).ground || {};
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Dienste, die Ground selbst erledigt (ohne GSX): Bodenstrom, Bremsklötze, Triebwerksstart-Freigabe, Abkoppeln
+  async function localDo(key, text) {
+    const off = /(disconnect|remove|\boff\b|unplug|weg|trenn|ab\b)/i.test(text);
+    if (key === 'gpu' || key === 'chocks') {
+      const name = key === 'gpu' ? 'Ground power' : 'Chocks';
+      const wantOn = key === 'gpu' ? !off : !(off || /\b(remove|removed|out|take|entfern\w*)\b/i.test(text));
+      const cur = gnd()[key];
+      if (cur === wantOn) return groundLine(name + ' ' + (key === 'gpu' ? (wantOn ? 'is already connected' : 'is already disconnected') : (wantOn ? 'are already in place' : 'are already removed')) + '.', [key + '.already', 'ack']);
+      const r = await efbAct(key);
+      if (!r.ok) { const g = await fetch('/api/gsx/service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: key }) }).then((x) => x.json()).catch(() => ({ ok: false })); if (!g.ok) return groundLine('Negative. ' + name + ' is not available at this stand.', [key + '.negative', 'negative']); }
+      let now = gnd()[key];
+      for (let i = 0; i < 10 && now != null && now !== wantOn; i++) { await wait(500); now = gnd()[key]; } // Status des EFB kommt verzögert
+      if (now != null && now !== wantOn) return groundLine('Stand by, ' + name.toLowerCase() + (key === 'gpu' ? ' is' : ' are') + ' not responding. Say again to retry.', ['again']);
+      const txt = key === 'gpu' ? (wantOn ? 'Ground power connected, external power available.' : 'Ground power disconnected.') : (wantOn ? 'Chocks are in place.' : 'Chocks removed.');
+      return groundLine(txt, [key + (wantOn ? '.on' : '.off'), key + '.ack', 'ack']);
+    }
+    if (key === 'enginestart') return engineClear(true);
+    if (key === 'disconnect') return disconnectNow(true);
+  }
+  // Freigabe zum Triebwerksstart
+  async function engineClear(asked) {
+    const s = app.sim || {}, g = gnd();
+    if (g.enginesRunning) return groundLine('Engines are already running.', ['ack']);
+    if (g.pushback) return groundLine('Negative, pushback is not complete yet. Stand by.', ['negative']);
+    if (s.parkingBrake === false) return groundLine('Negative, set parking brake first.', ['negative']);
+    S.engCleared = Date.now();
+    return groundLine('Cleared to start engines, ' + (asked ? 'call me when stable.' : 'call me when both engines are stable.'), ['enginestart.ack', 'enginestart', 'ack'], asked ? undefined : { call: true });
+  }
+  // Abkoppeln nach dem Triebwerksstart: Bodenstrom weg, Handzeichen
+  let discBusy = false;
+  async function disconnectNow(asked) {
+    if (discBusy) return; discBusy = true;
+    try {
+      const g = gnd();
+      if (!g.enginesRunning && asked) { discBusy = false; return groundLine('Negative, engines are not running yet.', ['negative']); }
+      const o = asked ? undefined : { call: true };
+      await groundLine('Roger, disconnecting. Standing by for hand signals on your left.', ['disconnect.ack', 'ack'], o);
+      if (g.gpu) { await efbAct('gpu'); }
+      await wait(3500);
+      S.discDone = Date.now();
+      await groundLine('Disconnect complete, you are clear on the left. Have a good flight!', ['disconnect.done', 'done'], { call: true });
+    } finally { discBusy = false; }
+  }
   const chooseGsx = (index) => fetch('/api/gsx/choose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index }) }).catch(() => {});
   async function groundDo(key, text, dir) {
+    if (HELLO.test(text)) helloAt = Date.now();
+    if (key === 'hello') return groundLine('go ahead.', ['hello', 'ack']);
+    if (key === 'gpu' || key === 'chocks' || key === 'enginestart' || key === 'disconnect') return localDo(key, text);
     const r = await fetch('/api/gsx/service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: key }) }).then((x) => x.json()).catch(() => ({ ok: false, error: 'PC-Brücke nicht erreichbar.' }));
     if (!r.ok) { log('System', r.error || 'GSX-Fehler'); return groundLine('Negative. ' + GS_LABEL[key] + ' is not available right now.', [key + '.negative', 'negative']); }
     gsxAsked.add(key);
@@ -541,8 +709,14 @@
       if (S.speaking) return; // später nochmal
       gsPrev[svc] = st;
       if (!gsxAsked.has(svc)) continue;
-      if (st === 5) groundLine(GS_LABEL[svc] + ' in progress.', [svc + '.progress']);
-      if (st === 6) { gsxAsked.delete(svc); groundLine(GS_LABEL[svc] + ' complete.', [svc + '.done']); }
+      if (st === 5) call(GS_LABEL[svc] + ' in progress.', [svc + '.progress']);
+      if (st === 6) {
+        gsxAsked.delete(svc);
+        if (svc === 'pushback') { S.pushDone = Date.now(); call('Pushback complete, set parking brake.', ['pushback.done']); }
+        else if (svc === 'boarding') call('Boarding complete, doors are being closed.', ['boarding.done']);
+        else if (svc === 'refueling') call('Refueling complete, fuel truck is leaving.', ['refueling.done']);
+        else call(GS_LABEL[svc] + ' complete.', [svc + '.done']);
+      }
     }
   }
 
@@ -584,6 +758,16 @@
     const l = lists()[S.list]; if (!l || S.item < 0) return;
     const it = l.items[S.item];
     await say(it.item, itemLang());
+    const auto = autoResp(it); if (auto) await say(auto, itemLang());
+  }
+  // „AS RQRD“-Punkte beantwortet der Copilot selbst (du bestätigst nur mit „checked“)
+  function autoResp(it) {
+    const de = itemLang() === 'de';
+    if (/^packs?(\s*\/\s*bleed)?$/i.test(String(it.item).trim())) {
+      if (pref.packsOff) return de ? 'Aus, wegen der Performance.' : 'Off, as required for performance.';
+      return de ? 'Ein, nach Bedarf.' : 'On, as required.';
+    }
+    return '';
   }
   async function advance() {
     const l = lists()[S.list]; if (!l) { S.mode = 'idle'; return; }
@@ -635,7 +819,7 @@
   }
   // Erinnerung: neue Phase → fällige Checkliste anbieten
   function watch() {
-    if (!S.on) return;
+    if (!S.on || muted) return;
     gsxWatch();
     const ph = phase(); if (!ph) return;
     if (lat.landed && ph === 'post' && lists().length && isDone(lists().length - 1)) { lat.flown = lat.landed = false; asked.clear(); }
@@ -659,22 +843,50 @@
   let panel;
   function ui() {
     if (!panel) return;
-    const on = S.on;
-    panel.querySelector('#cpToggle').textContent = on ? (pref.lang === 'de' ? 'Copilot: an' : 'Copilot: on') : (pref.lang === 'de' ? 'Copilot: aus' : 'Copilot: off');
-    panel.querySelector('#cpToggle').classList.toggle('on', on);
+    const on = remote() ? hostActive : S.on, de = pref.lang === 'de';
+    const tg = panel.querySelector('#cpToggle');
+    tg.textContent = remote() ? (on ? (de ? 'Am PC stoppen' : 'Stop on PC') : (de ? 'Am PC starten' : 'Start on PC')) : (on ? (de ? 'Copilot stoppen' : 'Stop Copilot') : (de ? 'Copilot starten' : 'Start Copilot'));
+    tg.classList.toggle('on', on);
     const st = panel.querySelector('#cpState');
-    st.textContent = !on ? '' : S.speaking ? '🔊' : S.listening ? '🎤' : '·';
-    panel.querySelector('#cpLog').innerHTML = S.log.map((m) => `<div class="cp-${m.who === 'Du' ? 'me' : 'cp'}"><b>${esc(m.who)}</b> ${esc(m.text)}</div>`).join('');
+    st.textContent = muted ? (de ? '🔇 stumm' : '🔇 muted') : remote() ? (on ? (de ? 'Läuft am PC' : 'Running on the PC') : (de ? 'Am PC nicht aktiv' : 'Not active on the PC')) : !on ? (de ? 'Aus' : 'Off') : S.speaking ? (de ? '🔊 spricht' : '🔊 speaking') : S.listening ? (de ? '🎤 hört zu' : '🎤 listening') : (de ? 'An' : 'On');
+    panel.querySelector('#cpLog').innerHTML = S.log.map((m) => `<div class="cp-${m.who === 'Du' ? 'me' : 'cp'}"><b>${esc(m.who)}</b> ${esc(m.text)}</div>`).join('') || `<div class="cp-empty">${de ? 'Noch nichts gesprochen.' : 'Nothing said yet.'}</div>`;
     panel.classList.toggle('on', on);
     panel.classList.toggle('cp-remote', remote());
-    if (remote()) { const tg = panel.querySelector('#cpToggle'); tg.textContent = pref.lang === 'de' ? 'Copilot läuft am PC' : 'Copilot runs on the PC'; tg.disabled = true; tg.classList.add('on'); } else panel.querySelector('#cpToggle').disabled = false;
+    const note = panel.querySelector('#cpNote'); if (note) note.textContent = remote() ? (de ? 'Stimme und Mikrofon laufen am PC. Dieses Gerät zeigt und steuert nur.' : 'Voice and microphone run on the PC. This device only shows and controls.') : '';
+    const dev = panel.querySelector('#cpDevHint'); if (dev) dev.hidden = !remote();
   }
+  // ---------- Stumm schalten (Knopf in der Kopfleiste) ----------
+  function muteBtn() {
+    let b = document.getElementById('cpMute');
+    if (!b) {
+      const strip = document.querySelector('header.strip'), clock = strip && strip.querySelector('.strip-clock'); if (!strip) return null;
+      b = document.createElement('button'); b.id = 'cpMute'; b.type = 'button'; b.className = 'strip-mute';
+      b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/><path class="sl" d="M4 4l16 16"/></svg>';
+      b.onclick = () => { const v = !muted; setMuted(v); cmd('mute', v ? '1' : '0'); };
+      strip.insertBefore(b, clock || null);
+    }
+    return b;
+  }
+  function setMuted(v) {
+    v = !!v; if (v === muted) { muteBtn(); return; }
+    muted = v; S.muted = v;
+    if (HOST) {
+      if (v) { if (curAudio) { try { curAudio.pause(); } catch (e) {} curAudio = null; } if (TTS) { try { TTS.cancel(); } catch (e) {} } S.speaking = false; stopRec(); }
+      else if (S.on) startRec();
+    }
+    const b = muteBtn(); if (b) { b.classList.toggle('on', v); b.title = v ? (pref.lang === 'de' ? 'Copilot ist stumm – antippen zum Aktivieren' : 'Copilot muted – tap to unmute') : (pref.lang === 'de' ? 'Copilot stumm schalten' : 'Mute Copilot'); }
+    ui();
+  }
+  // Befehl an den PC (nur wenn dieses Gerät nicht selbst spricht)
+  const cmd = (action, id) => post('/api/cp/event', { type: 'cmd', action, id: id || '', from: window.EFB_ID });
   function build() {
-    const sec = $('#tab-check'); if (!sec) return;
+    const sec = $('#tab-copilot'); if (!sec) return;
     panel = document.createElement('div');
-    panel.className = 'cp-panel';
-    panel.innerHTML = `<div class="cp-row">
-        <button class="btn-s" id="cpToggle">Copilot: aus</button><span id="cpState" class="cp-state"></span>
+    panel.className = 'cp-panel cpv';
+    panel.innerHTML = `<div class="cpv-card"><h3>Copilot</h3>
+        <div class="cp-row"><button class="btn-s" id="cpToggle">Copilot starten</button><span id="cpState" class="cp-state"></span></div>
+        <small id="cpNote"></small></div>
+      <div class="cpv-card"><h3>Stimme &amp; Sprache</h3><div class="cp-row">
         <select id="cpLang"><option value="de">Deutsch</option><option value="en">English</option></select>
         <select id="cpVoice" title="Stimme"></select>
         <select id="cpVoiceEn" title="Stimme für englische Wörter"></select>
@@ -682,18 +894,32 @@
         <label class="cp-rate">Tempo <input type="range" id="cpRate" min="0.8" max="1.4" step="0.05"></label>
         <label class="cp-chk"><input type="checkbox" id="cpMic"> Mikrofon</label>
         <label class="cp-chk"><input type="checkbox" id="cpAuto"> Automatisch starten</label>
-        <form id="cpForm"><input id="cpText" placeholder="Antwort eintippen …" autocomplete="off"><button class="btn-s">OK</button></form>
-      </div><div id="cpLog" class="cp-log"></div>`;
-    sec.insertBefore(panel, sec.firstChild);
-    if (HOST && window.AudioDev) { window.AudioDev.mount(panel); window.AudioDev.onChange((w) => { if (w === 'mic' && window.WhisperMic && window.WhisperMic.active !== undefined && S.on && useW()) window.WhisperMic.restart().catch(() => {}); }); }
-    if (window.Ambience && HOST) window.Ambience.mount(panel);
+        <label class="cp-chk"><input type="checkbox" id="cpPacks"> Start mit Packs AUS (Performance)</label></div></div>
+      <div class="cpv-card"><h3>Mehr Leben</h3><small>Der Copilot spricht auch von sich aus. Gilt nur, solange er an und nicht stumm ist.</small><div class="cp-row">
+        <label class="cp-chk"><input type="checkbox" id="cpLifeTaxi"> Rollweg-Ansagen (aus der Route in der Karte)</label>
+        <label class="cp-chk"><input type="checkbox" id="cpLifeTraffic"> Verkehrshinweise (VATSIM)</label>
+        <label class="cp-chk"><input type="checkbox" id="cpLifeCalls"> Callouts (80 Knoten, V1, Rotate, 10.000 ft)</label>
+        <label class="cp-chk"><input type="checkbox" id="cpLifeGround"> Bodencrew meldet sich selbst (Pushback fertig, Triebwerksstart frei, Abkoppeln, Ankunft)</label></div></div>
+      <div class="cpv-card" id="cpAmb"></div>
+      <div class="cpv-card" id="cpDev"><small id="cpDevHint"><b>Audio-Geräte:</b> Mikrofon und Lautsprecher stellst du im Copilot-Fenster am PC ein.</small></div>
+      <div class="cpv-card"><h3>Verlauf</h3><div id="cpLog" class="cp-log"></div>
+        <form id="cpForm"><input id="cpText" placeholder="Antwort eintippen …" autocomplete="off"><button class="btn-s">OK</button></form></div>`;
+    sec.appendChild(panel);
+    if (window.AudioDev) {
+      if (HOST) { window.AudioDev.mount($('#cpDev')); window.AudioDev.onChange((w) => { if (w === 'mic' && window.WhisperMic && S.on && useW()) window.WhisperMic.restart().catch(() => {}); }); }
+    }
+    if (window.Ambience) {
+      window.Ambience.hook({ host: HOST, save: (cfg) => { pref.amb = Object.assign({}, cfg); persist(); }, test: (a, id) => cmd(a, id) });
+      if (pref.amb) window.Ambience.setCfg(pref.amb);
+      window.Ambience.mount($('#cpAmb'));
+    }
     if (window.LANG === 'en') $('#cpText').placeholder = 'Type your answer …';
     $('#cpLang').value = pref.lang; $('#cpRate').value = pref.rate; $('#cpMic').checked = pref.mic;
     const save = persist;
     const fill1 = (sel, k, label, key) => {
       if (!sel) return;
       key = key || k;
-      const list = key === 'ground' ? [] : voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith(k));
+      const list = key === 'ground' || remote() ? [] : voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith(k));
       const cur = (pref.voice && pref.voice[key]) || '';
       const pl = piper.voices.filter((v) => v.lang === k);
       const auto = piper.available && pl.length ? (pref.lang === 'de' ? 'Automatisch (eingebaut)' : 'Automatic (built-in)') : (pref.lang === 'de' ? 'Standardstimme' : 'Default voice');
@@ -705,17 +931,24 @@
       const gr = $('#cpVoiceGr'); if (gr) { gr.hidden = !piper.available; fill1(gr, 'en', 'Ground: ', 'ground'); }
     };
     window._cpFillVoices = fillVoices; fillVoices();
-    $('#cpVoice').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice[pref.lang === 'de' ? 'de' : 'en'] = e.target.value; save(); say(pref.lang === 'de' ? 'So klinge ich.' : 'This is my voice.'); };
-    $('#cpVoiceGr').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice.ground = e.target.value; save(); groundLine('Ground, ready.'); };
-    $('#cpVoiceEn').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice.en = e.target.value; save(); say('Before Start {{checklist}}'.replace(/\{\{|\}\}/g, ''), 'en'); };
+    // Hörprobe immer am PC: dieses Gerät spricht nur, wenn es selbst der Copilot ist
+    const preview = (which) => { if (remote()) return cmd(which); if (which === 'voice') say(pref.lang === 'de' ? 'So klinge ich.' : 'This is my voice.'); else if (which === 'ground') groundLine('Ground, ready.'); else say('Before Start checklist', 'en'); };
+    window._cpPreview = preview;
+    $('#cpVoice').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice[pref.lang === 'de' ? 'de' : 'en'] = e.target.value; save(); setTimeout(() => preview('voice'), 500); };
+    $('#cpVoiceGr').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice.ground = e.target.value; save(); setTimeout(() => preview('ground'), 500); };
+    $('#cpVoiceEn').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice.en = e.target.value; save(); setTimeout(() => preview('voiceEn'), 500); };
     $('#cpAuto').checked = !!pref.autostart;
     $('#cpAuto').onchange = (e) => { pref.autostart = e.target.checked; save(); };
-    $('#cpToggle').onclick = () => (S.on ? stop() : start());
+    const lifeSet = () => { const L = pref.life || {}; $('#cpLifeTaxi').checked = L.taxi !== false; $('#cpLifeTraffic').checked = L.traffic !== false; $('#cpLifeCalls').checked = L.calls !== false; $('#cpLifeGround').checked = L.ground !== false; };
+    lifeSet(); window._cpLifeSet = lifeSet;
+    [['#cpLifeTaxi', 'taxi'], ['#cpLifeTraffic', 'traffic'], ['#cpLifeCalls', 'calls'], ['#cpLifeGround', 'ground']].forEach(([id, k]) => { $(id).onchange = (e) => { pref.life = Object.assign({ taxi: true, traffic: true, calls: true, ground: true }, pref.life || {}); pref.life[k] = e.target.checked; save(); }; });
+    $('#cpPacks').checked = !!pref.packsOff;
+    $('#cpPacks').onchange = (e) => { pref.packsOff = e.target.checked; save(); };
+    $('#cpToggle').onclick = () => { if (remote()) { cmd(hostActive ? 'stop' : 'start'); const st = panel.querySelector('#cpState'); st.textContent = hostActive ? '…' : (pref.lang === 'de' ? 'Starte am PC …' : 'Starting on the PC …'); setTimeout(pollHost, 2500); setTimeout(pollHost, 6000); } else (S.on ? stop() : start()); };
     $('#cpLang').onchange = (e) => { pref.lang = e.target.value; save(); fillVoices(); if (rec) { pauseRec(); } ui(); };
     $('#cpRate').oninput = (e) => { pref.rate = parseFloat(e.target.value); save(); };
     $('#cpMic').onchange = (e) => { pref.mic = e.target.checked; save(); if (!pref.mic) stopRec(); else if (S.on) startRec(); };
     $('#cpForm').onsubmit = (e) => { e.preventDefault(); const t = $('#cpText').value; $('#cpText').value = ''; if (remote()) { log('Du', t, true); post('/api/cp/event', { type: 'input', text: t, from: window.EFB_ID }); } else handle(t, false); };
-    const css = document.createElement('style'); css.textContent = '.cp-remote .cp-row > :not(#cpToggle):not(#cpState):not(#cpForm){display:none}'; document.head.appendChild(css);
     ui();
   }
   function start() {
@@ -738,22 +971,41 @@
     if (remote()) { post('/api/cp/event', { type: 'pick', index: Number(b.dataset.cl), from: window.EFB_ID }); return; }
     if (S.on) setTimeout(() => onPick(Number(b.dataset.cl)), 0);
   }, true);
+  // Einstellungen vom Server übernehmen (gelten für alle Geräte, gesprochen wird am PC)
+  function applyPref(o) {
+    if (!o || typeof o !== 'object') return;
+    const micWas = pref.mic;
+    Object.assign(pref, o); store.set('copilot', pref);
+    if (panel) { $('#cpLang').value = pref.lang; $('#cpRate').value = pref.rate; $('#cpMic').checked = pref.mic; $('#cpAuto').checked = !!pref.autostart; $('#cpPacks').checked = !!pref.packsOff; if (window._cpLifeSet) window._cpLifeSet(); if (window._cpFillVoices) window._cpFillVoices(); }
+    if (window.Ambience && pref.amb) window.Ambience.setCfg(pref.amb);
+    if (HOST && S.on && micWas !== pref.mic) { if (!pref.mic) stopRec(); else startRec(); }
+    ui();
+  }
   loadPiper(); fetch('/api/copilot').then((r) => r.json()).then((o) => {
-    if (o && typeof o === 'object') { Object.assign(pref, o); store.set('copilot', pref); if (panel) { $('#cpLang').value = pref.lang; $('#cpRate').value = pref.rate; $('#cpMic').checked = pref.mic; $('#cpAuto').checked = !!pref.autostart; if (window._cpFillVoices) window._cpFillVoices(); } }
+    applyPref(o);
     if (HOST) { setTimeout(() => { try { showTab('check'); } catch (e) {} if (!S.on) start(); }, 800); } else if (pref.autostart) { const go = () => { document.removeEventListener('pointerdown', go, true); document.removeEventListener('keydown', go, true); if (!S.on) start(); }; document.addEventListener('pointerdown', go, true); document.addEventListener('keydown', go, true); }
   }).catch(() => {});
   loadSounds(); setInterval(loadSounds, 60000);
   fetch('/api/stt/status').then((r) => r.json()).then((o) => { stt.available = !!o.available; stt.checked = true; }).catch(() => { stt.checked = true; });
-  const pollHost = () => fetch('/api/cp/host').then((r) => r.json()).then((o) => { const was = remote(); hostActive = !!o.active && o.id !== window.EFB_ID; if (remote() && S.on) stop(); if (was !== remote()) ui(); }).catch(() => {});
-  if (!HOST) { pollHost(); setInterval(pollHost, 5000); } else setInterval(() => { if (S.on) beat(); }, 5000);
+  const pollHost = () => fetch('/api/cp/host').then((r) => r.json()).then((o) => { const was = remote(), wasA = hostActive; setMuted(!!o.mute); isLocal = !!o.local; hostActive = !!o.active && o.id !== window.EFB_ID; if (remote() && S.on) stop(); if (was !== remote() || wasA !== hostActive) { ui(); if (window._cpFillVoices) window._cpFillVoices(); } }).catch(() => {});
+  if (!HOST) { pollHost(); setInterval(pollHost, 5000); } else { fetch('/api/cp/host').then((r) => r.json()).then((o) => setMuted(!!o.mute)).catch(() => {}); setInterval(() => { if (S.on) beat(); }, 5000); }
   hooks.sim.push(watch);
   setInterval(watch, 4000);
   // Ereignisse vom Server: iPad tippt eine Liste an / tippt eine Antwort / zeigt die Liste des Copiloten
   function onEvent(name, d) {
+    if (name === 'cp' && d.type === 'cmd' && d.action === 'mute') { setMuted(d.id === '1'); return; }
     if (name !== 'cp' || d.from === window.EFB_ID) return;
+    if (d.type === 'prefs') { fetch('/api/copilot').then((r) => r.json()).then(applyPref).catch(() => {}); return; }
     if (HOST) {
       if (d.type === 'pick' && S.on) { clIndex = d.index; renderChecklists(); onPick(d.index); }
       if (d.type === 'input' && S.on) handle(d.text, false);
+      if (d.type === 'cmd') {
+        if (d.action === 'start' && !S.on) start();
+        else if (d.action === 'stop' && S.on) stop();
+        else if (d.action === 'test-amb' && window.Ambience) window.Ambience.play(d.id);
+        else if (d.action === 'test-radio' && window.Ambience) { window.Ambience.radioOn(); setTimeout(window.Ambience.radioOff, 900); }
+        else if (['voice', 'voiceEn', 'ground'].includes(d.action) && window._cpPreview) window._cpPreview(d.action);
+      }
     } else {
       if (d.type === 'log') log(d.who, d.text, true);
       if (d.type === 'show' && remote()) { clIndex = d.index; if (typeof renderChecklists === 'function' && app.tab === 'check') renderChecklists(); }
@@ -763,6 +1015,7 @@
     if (!HOST || !S.on || S.mode !== 'run' || S.speaking || k !== 'cl.' + checklistKey()) return;
     if ((progOf()[S.list] || [])[S.item]) advance();
   }
-  window.Copilot = { handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
+  window.Copilot = { _core: { say: (t, l, o) => say(t, l, o), groundLine, call, engineClear, disconnectNow, efbAct, S, pref, isMuted: () => muted, spoken, rwySay, rwyTxt, itemLang, post }, freqOf, rwyOf, spellOut, setMuted, plannedRwy, parts, handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
+  const boot = () => { build(); muteBtn(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

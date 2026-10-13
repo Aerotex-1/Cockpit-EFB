@@ -15,9 +15,9 @@
   <meta name="format-detection" content="telephone=no">
   <!-- Schrift ohne Blockieren laden: fehlt Internet, wird die Systemschrift genutzt -->
   <link href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="style.css?v=1.2.7">
-  <script src="i18n-en.js?v=1.2.7"></script>
-  <script src="i18n.js?v=1.2.7"></script>
+  <link rel="stylesheet" href="style.css?v=1.2.10">
+  <script src="i18n-en.js?v=1.2.10"></script>
+  <script src="i18n.js?v=1.2.10"></script>
   <script>try{var c=JSON.parse(localStorage.getItem('efb.settingsCache')||'null');if(c&&c.t)document.documentElement.dataset.theme=c.t;}catch(e){}</script>
 </head>
 <body>
@@ -45,6 +45,7 @@
     <button data-tab="map" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span class="leg">Karte</span></button>
     <button data-tab="charts" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 16l3-4 2.5 2.5L17 9"/></svg><span class="leg">Charts</span></button>
     <button data-tab="check" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 0.85)"><path d="M4.5 7l1.8 1.8L9.5 5.5M4.5 15l1.8 1.8 3.2-3.3M13 7.5h6.5M13 15.5h6.5"/></g></svg><span class="leg">Checklisten</span></button>
+    <button data-tab="copilot" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 -0.25)"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></g></svg><span class="leg">Copilot</span></button>
     <button data-tab="wx" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 0.5)"><path d="M7 17.5h10.5a3.5 3.5 0 0 0 .4-7 5.5 5.5 0 0 0-10.6 1.2A3 3 0 0 0 7 17.5z"/></g></svg><span class="leg">Wetter</span></button>
     <button data-tab="gsx" class="pb"><svg viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0.5 -1.45)"><rect x="2.5" y="7.5" width="11" height="9" rx="1.5"/><path d="M13.5 10.5h4l3 3.5v2.5h-7"/><circle cx="7" cy="17.5" r="1.9"/><circle cx="17" cy="17.5" r="1.9"/></g></svg><span class="leg">GSX</span></button>
     <div class="rail-gap"></div>
@@ -213,6 +214,9 @@
       </div>
     </section>
 
+    <!-- COPILOT -->
+    <section class="tab" id="tab-copilot"></section>
+
     <!-- CHECKLISTEN -->
     <section class="tab" id="tab-check">
       <div class="check-layout">
@@ -343,26 +347,29 @@
     </section>
   </main>
 
-  <script src="app.js?v=1.2.7"></script>
-  <script src="sync.js?v=1.2.7"></script>
-  <script src="audio-dev.js?v=1.2.7"></script>
-  <script src="ambience.js?v=1.2.7"></script>
-  <script src="mic-whisper.js?v=1.2.7"></script>
-  <script src="remote-efb.js?v=1.2.7"></script>
-  <script src="perf-model.js?v=1.2.7"></script>
-  <script src="perf-calc.js?v=1.2.7"></script>
-  <script src="finder.js?v=1.2.7"></script>
-  <script src="atc-tab.js?v=1.2.7"></script>
-  <script src="music-tab.js?v=1.2.7"></script>
-  <script src="settings.js?v=1.2.7"></script>
-  <script src="logbook-tab.js?v=1.2.7"></script>
-  <script src="wx-tab.js?v=1.2.7"></script>
-  <script src="copilot.js?v=1.2.7"></script>
-  <script src="update-ui.js?v=1.2.7"></script>
-  <script src="setup-ui.js?v=1.2.7"></script>
-  <script src="about.js?v=1.2.7"></script>
-  <script src="charts.js?v=1.2.7"></script>
-  <script src="map-layers.js?v=1.2.7"></script>
-  <script src="map-extras.js?v=1.2.7"></script>
+  <script src="app.js?v=1.2.10"></script>
+  <script src="sync.js?v=1.2.10"></script>
+  <script src="audio-dev.js?v=1.2.10"></script>
+  <script src="taxi-nav.js?v=1.2.10"></script>
+  <script src="ambience.js?v=1.2.10"></script>
+  <script src="mic-whisper.js?v=1.2.10"></script>
+  <script src="remote-efb.js?v=1.2.10"></script>
+  <script src="perf-model.js?v=1.2.10"></script>
+  <script src="perf-calc.js?v=1.2.10"></script>
+  <script src="finder.js?v=1.2.10"></script>
+  <script src="atc-tab.js?v=1.2.10"></script>
+  <script src="music-tab.js?v=1.2.10"></script>
+  <script src="settings.js?v=1.2.10"></script>
+  <script src="logbook-tab.js?v=1.2.10"></script>
+  <script src="wx-tab.js?v=1.2.10"></script>
+  <script src="copilot.js?v=1.2.10"></script>
+  <script src="copilot-life.js?v=1.2.10"></script>
+  <script src="copilot-ground.js?v=1.2.10"></script>
+  <script src="update-ui.js?v=1.2.10"></script>
+  <script src="setup-ui.js?v=1.2.10"></script>
+  <script src="about.js?v=1.2.10"></script>
+  <script src="charts.js?v=1.2.10"></script>
+  <script src="map-layers.js?v=1.2.10"></script>
+  <script src="map-extras.js?v=1.2.10"></script>
 </body>
 </html>

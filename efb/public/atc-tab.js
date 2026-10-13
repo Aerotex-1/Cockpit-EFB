@@ -132,9 +132,18 @@ const AtcTab = (() => {
     el.innerHTML = `<h3>Frequenzen <small class="dim-t">Stand ${esc(String(data.updated || '').slice(11, 19))} UTC${data.demo ? ' · Demo-Daten' : ''}</small></h3>
       ${airportBlock('Abflug', data.dep)}${route}${airportBlock('Ziel', data.dest)}${(data.alts || []).map((a) => airportBlock('Ausweich', a)).join('')}${noFir}`;
   }
+  // COM1 im Sim (nur Anzeige): aktiv und Standby; gestellt wird per Sprache über den Copilot
+  const mhz = (hz) => (hz > 1e6 ? (hz / 1e6).toFixed(3) : '---.---');
+  function com1Html() {
+    const s = app.sim || {};
+    if (!s.connected) return '<div class="com1-row"><span><small>COM1 AKTIV</small><b>---.---</b></span><span><small>COM1 STANDBY</small><b>---.---</b></span></div><p class="note">Keine Verbindung zum Sim.</p>';
+    return `<div class="com1-row"><span><small>COM1 AKTIV</small><b>${mhz(s.com1)}</b></span><span><small>COM1 STANDBY</small><b>${mhz(s.com1s)}</b></span></div>`;
+  }
+  setInterval(() => { const b = document.getElementById('com1Box'); if (b && app.tab === 'atc') { const h = com1Html(); if (b.innerHTML !== h) b.innerHTML = h; } }, 1000);
   function renderRadio() {
     const el = $('#radioPanel'); if (!el) return;
     el.innerHTML = `<h3>Aktive Frequenz</h3>
+      <div class="com1" id="com1Box">${com1Html()}</div>
       <div class="radio"><div class="radio-main"><small>ACTIVE</small><b>${active ? esc(active.freq) : '---.---'}</b><span>${active ? esc(active.cs || '') : 'Tippe unten auf eine Frequenz'}</span></div>
         <button class="radio-prev" id="radioPrev" ${prev ? '' : 'disabled'}><small>Vorher</small><b>${prev ? esc(prev.freq) : '---.---'}</b><span>${prev ? esc(prev.cs || '') : ''}</span></button></div>
       <div class="form-row"><label class="inl">Frequenz <input id="radioIn" inputmode="decimal" placeholder="121.500" maxlength="7"></label>

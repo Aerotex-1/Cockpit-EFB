@@ -5,7 +5,7 @@ const path = require('path');
 
 const FILE = path.join(__dirname, 'settings.json');
 const BG_DIR = path.join(__dirname, 'backgrounds');
-const TABS = ['flight', 'efb', 'ofp', 'perf', 'finder', 'atc', 'map', 'charts', 'check', 'wx', 'gsx', 'logbook', 'music', 'setup'];
+const TABS = ['flight', 'efb', 'ofp', 'perf', 'finder', 'atc', 'map', 'charts', 'check', 'copilot', 'wx', 'gsx', 'logbook', 'music', 'setup'];
 // „Lichter“ gibt es nur in der privaten Version (Datei lights.js)
 if (fs.existsSync(path.join(__dirname, 'lights.js'))) TABS.splice(TABS.indexOf('gsx') + 1, 0, 'lights');
 const THEMES = ['cockpit', 'glass', 'day', 'night', 'contrast'];

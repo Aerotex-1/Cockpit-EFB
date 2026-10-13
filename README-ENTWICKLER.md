@@ -53,8 +53,9 @@ Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.3.7, enthält EFB 1.2.7)
+## Stand dieser Version (App 1.3.8, enthält EFB 1.2.10)
 - **Sim-Modul:** Die App findet den Community-Ordner von MSFS 2024 selbst (aus der UserCfg.opt, Store und Steam) oder du wählst ihn unter „Sim-Modul“. Das Modul `cockpit-efb-link` wird beim App-Start und nach EFB-Updates automatisch installiert bzw. erneuert (abschaltbar). Test: `node tools/test-community.js`.
+- **Copilot-Tab:** Einstellungen und Verlauf liegen im Tab „Copilot“ (nicht mehr bei den Checklisten). Das iPad steuert nur: „Starten“ dort startet den Copilot am PC, und die App öffnet bei Bedarf das Copilot-Fenster (App 1.3.8).
 - **Audio-Geräte:** Mikrofon und Ausgabe wählst du im Copilot-Fenster unter „Audio-Geräte“. Das ist reine EFB-Funktion (EFB 1.2.7), die App braucht dafür kein Update.
 - **Spracherkennung:** whisper-server bleibt mit geladenem Modell im Speicher (EFB 1.2.5). Das Basis-Modell ist für Befehle meist genau genug und schneller.
 - **Funk und Geräusche:** Funk-Effekt und Hintergrundgeräusche stellst du im Copilot-Fenster unter „Funk & Geräusche“ ein (EFB 1.2.6).

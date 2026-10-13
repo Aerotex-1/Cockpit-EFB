@@ -97,15 +97,35 @@ const MapExtras = (() => {
     const t = tokens(e.route), chips = md === 'arr' ? [e.rwy, ...t, e.stand] : [e.stand, ...t, e.rwy];
     b.innerHTML = `<span class="tb-h">${esc(ic)} ${md === 'arr' ? 'Ankunft' : 'Abflug'}</span>` + chips.filter(Boolean).map((c, i, a) => `<span class="tb-c${RWY.test(c) ? ' rw' : (c === e.stand ? ' st' : '')}">${esc(c)}</span>${i < a.length - 1 ? '<i>›</i>' : ''}`).join('') + '<button class="tb-x" id="tbClear" title="Rollweg löschen" aria-label="Rollweg löschen">×</button>';
   }
+  // Mit Position vom Sim zeigt die Karte nur den Abschnitt, auf dem du gerade bist, und den nächsten (nicht die ganze Route).
+  function liveState() {
+    const s = app.sim || {}; if (!s.connected || !s.onGround || !window.TaxiNav) return null;
+    const plan = TaxiNav.activePlan(); if (!plan || !isFinite(plan.lat) || !isFinite(plan.lon)) return null;
+    if (!TaxiNav.data[plan.icao]) { TaxiNav.ensure(plan.icao, plan.lat, plan.lon).then((d) => { if (d) highlight(); }); return null; }
+    const st = TaxiNav.compute(plan, { lat: s.lat, lon: s.lon, hdg: s.hdg, gs: s.gs });
+    return st && !st.missing ? { st, plan } : null;
+  }
   function highlight() {
     if (!m) return;
     if (hlLayer) hlLayer.clearLayers(); else hlLayer = L.layerGroup().addTo(m);
     const e = entry(), ML = MapLayers; if (!ML) return;
+    const live = taxiOpen ? null : liveState();
+    if (live) {
+      const { st } = live, P = { pane: 'hlPane', interactive: false };
+      if (st.legNext && st.legNext.length > 1) L.polyline(st.legNext, { ...P, color: '#34c6f4', weight: 5, opacity: 0.55, dashArray: '2 9', lineCap: 'round' }).addTo(hlLayer);
+      if (st.legCur && st.legCur.length > 1) L.polyline(st.legCur, { ...P, color: '#34c6f4', weight: 7, opacity: 0.9 }).addTo(hlLayer);
+      const lbl = st.cur < 0 ? `weiter zu ${st.toFirst}` : st.next ? `${st.turn === 'left' ? '↰ links' : st.turn === 'right' ? '↱ rechts' : '↑ geradeaus'} ${st.next}` : (st.hold ? 'Halt vor der Piste' : '');
+      const at = st.J || (st.legCur && st.legCur[st.legCur.length - 1]);
+      if (lbl && at) L.marker(at, { ...P, icon: L.divIcon({ className: 'tx-turn', html: esc(lbl), iconSize: null }) }).addTo(hlLayer);
+      return;
+    }
+    if (!taxiOpen) return; // Vorschau der ganzen Route nur, solange das Rollweg-Fenster offen ist
     const wanted = new Set(tokens(e.route).filter((x) => !RWY.test(x)));
-    for (const ref of wanted) for (const line of ML.twy[ref] || []) L.polyline(line.getLatLngs(), { color: '#34c6f4', weight: 6, opacity: 0.85, interactive: false, pane: 'hlPane' }).addTo(hlLayer);
+    for (const ref of wanted) for (const line of ML.twy[ref] || []) L.polyline(line.getLatLngs(), { color: '#34c6f4', weight: 4, opacity: 0.6, dashArray: '10 8', interactive: false, pane: 'hlPane' }).addTo(hlLayer);
     const st = e.stand && ML.stands[String(e.stand).toUpperCase()];
     if (st) L.circleMarker(st, { pane: 'hlPane', radius: 9, color: '#3fe27a', weight: 3, fillColor: '#3fe27a', fillOpacity: .25, interactive: false }).addTo(hlLayer);
   }
+  let liveT = 0;
   function fly(icao) {
     const a = apt(icao); if (!a || !isFinite(a.lat) || !isFinite(a.lon)) return;
     MapLayers.ensure('ground');
@@ -156,6 +176,7 @@ const MapExtras = (() => {
   // ein neuer Flugplan mit anderer Strecke leert alte Rollwege.
   let wasAir = null, parkedSince = 0;
   hooks.sim.push((s) => {
+    if (m && !taxiOpen && Date.now() - liveT > 1000) { liveT = Date.now(); try { highlight(); } catch (e) { /* weiter */ } }
     if (!s.connected || s.lat == null || s.onGround === undefined) return;
     const air = s.onGround === false;
     if (air && wasAir === false) { store.set('taxiFlown', true); clearTaxi('dep'); }

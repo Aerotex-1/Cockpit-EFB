@@ -103,7 +103,9 @@ let clState = {}; try { clState = JSON.parse(fs.readFileSync(CL_FILE, 'utf8')); 
 let clTimer = 0;
 const clSave = () => { clearTimeout(clTimer); clTimer = setTimeout(() => { try { fs.writeFileSync(CL_FILE, JSON.stringify(clState)); } catch { /* egal */ } }, 800); };
 let cpHost = { id: '', t: 0 };
-const CP_TYPES = new Set(['pick', 'input', 'show', 'log']);
+let cpMuted = false; // Copilot stumm (Sprache und Mikrofon) – gilt für alle Geräte
+const CP_TYPES = new Set(['pick', 'input', 'show', 'log', 'cmd', 'prefs']);
+const CP_ACTIONS = new Set(['mute', 'start', 'stop', 'test-amb', 'test-radio', 'voice', 'voiceEn', 'ground']);
 
 // ---------- Hilfsfunktionen ----------
 const MIME = {
@@ -228,19 +230,37 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 200, { ok: true });
       }
     }
+    if (p === '/api/radio' && req.method === 'POST') { // COM1: Standby setzen bzw. umschalten (nur vom PC)
+      if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' });
+      const b = await readBody(req);
+      if (b.action === 'standby') {
+        const hz = Math.round(Number(b.hz));
+        if (!(hz >= 118000000 && hz <= 136992000)) return sendJson(res, 400, { error: 'Frequenz außerhalb 118.000–136.990.' });
+        return sendJson(res, 200, { ok: !!sim.sendEvent('COM_STBY_RADIO_SET_HZ', hz), hz });
+      }
+      if (b.action === 'swap') return sendJson(res, 200, { ok: !!sim.sendEvent('COM_RADIO_SWAP', 0) });
+      return sendJson(res, 400, { error: 'ungültig' });
+    }
     if (p === '/api/cp/event' && req.method === 'POST') {
       const b = await readBody(req);
       if (!CP_TYPES.has(b.type)) return sendJson(res, 400, { error: 'ungültig' });
       const ev = { type: b.type, from: String(b.from || '').slice(0, 40) };
       if (b.type === 'pick' || b.type === 'show') ev.index = Math.max(0, Math.min(99, Number(b.index) | 0));
       if (b.type === 'input') ev.text = String(b.text || '').slice(0, 300);
+      if (b.type === 'cmd') {
+        if (!CP_ACTIONS.has(b.action)) return sendJson(res, 400, { error: 'ungültig' });
+        ev.action = b.action; ev.id = String(b.id || '').slice(0, 80);
+        if (b.action === 'mute') { cpMuted = ev.id === '1'; ev.id = cpMuted ? '1' : '0'; }
+        // Läuft am PC kein Copilot-Fenster, bittet der Server die Windows-App, es zu öffnen
+        if (b.action === 'start' && Date.now() - cpHost.t >= 15000) console.log('@@EFB:COPILOT_OPEN@@');
+      }
       if (b.type === 'log') { ev.who = String(b.who || '').slice(0, 20); ev.text = String(b.text || '').slice(0, 400); }
       bcast('cp', ev);
       return sendJson(res, 200, { ok: true });
     }
     if (p === '/api/cp/host') {
       if (req.method === 'POST') { const b = await readBody(req); cpHost = b.off ? { id: '', t: 0 } : { id: String(b.id || '').slice(0, 40), t: Date.now() }; return sendJson(res, 200, { ok: true }); }
-      return sendJson(res, 200, { active: Date.now() - cpHost.t < 15000, id: cpHost.id });
+      return sendJson(res, 200, { active: Date.now() - cpHost.t < 15000, id: cpHost.id, local, mute: cpMuted });
     }
     if (p === '/api/copilot') {
       const f = path.join(__dirname, 'copilot.json');
@@ -252,8 +272,15 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.rate === 'number' && b.rate >= 0.5 && b.rate <= 2) o.rate = b.rate;
         if (typeof b.mic === 'boolean') o.mic = b.mic;
         if (typeof b.autostart === 'boolean') o.autostart = b.autostart;
+        if (typeof b.packsOff === 'boolean') o.packsOff = b.packsOff;
+        if (b.life && typeof b.life === 'object') o.life = { taxi: b.life.taxi !== false, traffic: b.life.traffic !== false, calls: b.life.calls !== false, ground: b.life.ground !== false };
         if (b.voice && typeof b.voice === 'object') { o.voice = o.voice || {}; for (const k of ['de', 'en', 'ground']) if (typeof b.voice[k] === 'string') o.voice[k] = b.voice[k].slice(0, 200); }
+        if (b.amb && typeof b.amb === 'object') {
+          const a = b.amb, n = (x, lo, hi, d) => (typeof x === 'number' && x >= lo && x <= hi ? x : d);
+          o.amb = { radio: a.radio !== false, radioVol: n(a.radioVol, 0, 1, 0.35), amb: a.amb !== false, ambVol: n(a.ambVol, 0, 1, 0.4), chance: n(a.chance, 0, 1, 0.5), off: (Array.isArray(a.off) ? a.off : []).slice(0, 60).map((x) => String(x).slice(0, 90)) };
+        }
         fs.writeFileSync(f, JSON.stringify(o, null, 2));
+        bcast('cp', { type: 'prefs', from: String(b.from || '').slice(0, 40) });
         return sendJson(res, 200, o);
       }
     }
