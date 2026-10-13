@@ -10,6 +10,7 @@ const releases = require('./lib/releases');
 const settingsStore = require('./lib/store');
 const voiceLib = require('./lib/voices');
 const whisperLib = require('./lib/whisper');
+const kokoroLib = require('./lib/kokoro');
 const communityLib = require('./lib/community');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
@@ -20,6 +21,7 @@ const BOOT = global.__EFB_BOOT || { shellDir: path.join(__dirname, '..'), bundle
 const CODE_VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version; } catch { return '0.0.0'; } })();
 const BUNDLE = app.isPackaged ? path.join(process.resourcesPath, 'efb') : path.join(BOOT.shellDir, 'efb-bundle');
 const WHISPER_DIR = path.join(app.getPath('userData'), 'whisper');
+const KOKORO_DIR = path.join(app.getPath('userData'), 'kokoro');
 const SETTINGS_FILE = path.join(DATA, 'launcher.json');
 const VOICES_USER = path.join(DATA, 'voices');
 const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices') : path.join(BOOT.shellDir, 'voices-bundle');
@@ -128,6 +130,7 @@ function openCopilot() {
 }
 const whisperEnv = () => whisperLib.env(WHISPER_DIR, S.sttModel);
 async function sttApply() { Object.assign(proc.env, whisperEnv()); if (proc.status === 'running') { await proc.restart(); if (cpWin && !cpWin.isDestroyed()) setTimeout(() => cpWin && !cpWin.isDestroyed() && cpWin.reload(), 2500); } }
+async function kokoroApply() { Object.assign(proc.env, kokoroLib.env(KOKORO_DIR)); if (proc.status === 'running') { await proc.restart(); if (cpWin && !cpWin.isDestroyed()) setTimeout(() => cpWin && !cpWin.isDestroyed() && cpWin.reload(), 2500); } }
 const sttState = () => ({ ...whisperLib.status(WHISPER_DIR, S.sttModel), cores: os.cpus().length });
 
 // Sim-Modul im Community-Ordner: beim Start und nach EFB-Updates automatisch installieren bzw. erneuern
@@ -157,7 +160,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   S = settingsStore.load(SETTINGS_FILE, safe);
   seed();
-  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath(), EFB_PIPER: PIPER_EXE, EFB_VOICES: VOICES_USER, EFB_VOICES_BUNDLED: VOICES_BUNDLED, ...whisperEnv() }, getPort: null });
+  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath(), EFB_PIPER: PIPER_EXE, EFB_VOICES: VOICES_USER, EFB_VOICES_BUNDLED: VOICES_BUNDLED, ...whisperEnv(), ...kokoroLib.env(KOKORO_DIR) }, getPort: null });
   // Mikrofon nur für die lokale EFB erlauben
   const okOrigin = (u) => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(u || '');
   const ses = require('electron').session.defaultSession;
@@ -221,6 +224,9 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('stt:use', async (_e, id) => { S = { ...S, sttModel: id }; settingsStore.save(SETTINGS_FILE, S, safe); await sttApply(); return sttState(); });
   ipcMain.handle('stt:remove', async (_e, id) => { whisperLib.removeModel(WHISPER_DIR, id); await sttApply(); return sttState(); });
+  ipcMain.handle('kokoro:status', () => kokoroLib.status(KOKORO_DIR));
+  ipcMain.handle('kokoro:install', async () => { await kokoroLib.install(KOKORO_DIR, { onProgress: (what, p) => send('kokoro:progress', { what, p }) }); await kokoroApply(); return kokoroLib.status(KOKORO_DIR); });
+  ipcMain.handle('kokoro:remove', async () => { kokoroLib.remove(KOKORO_DIR); await kokoroApply(); return kokoroLib.status(KOKORO_DIR); });
   ipcMain.handle('copilot:get', () => readJson(copilotFile(), {}));
   ipcMain.handle('copilot:set', (_e, patch) => { const o = { ...readJson(copilotFile(), {}), ...patch }; if (patch.voice) o.voice = { ...(readJson(copilotFile(), {}).voice || {}), ...patch.voice }; fs.writeFileSync(copilotFile(), JSON.stringify(o, null, 2)); return o; });
   ipcMain.handle('voices:list', () => ({ voices: voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }), piper: !!PIPER_EXE }));

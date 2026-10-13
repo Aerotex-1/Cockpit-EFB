@@ -53,7 +53,11 @@ Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.3.8, enthält EFB 1.2.10)
+## Stand dieser Version (App 1.3.10, enthält EFB 1.2.14)
+
+- **Kokoro (1.3.10):** Karte „Natürliche Stimmen (Kokoro, Englisch)“ in der App; lib/kokoro.js lädt sherpa-onnx (win-x64-shared, v1.12.20, 26 MB) und das Modell kokoro-int8-en-v0_19 (103 MB) von GitHub nach `userData/kokoro` und entpackt mit dem in Windows 10/11 vorhandenen `tar`. Der EFB bekommt `EFB_KOKORO` und `EFB_KOKORO_DIR`; tts.js ruft `sherpa-onnx-offline-tts.exe` pro Satz auf (Zwischenspeicher in cache/tts). Test: `node app/tools/test-kokoro.js`. Auf einem Linux-Rechner mit dem Linux-Paket wurde die Sprachausgabe geprüft, unter Windows noch nicht. Benötigt die Visual-C++-Laufzeit (auf MSFS-PCs vorhanden).
+- **Stimmen (1.3.9):** Katalog um hochwertigere Piper-Stimmen erweitert (Ryan high, Lessac high, Cori high, HFC Male, Joe, John, Norman). Die Bodencrew nimmt automatisch die beste installierte (Ryan high zuerst). Nach dem Installieren in der App unter Stimmen auswählbar.
+
 - **Sim-Modul:** Die App findet den Community-Ordner von MSFS 2024 selbst (aus der UserCfg.opt, Store und Steam) oder du wählst ihn unter „Sim-Modul“. Das Modul `cockpit-efb-link` wird beim App-Start und nach EFB-Updates automatisch installiert bzw. erneuert (abschaltbar). Test: `node tools/test-community.js`.
 - **Copilot-Tab:** Einstellungen und Verlauf liegen im Tab „Copilot“ (nicht mehr bei den Checklisten). Das iPad steuert nur: „Starten“ dort startet den Copilot am PC, und die App öffnet bei Bedarf das Copilot-Fenster (App 1.3.8).
 - **Audio-Geräte:** Mikrofon und Ausgabe wählst du im Copilot-Fenster unter „Audio-Geräte“. Das ist reine EFB-Funktion (EFB 1.2.7), die App braucht dafür kein Update.

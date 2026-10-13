@@ -132,6 +132,7 @@ class Efb {
     d.doors.forEach((door) => add(`INTERACTIVE POINT OPEN:${door.point}`, 'percent over 100'));
     if (d.fuelPoint !== null) add(`INTERACTIVE POINT OPEN:${d.fuelPoint}`, 'percent over 100');
     for (let i = 1; i <= d.gpus; i++) add(`L:A32NX_EXT_PWR_AVAIL:${i}`);
+    add('EXTERNAL POWER AVAILABLE:1', 'bool'); // Standardvariable: Rückfall, falls der Flieger (z. B. Headwind) die A32NX-Variable nicht pflegt
     if (d.asu) add('L:A32NX_ASU_TURNED_ON');
     ['L:A32NX_GND_EQP_IS_VISIBLE', 'L:A32NX_MODEL_WHEELCHOCKS_ENABLED', 'L:A32NX_MODEL_CONES_ENABLED',
       'L:A32NX_AIRCRAFT_PRESET_LOAD', 'L:A32NX_AIRCRAFT_PRESET_LOAD_EXPEDITE', 'L:A32NX_IS_STATIONARY'].forEach((v) => add(v));
@@ -189,7 +190,7 @@ class Efb {
     const ground = {
       doors: d.doors.map((door, i) => ({ i, name: door.name, open: g(`INTERACTIVE POINT OPEN:${door.point}`) })),
       fuelTruck: d.fuelPoint !== null ? g(`INTERACTIVE POINT OPEN:${d.fuelPoint}`) : null,
-      gpu: Array.from({ length: d.gpus }, (_, i) => g(`L:A32NX_EXT_PWR_AVAIL:${i + 1}`) > 0).some(Boolean),
+      gpu: Array.from({ length: d.gpus }, (_, i) => g(`L:A32NX_EXT_PWR_AVAIL:${i + 1}`) > 0).some(Boolean) || g('EXTERNAL POWER AVAILABLE:1') > 0,
       asu: d.asu ? g('L:A32NX_ASU_TURNED_ON') > 0 : null,
       chocks: g('L:A32NX_MODEL_WHEELCHOCKS_ENABLED') > 0,
       cones: g('L:A32NX_MODEL_CONES_ENABLED') > 0,
@@ -345,7 +346,7 @@ class Efb {
   _toggleGpu() {
     const d = this.def();
     const v = this.sim.state.vars || {};
-    const avail = Array.from({ length: d.gpus }, (_, i) => Number(v[`L:A32NX_EXT_PWR_AVAIL:${i + 1}`]) > 0).some(Boolean);
+    const avail = Array.from({ length: d.gpus }, (_, i) => Number(v[`L:A32NX_EXT_PWR_AVAIL:${i + 1}`]) > 0).some(Boolean) || Number(v['EXTERNAL POWER AVAILABLE:1']) > 0;
     if (avail) {
       for (let i = 1; i <= d.gpus; i++) this.sim.setLVar(`L:A32NX_EXT_PWR_AVAIL:${i}`, 0);
       this.sim.setLVar(d.gpus === 1 ? 'L:A32NX_OVHD_ELEC_EXT_PWR_PB_IS_ON' : 'L:A32NX_OVHD_ELEC_EXT_PWR_1_PB_IS_ON', 0);

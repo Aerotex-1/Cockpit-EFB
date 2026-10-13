@@ -94,7 +94,7 @@
     const s = app.sim || {};
     if (!s.connected && !s.demo) return null;
     const now = Date.now();
-    if (!s.onGround) { lat.since = lat.since || now; if (now - lat.since > 8000) lat.flown = true; } else lat.since = 0;
+    if (!s.onGround && (s.ias || 0) > 80) { lat.since = lat.since || now; if (now - lat.since > 8000) lat.flown = true; } else lat.since = 0; // Ladezeit des Sims (kurz „in der Luft“) zählt nicht als Flug
     if (lat.flown && s.onGround && (s.gs || 0) < 80) lat.landed = true;
     const gs = s.gs || 0;
     if (lat.landed) return gs < 3 && s.parkingBrake !== false ? 'post' : 'in';
@@ -103,7 +103,8 @@
       if ((s.vs || 0) < -300 && (s.alt || 0) < 15000 && lat.flown) return 'desc';
       return 'air';
     }
-    return gs < 3 ? 'pre' : 'out';
+    const pb = ((s.efb || {}).ground || {}).pushback; // beim Pushback sind wir noch am Gate
+    return gs < 3 || (pb && gs < 8) ? 'pre' : 'out';
   }
   const lists = () => app.checklists[checklistKey()] || [];
   const progOf = () => store.get('cl.' + checklistKey(), {});
@@ -160,13 +161,22 @@
     String(text).split(/\{\{(.*?)\}\}/).forEach((t, i) => { t = spellOut(t.trim()); if (t) out.push({ text: t, lang: i % 2 ? 'en' : lang }); });
     return out;
   }
+  const capFirst = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  function kSplit(t) {
+    const o = []; const m = t.match(/^(Ground to Cockpit,|Ground, hello,)\s*([\s\S]*)$/);
+    if (m) { o.push(m[1]); t = m[2]; }
+    t.split(/(?<=[.!?])\s+/).forEach((x) => { x = x.trim(); if (x) o.push(capFirst(x)); });
+    return o;
+  }
   async function say(text, lang, opt) {
     lang = lang || pref.lang; opt = opt || {};
     log(opt.who || 'Copilot', String(text).replace(/\{\{|\}\}/g, ''));
     if (!S.on || muted) return;
-    const ps = parts(text, lang); if (!ps.length) return;
-    S.speaking = true; ui(); pauseRec();
     const vid = (p) => opt.voiceId || piperFor(p.lang);
+    // Kokoro rechnet pro Satz: kurze, oft gleiche Stücke (Anrede, einzelne Sätze) → Zwischenspeicher trifft öfter, erster Satz kommt schneller
+    const ps = parts(text, lang).flatMap((p) => { const id = vid(p); return id && id.startsWith('kokoro-') && !opt.url ? kSplit(p.text).map((x) => ({ text: x, lang: p.lang })) : [p]; });
+    if (!ps.length) return;
+    S.speaking = true; ui(); pauseRec();
     if (!opt.url) ps.slice(1).forEach((p) => { const id = vid(p); if (id) fetch(piperUrl(id, p.text)).catch(() => {}); }); // schon vorrechnen lassen
     try {
       for (const p of ps) {
@@ -440,14 +450,20 @@
   const FREQ_CMD = /\b(frequenc\w*|frequenz\w*|freq|stand\s?-?by|com\s?1|tune|dial\w*|eindreh\w*|switch\w*|swap|wechsel\w*|umschalt\w*)\b/i;
   const SWAP_CMD = /\b(switch\w*|swap|wechsel\w*|umschalt\w*|activate|aktivier\w*)\b/i;
   function freqOf(text) { // → Hz oder null
-    let t = String(text).toLowerCase();
-    let m = t.match(/(?<!\d)(1[123]\d)\s?[.,]\s?(\d{1,3})(?!\d)/);
-    let ip, fp;
-    if (m) { ip = m[1]; fp = m[2]; } else {
-      t = t.replace(/\b(decimal|dezimal|point|komma|punkt|dot)\b/g, ' ~ ');
-      t = t.replace(/[a-zäöüß]+/g, (w) => (Object.prototype.hasOwnProperty.call(DW, w) && !/^(ein|eine)$/.test(w) ? String(DW[w]) : w));
-      const s = t.replace(/[^\d~]/g, '');
-      if (s.includes('~')) { const q = s.split('~').filter((x, i) => x !== '' || i > 0); ip = q[0]; fp = q.slice(1).join(''); } else if (s.length >= 5) { ip = s.slice(0, 3); fp = s.slice(3); } else return null;
+    let t = String(text).toLowerCase().replace(/\bcom\s?-?\s?[12]\b/g, ' ');
+    t = t.replace(/\b(decimal|dezimal|point|komma|punkt|dot)\b/g, ' ~ ');
+    t = t.replace(/[a-zäöüß]+/g, (w) => (Object.prototype.hasOwnProperty.call(DW, w) && !/^(ein|eine)$/.test(w) ? String(DW[w]) : w));
+    let ip, fp = '';
+    if (t.includes('~')) { // „… decimal …“: davor die Pistenzahl (letzte 3 Ziffern), danach der Bruchteil
+      const parts = t.split('~'), pre = parts[0].replace(/\D/g, ''), post = parts.slice(1).join('').replace(/\D/g, '');
+      if (pre.length >= 3) { ip = pre.slice(-3); fp = post; }
+    }
+    if (!ip) {
+      const m = t.match(/(?<!\d)(1[123]\d)\s?[.,]\s?(\d{1,3})(?!\d)/);
+      if (m) { ip = m[1]; fp = m[2]; } else {
+        const d = t.replace(/\D/g, ''), k = d.search(/1[123]\d\d/);
+        if (k >= 0) { ip = d.slice(k, k + 3); fp = d.slice(k + 3, k + 6); } else return null;
+      }
     }
     if (!ip || ip.length !== 3) return null;
     fp = (String(fp || '') + '000').slice(0, 3);
@@ -459,6 +475,7 @@
   const radioPost = (b) => fetch('/api/radio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then((r) => r.json()).catch(() => ({ ok: false }));
   async function radioCmd(text) {
     const hz = freqOf(text), swap = SWAP_CMD.test(text);
+    log('System', (pref.lang === 'de' ? 'Frequenz verstanden: ' : 'Frequency understood: ') + (hz ? freqTxt(hz) : '—'));
     if (!hz && !swap) return say(T().noFreq);
     const sim0 = app.sim || {};
     if (hz && (!swap || Math.round(sim0.com1s || 0) !== hz)) { const r = await radioPost({ action: 'standby', hz }); if (!r.ok) return say(T().radioFail); if (!swap) return say(T().stby(freqSay(hz)), 'en'); await new Promise((res) => setTimeout(res, 400)); }
@@ -473,7 +490,7 @@
   const REQ = /\b(request|approved?|cleared?|anfordern|bestell\w*|genehmigt|freigegeben)\b/i;
   const GSX_WORDS = [
     ['deboarding', /de-?\s?board|aussteig/i], ['boarding', /\bboarding|einsteig/i], ['catering', /cater/i],
-    ['refueling', /refuel|fuel truck|fueling|betank|tanken/i], ['pushback', /push\s?-?back|zurückschieb/i],
+    ['refueling', /refuel|fuel truck|fueling|betank|tanken/i], ['pushback', /(push|bush|pusch|poosh)\s?-?\s?(back|pack|beck|bag)|\bpush\b|zurückschieb/i],
     ['jetway', /jet\s?-?way|jet bridge|fluggastbr/i], ['stairs', /stair|treppe/i], ['gpu', /\bgpu\b|ground power|external power|bodenstrom|landstrom/i], ['chocks', /chock|bremskeil/i], ['enginestart', /(start|starting)\s+(up\s+)?(the\s+|my\s+|both\s+)?engines?|engines?\s+start|start-?\s?up|anlassen|triebwerk\w*\s+(an|start)/i], ['disconnect', /disconnect|abkoppel|abstecken|trennen/i],
     ['deice', /de-?\s?ic|enteis/i], ['followme', /follow\s?-?me/i], ['cleaning', /clean|reinig/i], ['lavatory', /lavator|toilet/i],
     ['water', /water service|wasserservice|wasser/i], ['crewbus', /crew\s?-?bus/i],
@@ -510,7 +527,7 @@
   // GSX-Einträge zuordnen (z. B. „Release Point R2“, „LFRN_C3-28“, „FACING WEST (Taxiway A)“):
   // gesprochene Teile werden wie die Tokens des Eintrags zusammengesetzt („Charlie Three Two Eight“ = C328)
   const GENERIC = new Set(['RELEASE', 'POINT', 'PUSHBACK', 'PUSH', 'BACK', 'TO', 'FACING', 'TAXIWAY', 'MANUAL', 'STOP', 'MAX', 'M', 'AT', 'THE', 'POSITION', 'NORTH', 'SOUTH', 'EAST', 'WEST', 'NORD', 'NORDEN', 'OST', 'OSTEN', 'SÜD', 'SÜDEN', 'SUED']);
-  const COMMON = new Set([...GENERIC, 'COCKPIT', 'GROUND', 'APPROVED', 'APPROVE', 'REQUEST', 'CLEARED', 'CLEAR', 'PLEASE', 'GSX', 'BODENPERSONAL', 'ANFORDERN', 'DIRECTION', 'RICHTUNG', 'AND', 'FOR', 'UND', 'BITTE', 'FREIGEGEBEN', 'GENEHMIGT', 'THANKS', 'THANK', 'YOU', 'ON', 'GATE', 'STAND']);
+  const COMMON = new Set([...GENERIC, 'COCKPIT', 'GROUND', 'APPROVED', 'APPROVE', 'REQUEST', 'CLEARED', 'CLEAR', 'PLEASE', 'GSX', 'BODENPERSONAL', 'ANFORDERN', 'DIRECTION', 'RICHTUNG', 'AND', 'FOR', 'UND', 'BITTE', 'FREIGEGEBEN', 'GENEHMIGT', 'THANKS', 'THANK', 'YOU', 'ON', 'GATE', 'STAND', 'WE', 'NEED', 'WOULD', 'LIKE', 'CAN', 'COULD', 'ME', 'US', 'NOW', 'READY', 'WANT', 'BUSHBACK', 'PUSHPACK', 'PUSCH', 'WIR', 'BRAUCHEN', 'UNS', 'MÖCHTEN', 'MOECHTEN', 'EIN', 'EINEN', 'EINE', 'JETZT', 'ICH', 'HELLO', 'HALLO', 'HI']);
   function utTokens(text) {
     const raw = String(text).toUpperCase().replace(/[^A-Z0-9ÄÖÜ]+/g, ' ').trim().split(' ').filter(Boolean);
     const out = [];
@@ -559,19 +576,42 @@
   const sounds = new Map();
   const loadSounds = () => fetch('/api/sounds').then((r) => r.json()).then((l) => { sounds.clear(); (l || []).forEach((x) => sounds.set(x.key.toLowerCase(), x.file)); }).catch(() => {});
 
+  // Ground wird nur angesprochen, wenn „Cockpit“ und „Ground“ im selben Satz vorkommen – sonst hört der Copilot
+  const addressed = (t) => /cock\s?-?\s?pit|kokpit/i.test(t) && GROUND.test(t);
   function gsxCmd(text) {
-    const strong = /cockpit to ground|\b(request|approved?|cleared?|anfordern|bestell\w*|genehmigt|freigegeben|gsx|bodenpersonal|bodendienst\w*|bodencrew)\b/i;
-    if (!(S.mode === 'run' ? strong.test(text) : (GROUND.test(text) || REQ.test(text)))) return null;
+    if (!addressed(text)) return null;
     const hit = GSX_WORDS.find(([, re]) => re.test(text));
-    if (!hit && S.mode !== 'run' && GROUND.test(text) && HELLO.test(text)) return 'hello';
-    return hit ? hit[0] : null;
+    if (hit) return hit[0];
+    if (HELLO.test(text)) return 'hello';
+    return S.mode === 'gsxMenu' ? null : 'unknown'; // an Ground gerichtet, aber Dienst nicht verstanden → nicht an die Checkliste weiterreichen
   }
+  // Standplatz aus dem GSX-Menütitel („GSX – Leipzig/Halle Stand 12“, „Gate B27“ …)
+  function standOf(title) {
+    const m = String(title || '').match(/\b(stand|gate|parking(?: position)?|position|apron|pos\.?)\s*([A-Z]{0,2}\s?\d{1,3}[A-Z]?)\b/i);
+    return m ? m[1].toLowerCase().replace('pos.', 'position') + ' ' + m[2].replace(/\s+/g, '') : '';
+  }
+  // Häufige Ground-Sätze mit Kokoro vorab berechnen (im Hintergrund, nur am Boden), damit sie ohne Wartezeit kommen
+  const WARM = ['Ground to Cockpit,', 'Ground, hello,', 'Go ahead.', 'Roger.', 'Say again, which service do you need?', 'Which direction do you want?', 'Confirm doors closed and bridge retracted.', 'Tug is on its way.', 'Release the parking brake when ready.', 'Brakes released, starting pushback.', 'Pushback complete, set parking brake.', 'Cleared to start engines, call me when both engines are stable.', 'Roger, disconnecting. Standing by for hand signals on your left.', 'Disconnect complete, you are clear on the left. Have a good flight!', 'Ground power connected, external power available.', 'Ground power disconnected.', 'Chocks are in place.', 'Chocks removed.', 'Boarding complete, doors are being closed.', 'Refueling complete, fuel truck is leaving.', 'Welcome. Chocks are in place, ground power is available on request.', 'Boarding requested.', 'Catering requested.', 'Refueling requested.', 'Negative, set parking brake first.'];
+  let warmKey = '';
+  async function prewarm() {
+    if (!HOST) return; const id = groundVoice(); if (!id || !id.startsWith('kokoro-')) return;
+    const key = id + '|' + pref.rate; if (warmKey === key) return; warmKey = key;
+    for (const t of WARM) {
+      for (let i = 0; i < 400; i++) { const sm = app.sim || {}; if (!S.speaking && !(sm.connected && !sm.onGround) && warmKey === key) break; await wait(1500); }
+      if (warmKey !== key) return;
+      await fetch(piperUrl(id, t)).then((r) => r.arrayBuffer()).catch(() => {});
+      await wait(400);
+    }
+  }
+  setInterval(() => { try { if (piper.available) prewarm(); } catch (e) { /* weiter */ } }, 30000);
   function groundVoice() {
     if (!piper.available) return null;
     const w = pref.voice && pref.voice.ground;
     if (w && w.startsWith('piper:') && piper.voices.some((v) => v.id === w.slice(6))) return w.slice(6);
     const mine = piperFor('en'), en = piper.voices.filter((v) => v.lang === 'en');
-    return (en.find((v) => /ryan/.test(v.id) && v.id !== mine) || en.find((v) => v.id !== mine) || en[0] || {}).id || null;
+    const BEST = ['kokoro-am_michael', 'kokoro-bm_lewis', 'kokoro-am_adam', 'en_US-ryan-high', 'en_GB-cori-high', 'en_US-hfc_male-medium', 'en_US-joe-medium', 'en_US-john-medium', 'en_US-norman-medium', 'en_US-ryan-medium'];
+    for (const id of BEST) if (id !== mine && en.some((v) => v.id === id)) return id;
+    return (en.find((v) => v.id !== mine) || en[0] || {}).id || null;
   }
   // keys: Sound-Namen in der Reihenfolge, in der nach einer eigenen Datei gesucht wird
   const HELLO = /\b(hello|hallo|hi|hey|good\s+(morning|afternoon|evening|day)|guten\s+(morgen|tag|abend)|moin|servus)\b/i;
@@ -604,7 +644,7 @@
       if (!r.ok) { const g = await fetch('/api/gsx/service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: key }) }).then((x) => x.json()).catch(() => ({ ok: false })); if (!g.ok) return groundLine('Negative. ' + name + ' is not available at this stand.', [key + '.negative', 'negative']); }
       let now = gnd()[key];
       for (let i = 0; i < 10 && now != null && now !== wantOn; i++) { await wait(500); now = gnd()[key]; } // Status des EFB kommt verzögert
-      if (now != null && now !== wantOn) return groundLine('Stand by, ' + name.toLowerCase() + (key === 'gpu' ? ' is' : ' are') + ' not responding. Say again to retry.', ['again']);
+      if (now != null && now !== wantOn) return groundLine(name + ' requested, but I cannot confirm it. Please check the panel.', ['again']);
       const txt = key === 'gpu' ? (wantOn ? 'Ground power connected, external power available.' : 'Ground power disconnected.') : (wantOn ? 'Chocks are in place.' : 'Chocks removed.');
       return groundLine(txt, [key + (wantOn ? '.on' : '.off'), key + '.ack', 'ack']);
     }
@@ -639,6 +679,7 @@
   async function groundDo(key, text, dir) {
     if (HELLO.test(text)) helloAt = Date.now();
     if (key === 'hello') return groundLine('go ahead.', ['hello', 'ack']);
+    if (key === 'unknown') return groundLine('Say again, which service do you need?', ['again']);
     if (key === 'gpu' || key === 'chocks' || key === 'enginestart' || key === 'disconnect') return localDo(key, text);
     const r = await fetch('/api/gsx/service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: key }) }).then((x) => x.json()).catch(() => ({ ok: false, error: 'PC-Brücke nicht erreichbar.' }));
     if (!r.ok) { log('System', r.error || 'GSX-Fehler'); return groundLine('Negative. ' + GS_LABEL[key] + ' is not available right now.', [key + '.negative', 'negative']); }
@@ -648,21 +689,32 @@
     const pk = spec ? pickIdx(m.items, text, dir) : { i: -1 };
     if (spec && pk.i < 0) {
       if (pk.ties) { await groundLine('Which one? ' + pk.ties.map((i) => itemSpoken(m.items[i])).join(', or ') + '.', ['again']); return groundMenu(m, true, pk.ties); }
-      await groundLine('Negative. That pushback position is not available.', [key + '.negative', 'negative']); return groundMenu(m);
+      if (dir) { await groundLine('Negative. That pushback position is not available.', [key + '.negative', 'negative']); return groundMenu(m); }
     }
-    const word = key === 'pushback' ? 'approved' : 'requested';
+    const stand = standOf(r.stand);
     const it = pk.i >= 0 ? m.items[pk.i] : '';
     const dtxt = dir && !pk.both ? ', facing ' + dir : '';
-    await groundLine(GS_LABEL[key] + ' ' + word + (it ? ', ' + itemSpoken(it) : '') + dtxt + '.', [...(it ? soundKeys(key, it, dir) : []), key + '.ack', 'ack']);
+    if (key === 'pushback') {
+      S.pushStand = stand;
+      const head = 'Roger, pushback' + (stand ? ' from ' + stand : '') + (it ? ', ' + itemSpoken(it) + dtxt : '') + '.';
+      if (it) {
+        await groundLine(head, [...soundKeys(key, it, dir), key + '.ack', 'ack']);
+      } else {
+        await groundLine(head + ' Confirm doors closed and ' + 'bridge retracted.', [key + '.ack', 'ack']);
+        if (m) return groundMenu(m, false, undefined, 'Which direction do you want?'); // fragt die Richtung ab
+      }
+    } else {
+      await groundLine(GS_LABEL[key] + ' requested' + (it ? ', ' + itemSpoken(it) : '') + dtxt + '.', [...(it ? soundKeys(key, it, dir) : []), key + '.ack', 'ack']);
+    }
     S.wantDir = dir && pk.i >= 0 && !pk.both ? dir : null;
     if (pk.i >= 0) return afterChoose(m.title, pk.i);
     if (m) return groundMenu(m, true);
   }
-  async function groundMenu(m, quiet, only) {
+  async function groundMenu(m, quiet, only, intro) {
     S.afterGsx = S.mode === 'run' ? 'run' : S.afterGsx; S.mode = 'gsxMenu'; S.gsxItems = m.items; S.gsxTitle = m.title; armAsk(45000);
     if (quiet && only) return; // Auswahl wurde schon vorgelesen
     const opts = m.items.map((t, i) => [i, t]).filter(([i]) => !only || only.includes(i)).map(([i, t]) => (i + 1) + ', ' + itemSpoken(t)).join('. ');
-    return groundLine(m.title + '. ' + opts + '.', []);
+    return groundLine((intro || m.title) + ' ' + opts + '.', []);
   }
   // Auswahl senden; stellt GSX danach noch eine Frage, wird sie vorgelesen
   async function afterChoose(prevTitle, idx, items) {
@@ -696,8 +748,18 @@
       items.forEach((it, i) => { const sc = tokz(it).filter((w) => w.length > 2 && tt.some((x) => wordEq(x, w))).length; if (sc > best) { best = sc; idx = i; } });
     }
     if (idx < 0) return groundLine('Say again.', ['again']);
-    await groundLine('Roger, ' + itemSpoken(items[idx]) + '.', ['ack']);
+    await groundLine('Roger, ' + (/push/i.test(S.gsxTitle || '') ? 'pushback ' : '') + itemSpoken(items[idx]).replace(/^facing /i, 'facing ') + '.', ['ack']);
     return afterChoose(S.gsxTitle, idx);
+  }
+  // Pushback beginnt: Schlepper angeschlossen → Bremse lösen lassen, dann Beginn melden
+  let pushBusy = false;
+  async function pushStart() {
+    if (pushBusy) return; pushBusy = true;
+    try {
+      await call('Tug is connected' + (S.pushStand ? ' at ' + S.pushStand : '') + ', release the parking brake when ready.', ['pushback.connected']);
+      for (let i = 0; i < 80 && (app.sim || {}).parkingBrake !== false; i++) await wait(500);
+      if ((app.sim || {}).parkingBrake === false) await call('Brakes released, starting pushback.', ['pushback.start']);
+    } finally { pushBusy = false; }
   }
   function gsxWatch() {
     if (!S.on) return;
@@ -709,7 +771,9 @@
       if (S.speaking) return; // später nochmal
       gsPrev[svc] = st;
       if (!gsxAsked.has(svc)) continue;
-      if (st === 5) call(GS_LABEL[svc] + ' in progress.', [svc + '.progress']);
+      if (svc === 'pushback' && st === 4) call('Tug is on its way.', ['pushback.tug']);
+      if (svc === 'pushback' && st === 5) pushStart();
+      else if (st === 5) call(GS_LABEL[svc] + ' in progress.', [svc + '.progress']);
       if (st === 6) {
         gsxAsked.delete(svc);
         if (svc === 'pushback') { S.pushDone = Date.now(); call('Pushback complete, set parking brake.', ['pushback.done']); }

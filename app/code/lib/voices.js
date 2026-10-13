@@ -16,6 +16,13 @@ const CATALOG = [
   { id: 'en_US-ryan-medium', lang: 'en', name: 'Ryan', desc: 'männlich, US-Englisch', mb: 63 },
   { id: 'en_US-amy-medium', lang: 'en', name: 'Amy', desc: 'weiblich, US-Englisch', mb: 63 },
   { id: 'en_GB-alan-medium', lang: 'en', name: 'Alan', desc: 'männlich, britisch', mb: 63 },
+  { id: 'en_US-ryan-high', lang: 'en', name: 'Ryan (hohe Qualität)', desc: 'männlich, US-Englisch, deutlich natürlicher – empfohlen für die Bodencrew', mb: 120 },
+  { id: 'en_US-lessac-high', lang: 'en', name: 'Lessac (hohe Qualität)', desc: 'weiblich, US-Englisch, natürlicher', mb: 120 },
+  { id: 'en_GB-cori-high', lang: 'en', name: 'Cori (hohe Qualität)', desc: 'weiblich, britisch, natürlich', mb: 120 },
+  { id: 'en_US-hfc_male-medium', lang: 'en', name: 'HFC Male', desc: 'männlich, US-Englisch, ruhig', mb: 63 },
+  { id: 'en_US-joe-medium', lang: 'en', name: 'Joe', desc: 'männlich, US-Englisch, tief', mb: 63 },
+  { id: 'en_US-john-medium', lang: 'en', name: 'John', desc: 'männlich, US-Englisch', mb: 63 },
+  { id: 'en_US-norman-medium', lang: 'en', name: 'Norman', desc: 'männlich, US-Englisch', mb: 63 },
   { id: 'en_GB-jenny_dioco-medium', lang: 'en', name: 'Jenny', desc: 'weiblich, britisch', mb: 63 },
 ];
 

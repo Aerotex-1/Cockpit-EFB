@@ -2,7 +2,7 @@
 // Gilt für die eingebauten Stimmen, Funk-/Hintergrundgeräusche und eigene Sounds. Systemstimmen des Browsers folgen dem Windows-Standard.
 (function () {
   const KEY = 'efb.audio';
-  let cfg = { mic: '', out: '' };
+  let cfg = { mic: '', out: '', gain: 1 };
   try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* egal */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch { /* egal */ } };
   const subs = [];
@@ -30,6 +30,7 @@
     const missM = cfg.mic && !mics.some((d) => d.deviceId === cfg.mic), missO = cfg.out && !outs.some((d) => d.deviceId === cfg.out);
     box.innerHTML = `<summary>Audio-Geräte</summary><div class="amb-body">
       <label class="cp-rate">Mikrofon <select id="adMic">${opt(mics, cfg.mic, 'Mikrofon')}</select></label>
+      <label class="cp-rate">Eingangslautstärke <input type="range" id="adGain" min="0.5" max="6" step="0.1" value="${cfg.gain || 1}"> <b id="adGainV">${(cfg.gain || 1).toFixed(1)}×</b></label>
       <div class="ad-meter"><div id="adBar"></div></div>
       <div class="amb-row"><span id="adMicMsg">${missM ? 'Das gewählte Mikrofon ist nicht angeschlossen, es wird das Standardgerät genutzt.' : ''}</span><button class="btn-s" id="adMicTest">Mikrofon testen (4 s)</button></div>
       <label class="cp-rate">Ausgabe <select id="adOut" ${canSink ? '' : 'disabled'}>${opt(outs, cfg.out, 'Ausgabe')}</select></label>
@@ -37,6 +38,7 @@
       <small>Die Auswahl gilt für Copilot-Stimmen, Funk, Geräusche und eigene Sounds. Systemstimmen des Browsers (Ersatz, wenn keine eingebaute Stimme da ist) folgen dem Windows-Standard.</small></div>`;
     const q = (s) => box.querySelector(s);
     q('#adMic').onchange = (e) => { cfg.mic = e.target.value; save(); subs.forEach((f) => f('mic')); };
+    q('#adGain').oninput = (e) => { cfg.gain = parseFloat(e.target.value) || 1; q('#adGainV').textContent = cfg.gain.toFixed(1) + '×'; save(); };
     q('#adOut').onchange = (e) => { cfg.out = e.target.value; save(); subs.forEach((f) => f('out')); beep(); };
     q('#adOutTest').onclick = beep;
     q('#adMicTest').onclick = async () => {
@@ -46,7 +48,7 @@
         st = await navigator.mediaDevices.getUserMedia({ audio: micConstraints() });
         ctx = new (window.AudioContext || window.webkitAudioContext)(); const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(st).connect(an);
         const buf = new Float32Array(an.fftSize); let peak = 0; const t0 = performance.now();
-        await new Promise((res) => { const tick = () => { an.getFloatTimeDomainData(buf); let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i]; const r = Math.sqrt(s / buf.length); peak = Math.max(peak, r); bar.style.width = Math.min(100, r * 400) + '%'; if (performance.now() - t0 < 4000) requestAnimationFrame(tick); else res(); }; tick(); });
+        await new Promise((res) => { const tick = () => { an.getFloatTimeDomainData(buf); let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i]; const r = Math.min(1, Math.sqrt(s / buf.length) * (cfg.gain || 1)); peak = Math.max(peak, r); bar.style.width = Math.min(100, r * 400) + '%'; if (performance.now() - t0 < 4000) requestAnimationFrame(tick); else res(); }; tick(); });
         msg.textContent = peak < 0.005 ? 'Kein Signal. Anderes Mikrofon wählen oder Lautstärke in Windows prüfen.' : peak < 0.03 ? 'Sehr leise – Mikrofonpegel in Windows erhöhen.' : 'Mikrofon funktioniert.';
       } catch (er) { msg.textContent = 'Fehler: ' + (er.name === 'NotAllowedError' ? 'Zugriff verweigert.' : er.message); }
       try { st && st.getTracks().forEach((t) => t.stop()); ctx && ctx.close(); } catch { /* egal */ }

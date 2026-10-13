@@ -203,3 +203,20 @@ $('#comReset').onclick = async () => { renderCom(await bridge.invoke('community:
 $('#comAuto').onchange = () => bridge.invoke('settings:set', { communityAuto: $('#comAuto').checked });
 bridge.invoke('state').then((s) => { $('#comAuto').checked = s.settings.communityAuto !== false; });
 loadCom();
+
+// ---- Kokoro (natürliche englische Stimmen)
+let kkInfo = { binary: false, model: false };
+function renderKk() {
+  const on = kkInfo.binary && kkInfo.model;
+  $('#kkBox').innerHTML = `<div class="v ${on ? 'on' : ''}"><div><b>Kokoro</b> ${on ? '<span class="sub">installiert</span>' : ''}</div><span class="sub">6 englische Stimmen, US und britisch · ${kkInfo.mb || 130} MB</span>
+    ${on ? '<button data-kkrm="1">Entfernen</button>' : '<button class="primary" data-kkget="1" id="kkGet">Installieren</button>'}</div>`;
+}
+async function loadKk() { try { kkInfo = await bridge.invoke('kokoro:status'); } catch { /* ältere App */ } renderKk(); }
+document.addEventListener('click', async (e) => {
+  const g = e.target.closest('[data-kkget]'), r = e.target.closest('[data-kkrm]');
+  const fail = (er) => { $('#kkMsg').textContent = 'Fehler: ' + er.message.replace(/^Error invoking remote method[^:]*: /, ''); renderKk(); };
+  if (g) { g.disabled = true; g.textContent = '0 %'; $('#kkMsg').textContent = 'Lade …'; try { kkInfo = await bridge.invoke('kokoro:install'); renderKk(); $('#kkMsg').textContent = 'Fertig. Im Copilot-Tab bei „Stimme Bodencrew“ die Kokoro-Stimme wählen (die Bodencrew nimmt sie sonst automatisch).'; } catch (er) { fail(er); } }
+  if (r) { try { kkInfo = await bridge.invoke('kokoro:remove'); renderKk(); $('#kkMsg').textContent = ''; } catch (er) { fail(er); } }
+});
+bridge.on('kokoro:progress', ({ what, p }) => { const b = document.getElementById('kkGet'); if (b && b.disabled) b.textContent = what + ' ' + Math.round(p * 100) + ' %'; });
+loadKk();

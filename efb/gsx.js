@@ -160,6 +160,7 @@ class Gsx {
     const r = await this.refresh();
     if (!r.ok) return r;
     let menu = r.menu;
+    const stand = menu.title; // Titel des GSX-Hauptmenüs nennt Flughafen und Standplatz
     const chosen = [];
     // Steht GSX schon in einem Untermenü (z. B. Zusatzdienste), dort weitermachen
     let startStep = 0;
@@ -170,7 +171,7 @@ class Gsx {
     for (let step = startStep; step < svc.path.length; step++) {
       const idx = menu.items.findIndex(svc.path[step]);
       if (idx < 0) {
-        return { ok: false, error: `„${svc.label}“ steht gerade nicht im GSX-Menü.`, menu, partial: chosen };
+        return { stand, ok: false, error: `„${svc.label}“ steht gerade nicht im GSX-Menü.`, menu, partial: chosen };
       }
       await sleep(150);
       const before = menu.mtime;
@@ -178,9 +179,9 @@ class Gsx {
       chosen.push(menu.items[idx]);
       if (step < svc.path.length - 1 || svc.menu) menu = await this._waitMenuChange(before);
       else { const m2 = await this._waitMenuChange(before, 2000); if (m2 && m2.mtime !== before && m2.items && m2.items.length) menu = m2; else menu = null; }
-      if (!menu && step < svc.path.length - 1) return { ok: false, error: 'GSX hat das Untermenü nicht geöffnet.', partial: chosen };
+      if (!menu && step < svc.path.length - 1) return { stand, ok: false, error: 'GSX hat das Untermenü nicht geöffnet.', partial: chosen };
     }
-    return { ok: true, chosen: chosen.join(' › '), menu: menu || undefined };
+    return { stand, ok: true, chosen: chosen.join(' › '), menu: menu || undefined };
   }
 
   // ---------- Demo ----------

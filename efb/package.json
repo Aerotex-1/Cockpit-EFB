@@ -1,6 +1,6 @@
 {
   "name": "cockpit-efb",
-  "version": "1.2.10",
+  "version": "1.2.14",
   "description": "iPad-EFB f\u00fcr MSFS 2024: Karte, SimBrief, Leistungsrechner, VATSIM-ATC, GSX, Remote-EFB, Spotify",
   "license": "MIT",
   "main": "server.js",

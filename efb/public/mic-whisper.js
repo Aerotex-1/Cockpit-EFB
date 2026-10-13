@@ -3,7 +3,7 @@
 (function () {
   const RATE = 16000;
   let ctx = null, stream = null, node = null, src = null, on = false, paused = true, cb = null, opts = null;
-  let pre = [], buf = [], voiced = 0, silent = 0, speaking = false, floor = 0.004, busy = Promise.resolve(), resumeAt = 0, tok = 0;
+  let pre = [], buf = [], voiced = 0, silent = 0, speaking = false, floor = 0.004, sumRms = 0, nRms = 0, noiseThr = 0, noiseUntil = 0, busy = Promise.resolve(), resumeAt = 0, tok = 0;
   const hop = 2048;
 
   function wav(samples) {
@@ -20,7 +20,7 @@
     for (let i = 0; i < n; i++) { const a = Math.floor(i * r), e = Math.min(f.length, Math.floor((i + 1) * r)); let s = 0; for (let k = a; k < e; k++) s += f[k]; o[i] = s / Math.max(1, e - a); }
     return o;
   }
-  function reset() { pre = []; buf = []; voiced = 0; silent = 0; speaking = false; }
+  function reset() { pre = []; buf = []; voiced = 0; silent = 0; speaking = false; sumRms = 0; nRms = 0; }
   function flush() {
     const parts = buf; const v = voiced; reset();
     if (v < 0.35) return; // zu kurz (Klick, Husten)
@@ -31,7 +31,8 @@
     const o2 = opts ? opts() : {};
     const url = '/api/stt?lang=' + encodeURIComponent(o2.lang || 'auto') + '&prompt=' + encodeURIComponent(o2.prompt || '');
     const my = ++tok, body = wav(all), t0 = performance.now();
-    busy = busy.then(() => { if (my !== tok && tok - my >= 2) return; return fetch(url, { method: 'POST', body }).then((r) => r.json()).then((j) => { window.WhisperMic.last = { ms: Math.round(performance.now() - t0), srv: j && j.ms, via: j && j.via }; if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}); });
+    busy = busy.then(() => { if ((my !== tok && tok - my >= 2) || performance.now() - t0 > 8000) return; // zu alt: verwerfen, damit die Wartezeit nicht wächst
+       return fetch(url, { method: 'POST', body }).then((r) => r.json()).then((j) => { window.WhisperMic.last = { ms: Math.round(performance.now() - t0), srv: j && j.ms, via: j && j.via }; if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}); });
   }
   function onAudio(ev) {
     if (!on) return;
@@ -39,17 +40,22 @@
     window.WhisperMic._d = { paused, speaking, resumeIn: Math.round(resumeAt - now), floor };
     if (paused || now < resumeAt) { if (speaking || buf.length) reset(); return; }
     const f = down(ev.inputBuffer.getChannelData(0), ctx.sampleRate).slice();
+    const gain = window.AudioDev && window.AudioDev.cfg().gain; if (gain && gain !== 1) for (let i = 0; i < f.length; i++) f[i] = Math.max(-1, Math.min(1, f[i] * gain));
     let s = 0; for (let i = 0; i < f.length; i++) s += f[i] * f[i];
-    const rms = Math.sqrt(s / f.length), dur = f.length / RATE, thr = Math.max(0.007, Math.min(0.03, floor * 2.8));
+    const rms = Math.sqrt(s / f.length), dur = f.length / RATE, thr = Math.max(0.007, Math.min(0.03, floor * 2.8), now < noiseUntil ? noiseThr : 0);
     if (!speaking) {
       if (rms > thr) { speaking = true; buf = pre.concat([f]); voiced = dur; silent = 0; pre = []; if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(true); }
       else { floor = Math.min(0.02, floor * 0.95 + rms * 0.05); pre.push(f); if (pre.length > 3) pre.shift(); }
       return;
     }
-    buf.push(f);
+    buf.push(f); sumRms += rms; nRms++;
     if (rms > thr) { voiced += dur; silent = 0; } else silent += dur;
     let len = 0; buf.forEach((p) => { len += p.length; });
-    if (silent >= 0.45 || len / RATE > 14) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
+    if (len / RATE > 9) { // Dauerlärm statt Sprache: verwerfen und Schwelle für eine Weile anheben, sonst staut sich die Erkennung
+      noiseThr = Math.min(0.12, (sumRms / Math.max(1, nRms)) * 1.25); noiseUntil = now + 90000;
+      if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); reset(); return;
+    }
+    if (silent >= 0.45) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
   }
   window.WhisperMic = {
     async start(onText, getOpts) {

@@ -5,9 +5,18 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 const { spawn } = require('child_process');
 
 const CACHE = path.join(__dirname, 'cache', 'tts');
+// Kokoro (sherpa-onnx): natürlichere englische Stimmen; die App setzt EFB_KOKORO (Programm) und EFB_KOKORO_DIR (Modell)
+const kBin = () => { const p = process.env.EFB_KOKORO; return p && fs.existsSync(p) ? p : null; };
+const kDir = () => { const d = process.env.EFB_KOKORO_DIR; return d && ['model.int8.onnx', 'voices.bin', 'tokens.txt'].every((f) => fs.existsSync(path.join(d, f))) ? d : null; };
+const kokoroOn = () => !!(kBin() && kDir());
+const KOKORO = [ // Sprecher-Nummern des Modells kokoro-int8-en-v0_19
+  [6, 'am_michael', 'Michael (Kokoro, US, männlich)'], [5, 'am_adam', 'Adam (Kokoro, US, männlich)'], [10, 'bm_lewis', 'Lewis (Kokoro, britisch, männlich)'], [9, 'bm_george', 'George (Kokoro, britisch, männlich)'],
+  [3, 'af_sarah', 'Sarah (Kokoro, US, weiblich)'], [1, 'af_bella', 'Bella (Kokoro, US, weiblich)'], [7, 'bf_emma', 'Emma (Kokoro, britisch, weiblich)'],
+];
 const piperBin = () => { const p = process.env.EFB_PIPER; return p && fs.existsSync(p) ? p : null; };
 
 function voices() {
@@ -23,7 +32,9 @@ function voices() {
       seen.set(id, { id, lang, label: `${parts[1] || id} (${parts[2] || ''}${parts[0] ? ', ' + parts[0].replace('_', '-') : ''})`.replace(' ()', ''), file: path.join(dir, f), bundled });
     }
   });
-  return [...seen.values()].sort((a, b) => Number(b.bundled) - Number(a.bundled) || a.id.localeCompare(b.id));
+  const list = [...seen.values()].sort((a, b) => Number(b.bundled) - Number(a.bundled) || a.id.localeCompare(b.id));
+  if (kokoroOn()) KOKORO.forEach(([sid, n, label]) => list.push({ id: 'kokoro-' + n, lang: 'en', label, kokoro: sid, bundled: false }));
+  return list;
 }
 
 let running = 0; const waiting = []; const inflight = new Map();
@@ -39,12 +50,12 @@ function prune() {
 
 // liefert den Pfad einer WAV-Datei (aus dem Zwischenspeicher oder frisch erzeugt)
 async function synth(text, voiceId, rate) {
-  const bin = piperBin(); if (!bin) throw new Error('Piper ist nicht installiert.');
   text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 500); if (!text) throw new Error('Kein Text.');
   if (!/^[\w.-]+$/.test(voiceId || '')) throw new Error('Ungültige Stimme.');
   const v = voices().find((x) => x.id === voiceId); if (!v) throw new Error('Stimme nicht gefunden.');
+  const bin = v.kokoro ? kBin() : piperBin(); if (!bin) throw new Error('Sprachausgabe ist nicht installiert.');
   const r = Math.min(1.6, Math.max(0.6, Number(rate) || 1));
-  const key = crypto.createHash('sha1').update(`${voiceId}|${r.toFixed(2)}|${text}`).digest('hex');
+  const key = crypto.createHash('sha1').update(`v2|${voiceId}|${r.toFixed(2)}|${text}`).digest('hex');
   const out = path.join(CACHE, key + '.wav');
   if (fs.existsSync(out)) { try { fs.utimesSync(out, new Date(), new Date()); } catch { /* egal */ } return out; }
   if (inflight.has(key)) return inflight.get(key);
@@ -52,13 +63,17 @@ async function synth(text, voiceId, rate) {
     await slot();
     try {
       fs.mkdirSync(CACHE, { recursive: true });
-      const tmp = out + '.' + process.pid + '.tmp';
+      const tmp = out + '.' + process.pid + '.tmp.wav';
       await new Promise((res, rej) => {
-        const c = spawn(bin, ['--model', v.file, '--output_file', tmp, '--length_scale', String(+(1 / r).toFixed(3)), '--sentence_silence', '0.18'], { cwd: path.dirname(bin), windowsHide: true });
-        let err = ''; c.stderr.on('data', (d) => { err += d; if (err.length > 4000) err = err.slice(-2000); });
+        const kd = v.kokoro ? kDir() : null;
+        const args = v.kokoro
+          ? [`--kokoro-model=${path.join(kd, 'model.int8.onnx')}`, `--kokoro-voices=${path.join(kd, 'voices.bin')}`, `--kokoro-tokens=${path.join(kd, 'tokens.txt')}`, `--kokoro-data-dir=${path.join(kd, 'espeak-ng-data')}`, `--num-threads=${Math.max(2, Math.min(6, Math.floor(os.cpus().length / 2)))}`, `--sid=${v.kokoro}`, `--kokoro-length-scale=${+(1 / r).toFixed(3)}`, `--output-filename=${tmp}`, text.replace(/^-+/, '')]
+          : null;
+        const c = args ? spawn(bin, args, { cwd: path.dirname(bin), windowsHide: true }) : spawn(bin, ['--model', v.file, '--output_file', tmp, '--length_scale', String(+(1 / r).toFixed(3)), '--sentence_silence', '0.22', '--noise_scale', '0.85', '--noise_w', '1.0'], { cwd: path.dirname(bin), windowsHide: true });
+        c.stdout.on('data', () => {}); let err = ''; c.stderr.on('data', (d) => { err += d; if (err.length > 4000) err = err.slice(-2000); });
         c.on('error', rej);
         c.on('close', (code) => (code === 0 && fs.existsSync(tmp) ? res() : rej(new Error('Piper-Fehler: ' + err.split(/\r?\n/).filter(Boolean).pop()))));
-        c.stdin.on('error', () => {}); c.stdin.end(text + '\n');
+        if (!args) { c.stdin.on('error', () => {}); c.stdin.end(text + '\n'); }
       });
       fs.renameSync(tmp, out); prune();
       return out;
@@ -68,4 +83,4 @@ async function synth(text, voiceId, rate) {
   return job;
 }
 
-module.exports = { voices, synth, available: () => !!piperBin() };
+module.exports = { voices, synth, available: () => !!piperBin() || kokoroOn() };
