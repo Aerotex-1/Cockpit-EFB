@@ -54,7 +54,9 @@
   window.WhisperMic = {
     async start(onText, getOpts) {
       cb = onText; opts = getOpts; if (on) { resumeAt = performance.now() + 350; paused = false; return true; }
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
+      const AD = window.AudioDev;
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: AD ? AD.micConstraints() : { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }); }
+      catch (er) { if (!AD || !AD.cfg().mic) throw er; stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }); } // gewähltes Gerät fehlt → Standard
       try { ctx = new AudioContext({ sampleRate: RATE }); } catch { ctx = new AudioContext(); }
       src = ctx.createMediaStreamSource(stream);
       node = ctx.createScriptProcessor(hop, 1, 1);
@@ -64,6 +66,7 @@
       on = true; paused = false; reset();
       return true;
     },
+    async restart() { const c = cb, o = opts, was = paused; this.stop(); await this.start(c, o); if (was) this.pause(); },
     pause() { paused = true; reset(); },
     resume() { resumeAt = performance.now() + 350; paused = false; },
     stop() { on = false; paused = true; reset(); try { node && node.disconnect(); src && src.disconnect(); } catch { /* weg */ } try { stream && stream.getTracks().forEach((t) => t.stop()); } catch { /* weg */ } try { ctx && ctx.close(); } catch { /* weg */ } ctx = stream = node = src = null; },

@@ -10,7 +10,7 @@
   const AC = window.AudioContext || window.webkitAudioContext;
   function ac() {
     if (!AC) return null;
-    if (!ctx) { try { ctx = new AC(); } catch { return null; } }
+    if (!ctx) { try { ctx = new AC(); if (window.AudioDev) window.AudioDev.sinkCtx(ctx); } catch { return null; } }
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
     return ctx;
@@ -71,7 +71,7 @@
     lastId = s.id;
     const delay = 400 + Math.random() * 1500; // etwas versetzt zum Funkspruch
     setTimeout(() => {
-      if (s.file) { try { const a = new Audio('/sounds/' + encodeURIComponent(s.file)); a.volume = Math.min(1, cfg.ambVol); a.play().catch(() => {}); } catch { /* egal */ } return; }
+      if (s.file) { try { const a = new Audio('/sounds/' + encodeURIComponent(s.file)); a.volume = Math.min(1, cfg.ambVol); (window.AudioDev ? window.AudioDev.sink(a) : Promise.resolve()).then(() => a.play()).catch(() => {}); } catch { /* egal */ } return; }
       const c = ac(); if (c) s.play(c, c.currentTime + 0.02, cfg.ambVol);
     }, delay);
   }
@@ -117,5 +117,6 @@
   const css = document.createElement('style');
   css.textContent = '.amb-box{margin:6px 0;font-size:13px}.amb-box summary{cursor:pointer;opacity:.8}.amb-body{display:flex;flex-direction:column;gap:6px;padding:8px 0}.amb-row{display:flex;gap:8px;align-items:center;justify-content:space-between}.amb-row label{flex:1}.cp-remote .amb-box{display:none}';
   document.head.appendChild(css);
+  if (window.AudioDev) window.AudioDev.onChange((w) => { if (w === 'out' && ctx) window.AudioDev.sinkCtx(ctx); });
   window.Ambience = { radioOn, radioOff, maybe, mount, cfg: () => cfg, reload: loadCustom };
 })();

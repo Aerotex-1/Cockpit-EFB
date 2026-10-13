@@ -123,9 +123,10 @@
     return new Promise((res, rej) => {
       const a = new Audio(url || piperUrl(id, text));
       curAudio = a;
+      const ready = window.AudioDev ? window.AudioDev.sink(a) : Promise.resolve();
       const done = (ok) => { if (curAudio === a) curAudio = null; ok ? res() : rej(new Error('audio')); };
       a.onended = () => done(true); a.onerror = () => done(false);
-      a.play().catch(() => done(false));
+      ready.then(() => a.play()).catch(() => done(false));
       setTimeout(() => done(true), 30000);
     });
   }
@@ -684,6 +685,7 @@
         <form id="cpForm"><input id="cpText" placeholder="Antwort eintippen …" autocomplete="off"><button class="btn-s">OK</button></form>
       </div><div id="cpLog" class="cp-log"></div>`;
     sec.insertBefore(panel, sec.firstChild);
+    if (HOST && window.AudioDev) { window.AudioDev.mount(panel); window.AudioDev.onChange((w) => { if (w === 'mic' && window.WhisperMic && window.WhisperMic.active !== undefined && S.on && useW()) window.WhisperMic.restart().catch(() => {}); }); }
     if (window.Ambience && HOST) window.Ambience.mount(panel);
     if (window.LANG === 'en') $('#cpText').placeholder = 'Type your answer …';
     $('#cpLang').value = pref.lang; $('#cpRate').value = pref.rate; $('#cpMic').checked = pref.mic;

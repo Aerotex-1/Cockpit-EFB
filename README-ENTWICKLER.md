@@ -53,6 +53,13 @@ Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
+## Stand dieser Version (App 1.3.7, enthält EFB 1.2.7)
+- **Sim-Modul:** Die App findet den Community-Ordner von MSFS 2024 selbst (aus der UserCfg.opt, Store und Steam) oder du wählst ihn unter „Sim-Modul“. Das Modul `cockpit-efb-link` wird beim App-Start und nach EFB-Updates automatisch installiert bzw. erneuert (abschaltbar). Test: `node tools/test-community.js`.
+- **Audio-Geräte:** Mikrofon und Ausgabe wählst du im Copilot-Fenster unter „Audio-Geräte“. Das ist reine EFB-Funktion (EFB 1.2.7), die App braucht dafür kein Update.
+- **Spracherkennung:** whisper-server bleibt mit geladenem Modell im Speicher (EFB 1.2.5). Das Basis-Modell ist für Befehle meist genau genug und schneller.
+- **Funk und Geräusche:** Funk-Effekt und Hintergrundgeräusche stellst du im Copilot-Fenster unter „Funk & Geräusche“ ein (EFB 1.2.6).
+- **Update-Reihenfolge:** EFB als Release `vX.Y.Z` veröffentlichen (Asset `Cockpit-EFB-X.Y.Z.zip`). App-Änderungen über den Tag `app-vX.Y.Z`. Der Installer wird nicht mehr gebraucht.
+
 ## Grenzen
 
 - Spracherkennung (Mikrofon) geht nicht im App-Fenster, nur im Browser (Edge/Chrome, `localhost`). Die Sprachausgabe geht überall. Deshalb öffnet „EFB öffnen“ standardmäßig den Browser.
