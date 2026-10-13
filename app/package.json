@@ -9,8 +9,9 @@
   "scripts": {
     "prepare-bundle": "node tools/prepare-bundle.js",
     "start": "node tools/prepare-bundle.js && electron .",
-    "dist": "node tools/prepare-bundle.js && electron-builder --win --publish never",
-    "test": "node tools/test-lib.js"
+    "dist": "node tools/prepare-bundle.js && node tools/fetch-voices.js && electron-builder --win --publish never",
+    "test": "node tools/test-voices.js",
+    "fetch-voices": "node tools/fetch-voices.js"
   },
   "dependencies": {
     "node-simconnect": "^4.0.0"
@@ -23,9 +24,30 @@
     "appId": "de.cockpit-efb.app",
     "productName": "Cockpit EFB",
     "asar": false,
-    "files": ["main.js", "preload.js", "lib/**", "renderer/**", "package.json"],
-    "extraResources": [{ "from": "efb-bundle", "to": "efb" }],
-    "win": { "target": "nsis" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**",
+      "renderer/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "efb-bundle",
+        "to": "efb"
+      },
+      {
+        "from": "piper-bundle",
+        "to": "piper"
+      },
+      {
+        "from": "voices-bundle",
+        "to": "voices"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

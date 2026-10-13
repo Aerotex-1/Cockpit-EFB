@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const { ServerProc } = require('./lib/server-proc');
 const releases = require('./lib/releases');
 const settingsStore = require('./lib/store');
+const voiceLib = require('./lib/voices');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -15,6 +16,9 @@ const DATA = app.getPath('userData');
 const EFB_DIR = path.join(DATA, 'efb');
 const BUNDLE = app.isPackaged ? path.join(process.resourcesPath, 'efb') : path.join(__dirname, 'efb-bundle');
 const SETTINGS_FILE = path.join(DATA, 'launcher.json');
+const VOICES_USER = path.join(DATA, 'voices');
+const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices') : path.join(__dirname, 'voices-bundle');
+const PIPER_EXE = [path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(__dirname, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || '';
 const safe = { available: () => safeStorage.isEncryptionAvailable(), encrypt: (t) => safeStorage.encryptString(t), decrypt: (b) => safeStorage.decryptString(b) };
 let S = null, win = null, efbWin = null, proc = null, updateInfo = { efb: null, app: null, error: null, checkedAt: 0 };
 
@@ -90,7 +94,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   S = settingsStore.load(SETTINGS_FILE, safe);
   seed();
-  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath() }, getPort: null });
+  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath(), EFB_PIPER: PIPER_EXE, EFB_VOICES: VOICES_USER, EFB_VOICES_BUNDLED: VOICES_BUNDLED }, getPort: null });
   proc.on('status', (st) => { send('status', st); if (st === 'running' && S.openBrowserOnStart && !proc._opened) { proc._opened = true; openEfb(); } });
   proc.on('log', (l) => send('log', l));
 
@@ -112,6 +116,9 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('copilot:get', () => readJson(copilotFile(), {}));
   ipcMain.handle('copilot:set', (_e, patch) => { const o = { ...readJson(copilotFile(), {}), ...patch }; if (patch.voice) o.voice = { ...(readJson(copilotFile(), {}).voice || {}), ...patch.voice }; fs.writeFileSync(copilotFile(), JSON.stringify(o, null, 2)); return o; });
+  ipcMain.handle('voices:list', () => ({ voices: voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }), piper: !!PIPER_EXE }));
+  ipcMain.handle('voices:install', async (_e, id) => { await voiceLib.install(id, { userDir: VOICES_USER, onProgress: (p) => send('voices:progress', id, p) }); return voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }); });
+  ipcMain.handle('voices:remove', (_e, id) => { voiceLib.remove(id, { userDir: VOICES_USER }); return voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }); });
   ipcMain.handle('update:check', () => doCheck());
   ipcMain.handle('update:efb', () => installEfb());
   ipcMain.handle('update:app', () => installApp());

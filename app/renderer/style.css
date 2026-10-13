@@ -30,3 +30,8 @@ pre.notes { margin:6px 0; white-space:pre-wrap; font:inherit; color:var(--dim); 
 .bar { height:8px; background:#0a111b; border-radius:6px; overflow:hidden; } .bar div { height:100%; width:0; background:var(--ac); transition:width .2s; }
 
 #err { position:fixed; left:0; right:0; top:0; z-index:99; background:#7a2323; color:#fff; padding:8px 14px; font:12px/1.4 Consolas,monospace; white-space:pre-wrap; }
+
+.vlist { display:grid; gap:8px; }
+.v { display:grid; grid-template-columns:1fr auto; gap:2px 12px; align-items:center; padding:8px 10px; background:#0f1a28; border:1px solid var(--ln); border-radius:8px; }
+.v b { font-weight:600; } .v .sub { grid-column:1; } .v button { grid-row:1 / span 2; grid-column:2; }
+.v.on { border-color:var(--ok); }

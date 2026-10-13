@@ -36,6 +36,10 @@ npm run dist     # Installer in app/dist
 ```
 (Node.js 20 oder neuer nötig.)
 
+## Eingebaute Stimmen (Piper)
+
+Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch). Beim Bauen lädt `npm run dist` (bzw. der GitHub-Workflow) sie automatisch von GitHub und Hugging Face; der Installer wird dadurch etwa 230 MB groß. Weitere Stimmen lädt der Nutzer in der App unter **Copilot → Eingebaute Stimmen** nach (sie liegen in `%APPDATA%\cockpit-efb-app\voices` und bleiben bei Updates erhalten). Lizenzen der Stimmen: siehe `efb/THIRD-PARTY-NOTICES.md`.
+
 ## Wo liegen die Daten?
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.

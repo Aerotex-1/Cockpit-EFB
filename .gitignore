@@ -1,3 +1,5 @@
 node_modules/
 app/dist/
 app/efb-bundle/
+app/piper-bundle/
+app/voices-bundle/

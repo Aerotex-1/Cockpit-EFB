@@ -1,0 +1,22 @@
+const http = require('http'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
+const V = require('../lib/voices');
+(async () => {
+  assert.strictEqual(V.urlFor('de_DE-thorsten-medium'), 'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx');
+  assert.strictEqual(V.urlFor('en_GB-jenny_dioco-medium').split('/main/')[1], 'en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx');
+  const big = Buffer.alloc(300000, 7); const seen = [];
+  const srv = http.createServer((q, r) => { seen.push(q.url); if (q.url.endsWith('.json')) return r.end('{"language":{"code":"de_DE"}}'); if (q.url.endsWith('.onnx')) { r.setHeader('content-length', big.length); return r.end(big); } r.writeHead(404); r.end(); });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r)); const base = 'http://127.0.0.1:' + srv.address().port;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'v-')), user = path.join(dir, 'u'), bun = path.join(dir, 'b'); fs.mkdirSync(bun);
+  fs.writeFileSync(path.join(bun, 'de_DE-thorsten-medium.onnx'), 'x'); fs.writeFileSync(path.join(bun, 'de_DE-thorsten-medium.onnx.json'), '{}');
+  let l = V.list({ userDir: user, bundledDir: bun });
+  assert(l.find((v) => v.id === 'de_DE-thorsten-medium').installed && !l.find((v) => v.id === 'de_DE-thorsten-medium').removable);
+  assert(!l.find((v) => v.id === 'de_DE-kerstin-low').installed);
+  let prog = 0; await V.install('de_DE-kerstin-low', { userDir: user, base, onProgress: (p) => (prog = p) });
+  assert.strictEqual(prog, 1); assert.strictEqual(fs.statSync(path.join(user, 'de_DE-kerstin-low.onnx')).size, big.length);
+  l = V.list({ userDir: user, bundledDir: bun }); assert(l.find((v) => v.id === 'de_DE-kerstin-low').removable);
+  V.remove('de_DE-kerstin-low', { userDir: user }); assert(!fs.existsSync(path.join(user, 'de_DE-kerstin-low.onnx')));
+  await assert.rejects(V.install('../evil', { userDir: user, base }), /Unbekannte Stimme/);
+  await assert.rejects(V.install('en_US-amy-medium', { userDir: user, base: base + '/x', fetchFn: async () => ({ ok: false, status: 404 }) }), /404/);
+  assert(!fs.readdirSync(user).some((f) => f.endsWith('.part')));
+  console.log('✓ Stimmen: Katalog, Installieren, Entfernen, Fehlerfälle'); srv.close(); process.exit(0);
+})().catch((e) => { console.error('✗', e); process.exit(1); });

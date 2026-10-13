@@ -25,3 +25,7 @@ Cockpit EFB steht in keiner Verbindung zu den hier genannten Firmen und Projekte
 ## Variablen anderer Add-ons
 
 Die Namen der Sim-Variablen für FlyByWire (A32NX, A380X), Headwind (A339X), Fenix und GSX stammen aus deren öffentlich einsehbarem Quellcode bzw. aus beobachtetem Verhalten. Es wird kein Code dieser Projekte mitgeliefert.
+
+## Piper (Sprachausgabe der Windows-App)
+
+Piper (https://github.com/rhasspy/piper, MIT-Lizenz) erzeugt die eingebauten Copilot-Stimmen. Die Stimmmodelle stammen aus https://huggingface.co/rhasspy/piper-voices; jede Stimme hat ihre eigene Lizenz (siehe Modellkarte der Stimme dort). Prüfe die Lizenz, bevor du die App mit Stimmen weitergibst.

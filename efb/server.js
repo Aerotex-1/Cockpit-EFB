@@ -22,6 +22,7 @@ const { Auth, isLoopback } = require('./auth');
 const VERSION = require('./package.json').version;
 const { Spotify } = require('./spotify');
 const updater = require('./updater');
+const tts = require('./tts');
 
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
@@ -190,6 +191,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (p === '/api/state') return sendJson(res, 200, liveState());
+    if (p === '/api/tts/voices') return sendJson(res, 200, { available: tts.available(), voices: tts.voices().map(({ id, lang, label, bundled }) => ({ id, lang, label, bundled })) });
+    if (p === '/api/tts' && req.method === 'GET') {
+      try {
+        const f = await tts.synth(url.searchParams.get('text'), url.searchParams.get('voice'), url.searchParams.get('rate'));
+        const st = fs.statSync(f);
+        res.writeHead(200, { 'Content-Type': 'audio/wav', 'Content-Length': st.size, 'Cache-Control': 'private, max-age=86400' });
+        return fs.createReadStream(f).pipe(res);
+      } catch (e) { return sendJson(res, 500, { error: e.message }); }
+    }
     if (p === '/api/copilot') {
       const f = path.join(__dirname, 'copilot.json');
       const read = () => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return {}; } };

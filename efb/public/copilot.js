@@ -102,10 +102,40 @@
     if (want) { const w = voices.find((v) => v.name === want); if (w) return w; }
     return c.find((v) => /natural|online/i.test(v.name)) || c[0] || null;
   }
+  // ---- eingebaute Piper-Stimmen (nur wenn die Windows-App sie mitliefert)
+  const piper = { available: false, voices: [] };
+  let curAudio = null;
+  const loadPiper = () => fetch('/api/tts/voices').then((r) => r.json()).then((o) => { piper.available = !!o.available; piper.voices = o.voices || []; if (window._cpFillVoices) window._cpFillVoices(); }).catch(() => {});
+  function piperFor(lang) {
+    if (!piper.available) return null;
+    const k = lang === 'de' ? 'de' : 'en', want = pref.voice && pref.voice[k];
+    if (want && want.startsWith('piper:')) { const id = want.slice(6); return piper.voices.some((v) => v.id === id) ? id : null; }
+    if (want) return null; // bewusst eine Systemstimme gewählt
+    const v = piper.voices.find((x) => x.lang === k); return v ? v.id : null;
+  }
+  function playPiper(text, id) {
+    return new Promise((res, rej) => {
+      const a = new Audio(`/api/tts?voice=${encodeURIComponent(id)}&rate=${pref.rate}&text=${encodeURIComponent(text)}`);
+      curAudio = a;
+      const done = (ok) => { if (curAudio === a) curAudio = null; ok ? res() : rej(new Error('audio')); };
+      a.onended = () => done(true); a.onerror = () => done(false);
+      a.play().catch(() => done(false));
+      setTimeout(() => done(true), 30000);
+    });
+  }
   function say(text, lang) {
     lang = lang || pref.lang;
     log('Copilot', text);
-    if (!TTS || !S.on) return Promise.resolve();
+    if (!S.on) return Promise.resolve();
+    const pid = piperFor(lang);
+    if (pid) {
+      S.speaking = true; ui(); pauseRec();
+      return playPiper(text, pid).catch(() => speakSystem(text, lang)).then(() => { S.speaking = false; ui(); resumeRec(); });
+    }
+    return speakSystem(text, lang);
+  }
+  function speakSystem(text, lang) {
+    if (!TTS) return Promise.resolve();
     return new Promise((res) => {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = lang === 'de' ? 'de-DE' : 'en-US';
@@ -392,7 +422,9 @@
       const pre = pref.lang === 'de' ? 'de' : 'en', sel = $('#cpVoice'); if (!sel) return;
       const list = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith(pre));
       const cur = (pref.voice && pref.voice[pre]) || '';
-      sel.innerHTML = `<option value="">${pref.lang === 'de' ? 'Standardstimme' : 'Default voice'}</option>` + list.map((v) => `<option value="${esc(v.name)}" ${v.name === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
+      const pl = piper.voices.filter((v) => v.lang === pre);
+      const auto = piper.available && pl.length ? (pref.lang === 'de' ? 'Automatisch (eingebaut)' : 'Automatic (built-in)') : (pref.lang === 'de' ? 'Standardstimme' : 'Default voice');
+      sel.innerHTML = `<option value="">${auto}</option>` + pl.map((v) => `<option value="piper:${esc(v.id)}" ${'piper:' + v.id === cur ? 'selected' : ''}>★ ${esc(v.label)}</option>`).join('') + list.map((v) => `<option value="${esc(v.name)}" ${v.name === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
     };
     window._cpFillVoices = fillVoices; fillVoices();
     $('#cpVoice').onchange = (e) => { pref.voice = pref.voice || {}; pref.voice[pref.lang === 'de' ? 'de' : 'en'] = e.target.value; save(); say(pref.lang === 'de' ? 'So klinge ich.' : 'This is my voice.'); };
@@ -408,10 +440,10 @@
   function start() {
     S.on = true; S.mode = 'idle'; lastPhase = null; ui();
     if (TTS) { try { TTS.cancel(); } catch (e) {} }
-    say(T().on); startRec(); if (!SR && pref.mic) log('System', T().noMic);
+    loadPiper().then(() => say(T().on)); startRec(); if (!SR && pref.mic) log('System', T().noMic);
   }
   function stop() {
-    S.on = false; S.mode = 'idle'; stopRec(); if (TTS) { try { TTS.cancel(); } catch (e) {} }
+    S.on = false; S.mode = 'idle'; stopRec(); if (TTS) { try { TTS.cancel(); } catch (e) {} } if (curAudio) { try { curAudio.pause(); } catch (e) {} curAudio = null; }
     S.speaking = false; ui();
   }
 
@@ -419,7 +451,7 @@
     const b = e.target.closest('button'); if (!b || !S.on) return;
     if (b.dataset.cl !== undefined) setTimeout(() => onPick(Number(b.dataset.cl)), 0);
   }, true);
-  fetch('/api/copilot').then((r) => r.json()).then((o) => {
+  loadPiper(); fetch('/api/copilot').then((r) => r.json()).then((o) => {
     if (o && typeof o === 'object') { Object.assign(pref, o); store.set('copilot', pref); if (panel) { $('#cpLang').value = pref.lang; $('#cpRate').value = pref.rate; $('#cpMic').checked = pref.mic; $('#cpAuto').checked = !!pref.autostart; if (window._cpFillVoices) window._cpFillVoices(); } }
     if (pref.autostart) { const go = () => { document.removeEventListener('pointerdown', go, true); document.removeEventListener('keydown', go, true); if (!S.on) start(); }; document.addEventListener('pointerdown', go, true); document.addEventListener('keydown', go, true); }
   }).catch(() => {});
