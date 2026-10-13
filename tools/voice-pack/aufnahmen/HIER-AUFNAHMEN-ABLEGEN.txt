@@ -1,0 +1,2 @@
+Lege hier deine Aufnahmen ab (WAV, MP3, FLAC oder OGG), zusammen 15 bis 60 Sekunden, nur eine Stimme, ohne Musik und ohne Hintergrundgeräusche.
+Mehrere kurze Dateien sind besser als eine lange. Diese Textdatei wird ignoriert.

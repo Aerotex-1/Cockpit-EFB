@@ -3,7 +3,7 @@
 (function () {
   const RATE = 16000;
   let ctx = null, stream = null, node = null, src = null, on = false, paused = true, cb = null, opts = null;
-  let pre = [], buf = [], voiced = 0, silent = 0, speaking = false, floor = 0.004, busy = Promise.resolve(), resumeAt = 0;
+  let pre = [], buf = [], voiced = 0, silent = 0, speaking = false, floor = 0.004, busy = Promise.resolve(), resumeAt = 0, tok = 0;
   const hop = 2048;
 
   function wav(samples) {
@@ -30,7 +30,8 @@
     if (pk > 0.005) { const g = Math.min(10, 0.8 / pk); if (g > 1.1) for (let i = 0; i < n; i++) all[i] *= g; } // leises Mikrofon anheben
     const o2 = opts ? opts() : {};
     const url = '/api/stt?lang=' + encodeURIComponent(o2.lang || 'auto') + '&prompt=' + encodeURIComponent(o2.prompt || '');
-    busy = busy.then(() => fetch(url, { method: 'POST', body: wav(all) }).then((r) => r.json()).then((j) => { if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}));
+    const my = ++tok, body = wav(all), t0 = performance.now();
+    busy = busy.then(() => { if (my !== tok && tok - my >= 2) return; return fetch(url, { method: 'POST', body }).then((r) => r.json()).then((j) => { window.WhisperMic.last = { ms: Math.round(performance.now() - t0), srv: j && j.ms, via: j && j.via }; if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}); });
   }
   function onAudio(ev) {
     if (!on) return;
@@ -48,7 +49,7 @@
     buf.push(f);
     if (rms > thr) { voiced += dur; silent = 0; } else silent += dur;
     let len = 0; buf.forEach((p) => { len += p.length; });
-    if (silent >= 0.6 || len / RATE > 14) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
+    if (silent >= 0.45 || len / RATE > 14) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
   }
   window.WhisperMic = {
     async start(onText, getOpts) {

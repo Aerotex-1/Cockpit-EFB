@@ -465,7 +465,9 @@
   // keys: Sound-Namen in der Reihenfolge, in der nach einer eigenen Datei gesucht wird
   function groundLine(t, keys) {
     const f = (keys || []).map((k) => sounds.get(String(k).toLowerCase())).find(Boolean);
-    return say(t, 'en', f ? { url: '/sounds/' + encodeURIComponent(f), who: 'Ground' } : { voiceId: groundVoice(), pitch: 0.7, who: 'Ground' });
+    const A = window.Ambience;
+    if (A && HOST) { try { A.radioOn(); A.maybe(); } catch (e) {} }
+    return say(t, 'en', f ? { url: '/sounds/' + encodeURIComponent(f), who: 'Ground' } : { voiceId: groundVoice(), pitch: 0.7, who: 'Ground' }).finally(() => { if (A && HOST) { try { A.radioOff(); } catch (e) {} } });
   }
   const chooseGsx = (index) => fetch('/api/gsx/choose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index }) }).catch(() => {});
   async function groundDo(key, text, dir) {
@@ -620,6 +622,16 @@
     for (const [t] of parts) await say(t);
   }
 
+  // Die erste Erinnerung an die Cockpit-Vorbereitung kommt erst 5–10 Minuten nach dem Anschluss der Bodenstromversorgung (GPU).
+  // Ist keine GPU-Information vorhanden oder wird keine angeschlossen, kommt sie nach 15 Minuten.
+  const prep = { gpuAt: 0, since: 0, wait: (5 + Math.random() * 5) * 60000 };
+  function prepDue() {
+    const now = Date.now(), g = ((app.sim || {}).efb || {}).ground;
+    if (!prep.since) prep.since = now;
+    if (g && g.gpu && !prep.gpuAt) prep.gpuAt = now;
+    if (prep.gpuAt) return now - prep.gpuAt >= prep.wait;
+    return now - prep.since >= 15 * 60000;
+  }
   // Erinnerung: neue Phase → fällige Checkliste anbieten
   function watch() {
     if (!S.on) return;
@@ -633,6 +645,7 @@
     for (let i = 0; i < ls.length; i++) {
       const p = listPhases(ls[i].name);
       if (isDone(i) || !p || !p.includes(ph)) continue;
+      if (/cockpit prep|preflight/i.test(ls[i].name) && !prepDue()) { lastPhase = null; return; }
       const k = ph + '|' + i; if (asked.has(k)) return;
       asked.add(k);
       S.list = i; S.mode = 'ask'; armAsk();
@@ -671,6 +684,7 @@
         <form id="cpForm"><input id="cpText" placeholder="Antwort eintippen …" autocomplete="off"><button class="btn-s">OK</button></form>
       </div><div id="cpLog" class="cp-log"></div>`;
     sec.insertBefore(panel, sec.firstChild);
+    if (window.Ambience && HOST) window.Ambience.mount(panel);
     if (window.LANG === 'en') $('#cpText').placeholder = 'Type your answer …';
     $('#cpLang').value = pref.lang; $('#cpRate').value = pref.rate; $('#cpMic').checked = pref.mic;
     const save = persist;

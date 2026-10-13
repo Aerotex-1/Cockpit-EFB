@@ -10,6 +10,7 @@ const releases = require('./lib/releases');
 const settingsStore = require('./lib/store');
 const voiceLib = require('./lib/voices');
 const whisperLib = require('./lib/whisper');
+const communityLib = require('./lib/community');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -63,6 +64,7 @@ async function installEfb() {
   const wasRunning = proc.status === 'running' || proc.status === 'starting';
   await proc.stop();
   const res = updaterFor().install(buf, EFB_DIR);
+  try { communitySync(); } catch { /* egal */ }
   if (wasRunning) proc.start();
   updateInfo.efb = null; send('update:info', updateInfo);
   return res;
@@ -128,6 +130,13 @@ const whisperEnv = () => whisperLib.env(WHISPER_DIR, S.sttModel);
 async function sttApply() { Object.assign(proc.env, whisperEnv()); if (proc.status === 'running') { await proc.restart(); if (cpWin && !cpWin.isDestroyed()) setTimeout(() => cpWin && !cpWin.isDestroyed() && cpWin.reload(), 2500); } }
 const sttState = () => ({ ...whisperLib.status(WHISPER_DIR, S.sttModel), cores: os.cpus().length });
 
+// Sim-Modul im Community-Ordner: beim Start und nach EFB-Updates automatisch installieren bzw. erneuern
+function communityState() { try { return communityLib.status(EFB_DIR, S.communityDir); } catch (e) { return { error: e.message }; } }
+function communitySync(force) {
+  if (!force && !S.communityAuto) return communityState();
+  try { const r = communityLib.install(EFB_DIR, S.communityDir); if (r.changed) send('log', '[App] Sim-Modul aktualisiert: ' + r.target); return r; } catch (e) { return { ...communityState(), error: e.message }; }
+}
+
 function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startWithWindows }); } catch { /* nicht unterstützt */ } }
 
 function state() {
@@ -175,6 +184,7 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('copilot:open', () => { if (proc.status !== 'running') throw new Error('Der Server läuft nicht.'); if (releases.cmp(efbVersion(), '1.2.0') < 0) throw new Error('Das Copilot-Fenster braucht EFB 1.2.0 oder neuer. Bitte unter „Updates“ zuerst die EFB aktualisieren.'); openCopilot(); });
   ipcMain.handle('sounds:list', () => soundList());
+  ipcMain.handle('sounds:folder', () => { fs.mkdirSync(SOUNDS_DIR(), { recursive: true }); return shell.openPath(SOUNDS_DIR()); });
   ipcMain.handle('sounds:set', async (_e, key) => {
     if (!SND_RE.test(String(key))) throw new Error('Ungültiger Name.');
     const r = await dialog.showOpenDialog(win, { title: 'Sound auswählen', properties: ['openFile'], filters: [{ name: 'Audio (MP3, WAV, OGG)', extensions: ['mp3', 'wav', 'ogg'] }] });
@@ -187,6 +197,16 @@ app.whenReady().then(() => {
     return soundList();
   });
   ipcMain.handle('sounds:remove', (_e, key) => { if (SND_RE.test(String(key))) soundRemove(key); return soundList(); });
+  ipcMain.handle('community:status', () => communityState());
+  ipcMain.handle('community:install', () => communitySync(true));
+  ipcMain.handle('community:pick', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Community-Ordner von MSFS 2024 wählen', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return communityState();
+    if (!communityLib.normalizeManual(r.filePaths[0])) throw new Error('Das ist kein Community-Ordner. Er heißt „Community“ oder enthält einen Ordner dieses Namens.');
+    S = { ...S, communityDir: r.filePaths[0] }; settingsStore.save(SETTINGS_FILE, S, safe);
+    return communitySync(true);
+  });
+  ipcMain.handle('community:auto', () => { S = { ...S, communityDir: '' }; settingsStore.save(SETTINGS_FILE, S, safe); return communityState(); });
   ipcMain.handle('stt:status', () => sttState());
   ipcMain.handle('stt:install', async (_e, id) => {
     const prog = (what) => (p) => send('stt:progress', { what, p });
@@ -213,6 +233,7 @@ app.whenReady().then(() => {
   win.webContents.on('preload-error', (_e, p, err) => { console.error('preload-error', p, err); });
   win.on('close', async (e) => { if (S.closeStopsServer && proc.child) { e.preventDefault(); await proc.stop(); win.destroy(); } });
 
+  setTimeout(() => { try { communitySync(); } catch { /* egal */ } }, 1500);
   if (S.autoStartServer) proc.start();
   applyLogin();
   if (S.checkOnStart && S.repo) setTimeout(doCheck, 3000);

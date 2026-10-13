@@ -216,7 +216,7 @@ const server = http.createServer(async (req, res) => {
       if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' });
       const chunks = []; let size = 0;
       for await (const c of req) { size += c.length; if (size > 8e6) return sendJson(res, 413, { error: 'Audio zu lang.' }); chunks.push(c); }
-      try { return sendJson(res, 200, { text: await stt.transcribe(Buffer.concat(chunks), { lang: url.searchParams.get('lang') || 'auto', prompt: url.searchParams.get('prompt') || '' }) }); } catch (e) { return sendJson(res, 500, { error: e.message }); }
+      try { const text = await stt.transcribe(Buffer.concat(chunks), { lang: url.searchParams.get('lang') || 'auto', prompt: url.searchParams.get('prompt') || '' }); return sendJson(res, 200, Object.assign({ text }, stt.info())); } catch (e) { return sendJson(res, 500, { error: e.message }); }
     }
     if (p === '/api/cl') {
       if (req.method === 'GET') return sendJson(res, 200, clState);
@@ -333,6 +333,22 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/sounds') { // eigene Sounds des Bodenpersonals (sounds/<ereignis>.mp3)
       let list = []; try { list = fs.readdirSync(SOUNDS).filter((f) => /^[\w.-]{1,70}\.(mp3|wav|ogg)$/i.test(f)).map((f) => ({ key: f.replace(/\.[^.]+$/, ''), file: f })); } catch { /* kein Ordner */ }
       return sendJson(res, 200, list);
+    }
+    if (p === '/api/sounds/upload' && req.method === 'POST') { // eigene Hintergrundgeräusche (nur am PC)
+      if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' });
+      const nm = String(url.searchParams.get('name') || ''); const ext = (nm.match(/\.(mp3|wav|ogg)$/i) || [])[1];
+      if (!ext) return sendJson(res, 400, { error: 'Nur MP3, WAV oder OGG.' });
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 8e6) return sendJson(res, 413, { error: 'Datei zu groß (max. 8 MB).' }); chunks.push(c); }
+      const base = nm.replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'sound';
+      try { fs.mkdirSync(SOUNDS, { recursive: true }); fs.writeFileSync(path.join(SOUNDS, 'amb.' + base + '.' + ext.toLowerCase()), Buffer.concat(chunks)); return sendJson(res, 200, { ok: true }); } catch (e) { return sendJson(res, 500, { error: e.message }); }
+    }
+    if (p === '/api/sounds/delete' && req.method === 'POST') {
+      if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' });
+      const f = String(url.searchParams.get('file') || '');
+      if (!/^amb\.[\w-]{1,40}\.(mp3|wav|ogg)$/i.test(f)) return sendJson(res, 400, { error: 'Ungültig.' });
+      try { fs.unlinkSync(path.join(SOUNDS, f)); } catch { /* war nicht da */ }
+      return sendJson(res, 200, { ok: true });
     }
     if (p.startsWith('/sounds/') && /\.(mp3|wav|ogg)$/i.test(p)) return serveFile(res, SOUNDS, p.slice('/sounds/'.length));
 
@@ -456,6 +472,7 @@ server.on('error', (e) => {
 });
 
 server.listen(config.port, '0.0.0.0', () => {
+  try { stt.warm(); } catch { /* ohne Spracherkennung egal */ }
   console.log('');
   console.log('  Cockpit EFB läuft.');
   console.log('  Auf dem iPad in Safari öffnen:');

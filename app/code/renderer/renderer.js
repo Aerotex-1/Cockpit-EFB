@@ -89,6 +89,7 @@ function renderSounds() {
   $('#sndList').innerHTML = SND_GEN.map(([k, l]) => sndRow(k, l)).join('') + SND_SVC.map(([s, l]) => SND_EV.map(([e, t]) => sndRow(s + '.' + e, l + ': ' + t)).join('')).join('');
 }
 async function loadSounds() { snd = await bridge.invoke('sounds:list'); renderSounds(); }
+$('#sndFolder').onclick = () => bridge.invoke('sounds:folder');
 $('#sndAdd').onclick = async () => {
   const c = $('#sndCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''), d = $('#sndDir').value;
   if (!c && !d) { $('#sndMsg').textContent = 'Bitte einen Namen (z. B. S1) und/oder eine Richtung wählen.'; return; }
@@ -186,3 +187,19 @@ bridge.on('update:info', (u) => { st.update = u; renderUpdate(u); });
 bridge.on('update:progress', (p) => { $('#uBar').hidden = false; $('#uBar div').style.width = Math.round(p.p * 100) + '%'; $('#uProg').textContent = p.text; });
 
 bridge.invoke('state').then((s) => { render(s); loadVoiceList(); loadCopilot(); loadStt(); loadSounds(); });
+
+// ---- Sim-Modul im Community-Ordner ----
+const cErr = (e) => e.message.replace(/^Error invoking remote method[^:]*: /, '');
+function renderCom(c) {
+  if (!c) return;
+  const t = c.error && !c.dir ? c.error : !c.hasSource ? 'Das Modul fehlt in der EFB. Bitte unter „Updates“ die EFB aktualisieren.'
+    : c.upToDate ? `Installiert und aktuell: ${c.target}` : c.installed ? `Installiert, aber veraltet: ${c.target}` : `Noch nicht installiert. Ziel: ${c.target}`;
+  $('#comState').textContent = (c.mode === 'manual' ? 'Selbst gewählter Ordner. ' : 'Automatisch gefunden. ') + t;
+}
+async function loadCom() { try { renderCom(await bridge.invoke('community:status')); } catch (e) { $('#comMsg').textContent = cErr(e); } }
+$('#comInstall').onclick = async () => { try { const r = await bridge.invoke('community:install'); renderCom(r); $('#comMsg').textContent = r.changed ? 'Installiert. Starte MSFS neu, falls es läuft.' : 'Schon aktuell.'; } catch (e) { $('#comMsg').textContent = 'Fehler: ' + cErr(e); } };
+$('#comPick').onclick = async () => { try { const r = await bridge.invoke('community:pick'); renderCom(r); $('#comMsg').textContent = r.changed ? 'Installiert.' : ''; } catch (e) { $('#comMsg').textContent = 'Fehler: ' + cErr(e); } };
+$('#comReset').onclick = async () => { renderCom(await bridge.invoke('community:auto')); $('#comMsg').textContent = ''; };
+$('#comAuto').onchange = () => bridge.invoke('settings:set', { communityAuto: $('#comAuto').checked });
+bridge.invoke('state').then((s) => { $('#comAuto').checked = s.settings.communityAuto !== false; });
+loadCom();

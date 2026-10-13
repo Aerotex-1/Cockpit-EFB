@@ -36,6 +36,13 @@
       <div id="sttList" class="vlist"></div>
       <p id="sttMsg" class="note"></p>
     </div>
+    <div class="card"><h2>Sim-Modul (Community-Ordner)</h2>
+      <p class="note">Das kleine Modul „cockpit-efb-link“ verbindet den Simulator mit dem EFB. Die App sucht den Community-Ordner von MSFS 2024 selbst (Store und Steam) und hält das Modul dort aktuell. Findet sie ihn nicht, wählst du ihn selbst.</p>
+      <p id="comState" class="note"></p>
+      <label class="chk"><input type="checkbox" id="comAuto"> Modul beim Start und nach EFB-Updates automatisch installieren bzw. erneuern</label>
+      <div class="row"><button id="comInstall">Jetzt installieren / erneuern</button><button id="comPick">Ordner selbst wählen …</button><button id="comReset">Wieder automatisch suchen</button></div>
+      <p id="comMsg" class="note"></p>
+    </div>
     <div class="card"><h2>Eigene Sounds für das Bodenpersonal (MP3)</h2>
       <p class="note">Statt der Computerstimme kann das Bodenpersonal eigene Aufnahmen abspielen (MP3, WAV oder OGG). Ohne Datei spricht die eingebaute Stimme. Die Dateien liegen im EFB-Ordner unter „sounds“ und bleiben bei Updates erhalten.</p>
       <h3>Pushback-Punkte (z. B. R2, C3-28 aus dem GSX-Menü)</h3>
@@ -43,6 +50,8 @@
       <div id="sndProf"></div>
       <div class="row"><input id="sndCode" placeholder="Name im GSX-Menü, z. B. R2 oder C3-28" maxlength="14" autocomplete="off"><select id="sndDir"><option value="">ohne Richtung</option><option value="north">facing north</option><option value="south">facing south</option><option value="east">facing east</option><option value="west">facing west</option></select><button id="sndAdd">MP3 wählen und hinzufügen …</button></div>
       <details><summary>Allgemeine Sounds je Dienst</summary><div id="sndList" class="vlist"></div></details>
+      <div class="row"><button id="sndFolder">Sounds-Ordner öffnen</button></div>
+      <p class="note">Eigene Stimme aus Aufnahmen nachbilden? Dafür gibt es das separate „Stimmen-Werkzeug“ (Ordner tools/voice-pack im Projekt, Anleitung dort in LIESMICH.md). Es legt die Sätze als Dateien in diesen Ordner.</p>
       <p id="sndMsg" class="note"></p>
     </div>
     <div class="card"><h2>Sprach-Copilot</h2>
