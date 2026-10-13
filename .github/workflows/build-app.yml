@@ -18,11 +18,19 @@ jobs:
         run: |
           V="${GITHUB_REF_NAME#app-v}"
           cd app && npm version "$V" --no-git-tag-version --allow-same-version
+          node -e "const f='code/package.json',j=require('./'+f);j.version='$V';require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
       - name: Abhängigkeiten installieren
         run: cd app && npm install
       - name: Installer bauen
         run: cd app && npm run dist
+      - name: App-Code-ZIP erzeugen (für Updates ohne Installer)
+        shell: bash
+        run: |
+          V="${GITHUB_REF_NAME#app-v}"
+          cd app && tar -a -c -f "dist/Cockpit-EFB-App-Code-$V.zip" code
       - name: An Release anhängen
         uses: softprops/action-gh-release@v2
         with:
-          files: app/dist/Cockpit-EFB-Setup-*.exe
+          files: |
+            app/dist/Cockpit-EFB-Setup-*.exe
+            app/dist/Cockpit-EFB-App-Code-*.zip

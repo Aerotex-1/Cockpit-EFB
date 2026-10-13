@@ -1,6 +1,6 @@
 // Lädt Piper (Windows) und die mitgelieferten Stimmen für den Installer. Läuft beim Bauen (npm run dist).
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
-const voices = require('../lib/voices');
+const voices = require('../code/lib/voices');
 const ROOT = path.join(__dirname, '..');
 const PIPER_URL = 'https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip';
 (async () => {

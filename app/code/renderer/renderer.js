@@ -18,12 +18,13 @@ function renderStatus(s) {
   $('#bBrowser').disabled = $('#bWindow').disabled = s !== 'running';
 }
 function renderUpdate(u) {
-  const efb = $('#uEfb'), app = $('#uApp');
-  $('#badge').hidden = !(u.efb || u.app);
-  efb.hidden = !u.efb; app.hidden = !u.app;
+  const efb = $('#uEfb'), code = $('#uCode'), shell = $('#uShell');
+  $('#badge').hidden = !(u.efb || u.code || u.shell);
+  efb.hidden = !u.efb; code.hidden = !u.code; shell.hidden = !u.shell;
   if (u.efb) { efb.querySelector('b').textContent = `EFB ${u.efb.version} verfügbar (installiert: ${st.efbVersion})`; efb.querySelector('pre').textContent = u.efb.notes || ''; }
-  if (u.app) { app.querySelector('b').textContent = `App ${u.app.version} verfügbar (installiert: ${st.appVersion})`; app.querySelector('pre').textContent = u.app.notes || ''; }
-  $('#uState').textContent = u.error ? u.error : !u.checkedAt ? 'Noch nicht gesucht.' : (u.efb || u.app) ? 'Neue Version gefunden.' : `Alles aktuell${u.latestEfb ? ' (neueste EFB: ' + u.latestEfb + ')' : ''}.`;
+  if (u.code) { code.querySelector('b').textContent = `App ${u.code.version} verfügbar (installiert: ${st.appVersion})`; code.querySelector('pre').textContent = u.code.notes || ''; }
+  if (u.shell) { shell.querySelector('b').textContent = `Installer ${u.shell.version} verfügbar (installiert: ${st.shellVersion})`; shell.querySelector('pre').textContent = u.shell.notes || ''; }
+  $('#uState').textContent = u.error ? u.error : !u.checkedAt ? 'Noch nicht gesucht.' : (u.efb || u.code || u.shell) ? 'Neue Version gefunden.' : `Alles aktuell${u.latestEfb ? ' (neueste EFB: ' + u.latestEfb + ')' : ''}.`;
 }
 function render(s) {
   st = s;
@@ -31,6 +32,7 @@ function render(s) {
   $('#stSub').textContent = s.status === 'running' ? `Port ${s.port} · EFB ${s.efbVersion}` : s.status === 'crashed' ? `Beendet mit Code ${s.lastExit} – siehe Protokoll` : '';
   $('#addr').textContent = `http://<PC-IP>:${s.port}`;
   $('#ver').textContent = `App ${s.appVersion} · EFB ${s.efbVersion}`;
+  if (s.bootNote) $('#uState').textContent = s.bootNote;
   const c = s.settings;
   $('#sAutoStart').checked = c.autoStartServer; $('#sBrowser').checked = c.openBrowserOnStart; $('#sLogin').checked = c.startWithWindows; $('#sClose').checked = c.closeStopsServer;
   $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port;
@@ -116,7 +118,8 @@ $('#uInstEfb').onclick = async () => {
   try { const r = await bridge.invoke('update:efb'); $('#uProg').textContent = `Installiert: ${r.from} → ${r.to} (${r.changed} Dateien). Der Server startet neu.`; } catch (e) { $('#uProg').textContent = 'Fehler: ' + e.message; }
   $('#uInstEfb').disabled = false; $('#uBar').hidden = true; render(await bridge.invoke('state'));
 };
-$('#uInstApp').onclick = () => bridge.invoke('update:app').catch((e) => { $('#uProg').textContent = 'Fehler: ' + e.message; });
+$('#uInstShell').onclick = () => bridge.invoke('update:shell').catch((e) => { $('#uProg').textContent = 'Fehler: ' + e.message; });
+$('#uInstCode').onclick = () => bridge.invoke('update:code').catch((e) => { $('#uProg').textContent = 'Fehler: ' + e.message; });
 bridge.on('update:info', (u) => { st.update = u; renderUpdate(u); });
 bridge.on('update:progress', (p) => { $('#uBar').hidden = false; $('#uBar div').style.width = Math.round(p.p * 100) + '%'; $('#uProg').textContent = p.text; });
 

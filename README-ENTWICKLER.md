@@ -22,7 +22,16 @@ Die „Webseite zum Herunterladen und Hochladen“ ist die **Releases-Seite dein
 
 Namensregeln für die Dateien am Release: `Cockpit-EFB-1.2.3.zip` (öffentlich), `Cockpit-EFB-1.2.3-privat.zip` (privat), `Cockpit-EFB-Setup-1.2.3.exe` (App).
 
-## Neue App-Version (selten)
+## Neue App-Version (ohne Installer)
+
+Die Oberfläche der App (alles im Ordner `app/code`) wird wie die EFB per Update eingespielt. Der Installer ist nur der feste Kern und wird nur einmal gebraucht. Ablauf:
+1. Dateien in `app/code` im Repository ändern, Commit und Push.
+2. Release mit Tag `app-v1.2.1` veröffentlichen. GitHub baut daraus den Installer **und** `Cockpit-EFB-App-Code-1.2.1.zip` und hängt beide an. (Du kannst die Code-ZIP auch selbst als Asset an ein Release hängen.)
+3. In der App unter Updates erscheint „App 1.2.1 verfügbar“. Ein Klick lädt die ZIP nach `%APPDATA%\cockpit-efb-app\app-code` und startet die App neu. Ist der Code defekt, fällt der Kern automatisch auf die mitgelieferte Version zurück.
+
+Nur wenn sich die Grundlage ändert (neue Electron-Version, neue Pakete, `boot.js`), brauchen Nutzer einen neuen Installer; die App bietet ihn dann als „Installer-Update still installieren“ an (lädt und installiert ohne Klickerei). Dann `shellApi` in `app/code/package.json` und `SHELL_API` in `boot.js` erhöhen.
+
+## (alt) Neue App-Version (selten)
 
 Nur nötig, wenn sich die App selbst ändert (Fenster, Einstellungen). Neuen Tag `app-v1.0.1` als Release veröffentlichen; GitHub baut den Installer. Die App meldet das als „App-Update“ und startet den Installer. Soll der Installer auch eine neuere EFB mitbringen, ersetze vorher den Ordner `efb/` im Repository durch die neue EFB (ZIP entpacken).
 

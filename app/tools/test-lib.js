@@ -1,6 +1,6 @@
 // Testet die Logik ohne Electron: GitHub-Releases (Mock), Seed/Update-Überschreiben, Server starten/neu starten.
 const http = require('http'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-const releases = require('../lib/releases'), { ServerProc } = require('../lib/server-proc');
+const releases = require('../code/lib/releases'), { ServerProc } = require('../code/lib/server-proc');
 const EFB = path.join(__dirname, '..', '..', 'efb'), upd = require(path.join(EFB, 'updater.js'));
 (async () => {
   // --- GitHub-Mock
@@ -11,18 +11,18 @@ const EFB = path.join(__dirname, '..', '..', 'efb'), upd = require(path.join(EFB
     hits.push(q.url + ' ' + (q.headers.authorization || ''));
     if (q.url.startsWith('/repos/me/priv/releases')) {
       if (q.headers.authorization !== 'Bearer tok') { r.writeHead(404); return r.end('{}'); }
-      return r.end(JSON.stringify([rel('app-v1.0.1', [{ name: 'Cockpit-EFB-Setup-1.0.1.exe', url: base + '/dl/exe', size: 3 }], 'App neu'), rel('v1.9.0', [{ name: 'Cockpit-EFB-1.9.0.zip', url: base + '/dl/zip', size: zip.length }, { name: 'Cockpit-EFB-1.9.0-privat.zip', url: base + '/dl/zip', size: 1 }], 'Neu!'), rel('v1.1.7', [{ name: 'Cockpit-EFB-1.1.7.zip', url: base + '/dl/zip', size: 1 }], '')]));
+      return r.end(JSON.stringify([rel('app-v1.0.1', [{ name: 'Cockpit-EFB-Setup-1.0.1.exe', url: base + '/dl/exe', size: 3 }, { name: 'Cockpit-EFB-App-Code-1.2.0.zip', url: base + '/dl/zip', size: 3 }], 'App neu'), rel('v1.9.0', [{ name: 'Cockpit-EFB-1.9.0.zip', url: base + '/dl/zip', size: zip.length }, { name: 'Cockpit-EFB-1.9.0-privat.zip', url: base + '/dl/zip', size: 1 }], 'Neu!'), rel('v1.1.7', [{ name: 'Cockpit-EFB-1.1.7.zip', url: base + '/dl/zip', size: 1 }], '')]));
     }
     if (q.url === '/dl/zip') { if (q.headers.authorization !== 'Bearer tok') { r.writeHead(401); return r.end(); } r.setHeader('content-length', zip.length); return r.end(zip); }
     r.writeHead(404); r.end();
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r)); const base = 'http://127.0.0.1:' + srv.address().port;
   assert.strictEqual(releases.cmp('1.10.0', '1.9.9'), 1);
-  await assert.rejects(releases.check({ repo: 'me/priv', token: '', edition: 'public', efbVersion: '1.1.7', appVersion: '1.0.0', base }), /Repository nicht gefunden/);
-  const c = await releases.check({ repo: 'me/priv', token: 'tok', edition: 'public', efbVersion: '1.1.7', appVersion: '1.0.0', base });
-  assert.strictEqual(c.efb.version, '1.9.0'); assert.strictEqual(c.app.version, '1.0.1');
-  const c2 = await releases.check({ repo: 'me/priv', token: 'tok', edition: 'public', efbVersion: '1.9.0', appVersion: '1.0.1', base });
-  assert(!c2.efb && !c2.app);
+  await assert.rejects(releases.check({ repo: 'me/priv', token: '', edition: 'public', efbVersion: '1.1.7', codeVersion: '1.0.0', shellVersion: '1.0.0', base }), /Repository nicht gefunden/);
+  const c = await releases.check({ repo: 'me/priv', token: 'tok', edition: 'public', efbVersion: '1.1.7', codeVersion: '1.0.0', shellVersion: '1.0.0', base });
+  assert.strictEqual(c.efb.version, '1.9.0'); assert.strictEqual(c.shell.version, '1.0.1'); assert.strictEqual(c.code.version, '1.2.0');
+  const c2 = await releases.check({ repo: 'me/priv', token: 'tok', edition: 'public', efbVersion: '1.9.0', codeVersion: '1.2.0', shellVersion: '1.0.1', base });
+  assert(!c2.efb && !c2.code && !c2.shell);
   const buf = await releases.download(c.efb.asset, { token: 'tok' });
   assert.deepStrictEqual(buf, zip); console.log('✓ GitHub-Releases (Token, Versionsvergleich, Download)');
 

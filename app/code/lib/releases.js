@@ -31,6 +31,15 @@ function newestEfb(releases, edition) {
   }
   return best;
 }
+// neuester App-Code (Oberfläche der App): Cockpit-EFB-App-Code-1.2.3.zip
+function newestCode(releases) {
+  const re = /^Cockpit-EFB-App-Code-(\d+\.\d+\.\d+)\.zip$/;
+  let best = null;
+  for (const rel of releases) for (const a of rel.assets || []) {
+    const m = re.exec(a.name); if (m && (!best || cmp(m[1], best.version) > 0)) best = { version: m[1], asset: a, notes: rel.body || '' };
+  }
+  return best;
+}
 // neuester Installer: Cockpit-EFB-Setup-1.2.3.exe
 function newestInstaller(releases) {
   const re = /^Cockpit-EFB-Setup-(\d+\.\d+\.\d+)\.exe$/;
@@ -41,12 +50,13 @@ function newestInstaller(releases) {
   return best;
 }
 
-async function check({ repo, token, edition, efbVersion, appVersion, base, fetchFn }) {
+async function check({ repo, token, edition, efbVersion, codeVersion, shellVersion, base, fetchFn }) {
   const rels = await listReleases({ repo, token, base, fetchFn });
-  const efb = newestEfb(rels, edition), app = newestInstaller(rels);
+  const efb = newestEfb(rels, edition), code = newestCode(rels), shell = newestInstaller(rels);
   return {
     efb: efb && cmp(efb.version, efbVersion) > 0 ? efb : null,
-    app: app && cmp(app.version, appVersion) > 0 ? app : null,
+    code: code && cmp(code.version, codeVersion) > 0 ? code : null,
+    shell: shell && cmp(shell.version, shellVersion) > 0 ? shell : null,
     latestEfb: efb ? efb.version : null,
   };
 }
@@ -64,4 +74,4 @@ async function download(asset, { token, base, fetchFn = fetch, onProgress } = {}
   return Buffer.concat(chunks);
 }
 
-module.exports = { cmp, listReleases, newestEfb, newestInstaller, check, download };
+module.exports = { cmp, listReleases, newestEfb, newestCode, newestInstaller, check, download };

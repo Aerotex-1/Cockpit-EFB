@@ -1,5 +1,5 @@
 const http = require('http'), fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
-const V = require('../lib/voices');
+const V = require('../code/lib/voices');
 (async () => {
   assert.strictEqual(V.urlFor('de_DE-thorsten-medium'), 'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx');
   assert.strictEqual(V.urlFor('en_GB-jenny_dioco-medium').split('/main/')[1], 'en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx');

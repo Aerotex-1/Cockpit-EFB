@@ -14,13 +14,15 @@ if (!app.requestSingleInstanceLock()) { app.quit(); }
 
 const DATA = app.getPath('userData');
 const EFB_DIR = path.join(DATA, 'efb');
-const BUNDLE = app.isPackaged ? path.join(process.resourcesPath, 'efb') : path.join(__dirname, 'efb-bundle');
+const BOOT = global.__EFB_BOOT || { shellDir: path.join(__dirname, '..'), bundledDir: __dirname, userCodeDir: path.join(app.getPath('userData'), 'app-code'), shellVersion: app.getVersion() };
+const CODE_VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version; } catch { return '0.0.0'; } })();
+const BUNDLE = app.isPackaged ? path.join(process.resourcesPath, 'efb') : path.join(BOOT.shellDir, 'efb-bundle');
 const SETTINGS_FILE = path.join(DATA, 'launcher.json');
 const VOICES_USER = path.join(DATA, 'voices');
-const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices') : path.join(__dirname, 'voices-bundle');
-const PIPER_EXE = [path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(__dirname, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || '';
+const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices') : path.join(BOOT.shellDir, 'voices-bundle');
+const PIPER_EXE = [path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(BOOT.shellDir, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || '';
 const safe = { available: () => safeStorage.isEncryptionAvailable(), encrypt: (t) => safeStorage.encryptString(t), decrypt: (b) => safeStorage.decryptString(b) };
-let S = null, win = null, efbWin = null, proc = null, updateInfo = { efb: null, app: null, error: null, checkedAt: 0 };
+let S = null, win = null, efbWin = null, proc = null, updateInfo = { efb: null, code: null, shell: null, error: null, checkedAt: 0 };
 
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 const efbVersion = () => readJson(path.join(EFB_DIR, 'package.json'), {}).version || '0.0.0';
@@ -39,14 +41,14 @@ function seed() {
 }
 const updaterFor = () => require(fs.existsSync(path.join(EFB_DIR, 'updater.js')) ? path.join(EFB_DIR, 'updater.js') : path.join(BUNDLE, 'updater.js'));
 
-function nodePath() { return [path.join(__dirname, 'node_modules'), path.join(process.resourcesPath || '', 'app', 'node_modules')].join(path.delimiter); }
+function nodePath() { return [path.join(BOOT.shellDir, 'node_modules'), path.join(process.resourcesPath || '', 'app', 'node_modules')].join(path.delimiter); }
 
 async function doCheck() {
-  if (!S.repo) { updateInfo = { efb: null, app: null, error: 'Noch kein Repository eingetragen (Einstellungen → Updates).', checkedAt: Date.now() }; return updateInfo; }
+  if (!S.repo) { updateInfo = { efb: null, code: null, shell: null, error: 'Noch kein Repository eingetragen (Einstellungen → Updates).', checkedAt: Date.now() }; return updateInfo; }
   try {
-    const r = await releases.check({ repo: S.repo, token: S.token, edition: S.edition, efbVersion: efbVersion(), appVersion: app.getVersion() });
-    updateInfo = { efb: r.efb, app: r.app, latestEfb: r.latestEfb, error: null, checkedAt: Date.now() };
-  } catch (e) { updateInfo = { efb: null, app: null, error: e.message, checkedAt: Date.now() }; }
+    const r = await releases.check({ repo: S.repo, token: S.token, edition: S.edition, efbVersion: efbVersion(), codeVersion: CODE_VERSION, shellVersion: BOOT.shellVersion });
+    updateInfo = { efb: r.efb, code: r.code, shell: r.shell, latestEfb: r.latestEfb, error: null, checkedAt: Date.now() };
+  } catch (e) { updateInfo = { efb: null, code: null, shell: null, error: e.message, checkedAt: Date.now() }; }
   send('update:info', updateInfo);
   return updateInfo;
 }
@@ -64,12 +66,43 @@ async function installEfb() {
   return res;
 }
 
-async function installApp() {
-  const u = updateInfo.app; if (!u) throw new Error('Kein App-Update vorhanden.');
-  const buf = await releases.download(u.asset, { token: S.token, onProgress: (p) => send('update:progress', { what: 'app', text: 'Lade Installer …', p }) });
-  const f = path.join(os.tmpdir(), u.asset.name); fs.writeFileSync(f, buf);
+// App-Oberfläche aktualisieren (ohne Installer): ZIP nach userData/app-code entpacken, App neu starten
+async function installCode() {
+  const u = updateInfo.code; if (!u) throw new Error('Kein App-Update vorhanden.');
+  send('update:progress', { what: 'code', text: 'Lade ' + u.asset.name + ' …', p: 0 });
+  const buf = await releases.download(u.asset, { token: S.token, onProgress: (p) => send('update:progress', { what: 'code', text: 'Lade …', p }) });
+  const files = updaterFor().readZip(buf);
+  const pk = files.find((f) => /(^|\/)package\.json$/.test(f.name) && f.name.split('/').length <= 2);
+  if (!pk) throw new Error('Kein App-Update: package.json fehlt.');
+  const meta = JSON.parse(pk.data.toString('utf8'));
+  if (meta.name !== 'cockpit-efb-app-code') throw new Error('Das ist kein App-Update.');
+  if ((meta.shellApi || 1) > BOOT.shellApi) throw new Error('Dieses Update braucht den neuen Installer (siehe unten).');
+  const prefix = pk.name.slice(0, pk.name.length - 'package.json'.length);
+  if (!files.some((f) => f.name === prefix + 'app-main.js')) throw new Error('app-main.js fehlt im Update.');
+  const tmp = BOOT.userCodeDir + '.new';
+  fs.rmSync(tmp, { recursive: true, force: true });
+  for (const f of files) {
+    if (!f.name.startsWith(prefix)) continue;
+    const rel = f.name.slice(prefix.length);
+    if (!rel || rel.includes('..') || path.isAbsolute(rel)) continue;
+    const dst = path.join(tmp, rel); fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.writeFileSync(dst, f.data);
+  }
+  fs.rmSync(BOOT.userCodeDir, { recursive: true, force: true });
+  fs.renameSync(tmp, BOOT.userCodeDir);
+  send('update:progress', { what: 'code', text: 'Starte neu …', p: 1 });
   await proc.stop();
-  spawn(f, [], { detached: true, stdio: 'ignore' }).unref();
+  app.relaunch(); app.exit(0);
+}
+
+// Seltener Fall (neue Electron-Version): Installer still im Hintergrund ausführen und die App danach wieder starten
+async function installShell() {
+  const u = updateInfo.shell; if (!u) throw new Error('Kein Installer-Update vorhanden.');
+  const buf = await releases.download(u.asset, { token: S.token, onProgress: (p) => send('update:progress', { what: 'shell', text: 'Lade Installer …', p }) });
+  const f = path.join(os.tmpdir(), u.asset.name); fs.writeFileSync(f, buf);
+  const cmd = path.join(os.tmpdir(), 'efb-update.cmd');
+  fs.writeFileSync(cmd, `@echo off\r\nping -n 4 127.0.0.1 >nul\r\n"${f}" /S\r\nstart "" "${process.execPath}"\r\n`);
+  await proc.stop();
+  spawn('cmd.exe', ['/c', cmd], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
   app.quit();
 }
 
@@ -85,7 +118,7 @@ function openEfb(mode) {
 function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startWithWindows }); } catch { /* nicht unterstützt */ } }
 
 function state() {
-  return { status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: app.getVersion(), settings: { ...S, token: S.token ? '••••' : '' }, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
+  return { status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '' }, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
 }
 
 function copilotFile() { return path.join(EFB_DIR, 'copilot.json'); }
@@ -121,7 +154,8 @@ app.whenReady().then(() => {
   ipcMain.handle('voices:remove', (_e, id) => { voiceLib.remove(id, { userDir: VOICES_USER }); return voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }); });
   ipcMain.handle('update:check', () => doCheck());
   ipcMain.handle('update:efb', () => installEfb());
-  ipcMain.handle('update:app', () => installApp());
+  ipcMain.handle('update:code', () => installCode());
+  ipcMain.handle('update:shell', () => installShell());
 
   win = new BrowserWindow({ width: 980, height: 720, minWidth: 760, minHeight: 560, title: 'Cockpit EFB', backgroundColor: '#0d1520', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
