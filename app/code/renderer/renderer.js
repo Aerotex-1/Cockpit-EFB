@@ -69,6 +69,12 @@ function fillVoices() {
   $('#cVoice').innerHTML = `<option value="">${mine.length ? 'Automatisch (eingebaut)' : 'Standardstimme'}</option>`
     + mine.map((v) => `<option value="piper:${v.id}" ${'piper:' + v.id === cur ? 'selected' : ''}>★ ${esc(v.name)}</option>`).join('')
     + list.map((v) => `<option value="${esc(v.name)}" ${v.name === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
+  fillVoiceEn();
+}
+function fillVoiceEn() {
+  const lang = $('#cLang').value; $('#cVoiceEnL').hidden = lang !== 'de';
+  const cur = (cp.voice && cp.voice.en) || '', mine = vInfo.voices.filter((v) => v.installed && v.lang === 'en');
+  $('#cVoiceEn').innerHTML = `<option value="">Automatisch (eingebaut)</option>` + mine.map((v) => `<option value="piper:${v.id}" ${'piper:' + v.id === cur ? 'selected' : ''}>★ ${esc(v.name)}</option>`).join('');
 }
 function renderVoices() {
   $('#vList').innerHTML = vInfo.voices.map((v) => `<div class="v ${v.installed ? 'on' : ''}"><div><b>${esc(v.name)}</b> <span class="sub">${v.lang === 'de' ? 'Deutsch' : 'Englisch'}</span></div>
@@ -92,21 +98,28 @@ async function loadCopilot() {
 speechSynthesis.onvoiceschanged = fillVoices;
 const saveCp = (patch) => bridge.invoke('copilot:set', patch).then((o) => { cp = o; });
 $('#cLang').onchange = () => { saveCp({ lang: $('#cLang').value }); fillVoices(); };
+$('#cVoiceEn').onchange = () => saveCp({ voice: { en: $('#cVoiceEn').value } });
 $('#cVoice').onchange = () => saveCp({ voice: { [$('#cLang').value]: $('#cVoice').value } });
 $('#cRate').oninput = () => { $('#cRateV').textContent = (+$('#cRate').value).toFixed(2); saveCp({ rate: +$('#cRate').value }); };
 $('#cMic').onchange = () => saveCp({ mic: $('#cMic').checked });
 $('#cAuto').onchange = () => saveCp({ autostart: $('#cAuto').checked });
-$('#cTest').onclick = () => {
-  const lang = $('#cLang').value, sel = $('#cVoice').value, txt = lang === 'de' ? 'Before Start Checkliste ist jetzt dran.' : 'Before start checklist is due now.';
-  const pv = sel.startsWith('piper:') ? sel.slice(6) : (!sel ? (vInfo.voices.find((v) => v.installed && v.lang === lang) || {}).id : null);
-  if (pv && st && st.status === 'running') {
-    const a = new Audio(`http://127.0.0.1:${st.port}/api/tts?voice=${encodeURIComponent(pv)}&rate=${$('#cRate').value}&text=${encodeURIComponent(txt)}`);
-    a.onerror = () => { $('#vMsg').textContent = 'Hörprobe nicht möglich – läuft der Server?'; }; a.play().catch(() => {}); return;
+$('#cTest').onclick = async () => {
+  const lang = $('#cLang').value, sel = $('#cVoice').value;
+  const segs = lang === 'de' ? [['Before Start', 'en'], ['Checkliste ist jetzt dran.', 'de']] : [['Before start checklist is due now.', 'en']];
+  const inst = (l) => vInfo.voices.find((v) => v.installed && v.lang === l);
+  const pick = (l) => { const w = l === lang ? sel : ((cp.voice || {}).en || ''); if (w.startsWith('piper:')) return w.slice(6); return w ? null : (inst(l) || {}).id; };
+  const rate = $('#cRate').value;
+  if (st && st.status === 'running' && segs.every(([, l]) => pick(l))) {
+    const urls = segs.map(([t, l]) => `http://127.0.0.1:${st.port}/api/tts?voice=${encodeURIComponent(pick(l))}&rate=${rate}&text=${encodeURIComponent(t)}`);
+    urls.forEach((u) => fetch(u).catch(() => {}));
+    for (const u of urls) await new Promise((res) => { const a = new Audio(u); a.onended = res; a.onerror = () => { $('#vMsg').textContent = 'Hörprobe nicht möglich – läuft der Server?'; res(); }; a.play().catch(res); });
+    return;
   }
-  const u = new SpeechSynthesisUtterance(txt);
-  u.lang = lang === 'de' ? 'de-DE' : 'en-US'; u.rate = +$('#cRate').value;
-  const v = voices().find((x) => x.name === $('#cVoice').value); if (v) u.voice = v;
-  speechSynthesis.cancel(); speechSynthesis.speak(u);
+  speechSynthesis.cancel();
+  for (const [t, l] of segs) await new Promise((res) => {
+    const u = new SpeechSynthesisUtterance(t); u.lang = l === 'de' ? 'de-DE' : 'en-US'; u.rate = +rate; u.onend = res; u.onerror = res;
+    const v = l === lang ? voices().find((x) => x.name === sel) : null; if (v) u.voice = v; speechSynthesis.speak(u);
+  });
 };
 
 // ---- Updates
