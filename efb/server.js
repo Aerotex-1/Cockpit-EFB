@@ -28,6 +28,7 @@ const stt = require('./stt');
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
 const CHARTS = path.join(ROOT, 'charts');
+const SOUNDS = path.join(ROOT, 'sounds');
 const CONFIG_FILE = path.join(ROOT, 'config.json');
 
 let config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
@@ -107,7 +108,7 @@ const CP_TYPES = new Set(['pick', 'input', 'show', 'log']);
 // ---------- Hilfsfunktionen ----------
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.pdf': 'application/pdf', '.webmanifest': 'application/manifest+json',
 };
@@ -251,7 +252,7 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.rate === 'number' && b.rate >= 0.5 && b.rate <= 2) o.rate = b.rate;
         if (typeof b.mic === 'boolean') o.mic = b.mic;
         if (typeof b.autostart === 'boolean') o.autostart = b.autostart;
-        if (b.voice && typeof b.voice === 'object') { o.voice = o.voice || {}; for (const k of ['de', 'en']) if (typeof b.voice[k] === 'string') o.voice[k] = b.voice[k].slice(0, 200); }
+        if (b.voice && typeof b.voice === 'object') { o.voice = o.voice || {}; for (const k of ['de', 'en', 'ground']) if (typeof b.voice[k] === 'string') o.voice[k] = b.voice[k].slice(0, 200); }
         fs.writeFileSync(f, JSON.stringify(o, null, 2));
         return sendJson(res, 200, o);
       }
@@ -329,6 +330,11 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true });
     }
     if (p.startsWith('/charts/')) return serveFile(res, CHARTS, p.slice('/charts/'.length));
+    if (p === '/api/sounds') { // eigene Sounds des Bodenpersonals (sounds/<ereignis>.mp3)
+      let list = []; try { list = fs.readdirSync(SOUNDS).filter((f) => /^[\w.-]{1,70}\.(mp3|wav|ogg)$/i.test(f)).map((f) => ({ key: f.replace(/\.[^.]+$/, ''), file: f })); } catch { /* kein Ordner */ }
+      return sendJson(res, 200, list);
+    }
+    if (p.startsWith('/sounds/') && /\.(mp3|wav|ogg)$/i.test(p)) return serveFile(res, SOUNDS, p.slice('/sounds/'.length));
 
     if (p === '/api/gsx/service' && req.method === 'POST') {
       const { service } = await readBody(req);

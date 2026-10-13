@@ -31,7 +31,7 @@ async function transcribe(wav, { lang = 'auto', prompt = '' } = {}) {
   try {
     fs.writeFileSync(f, wav);
     const args = ['-m', model(), '-f', f, '-l', lang, '-nt', '-np', '-nf', '-sns', '-t', String(Math.max(2, Math.min(6, os.cpus().length - 1)))];
-    if (prompt) args.push('--prompt', String(prompt).slice(0, 400));
+    if (prompt) args.push('--prompt', String(prompt).slice(0, 800));
     const out = await new Promise((res, rej) => {
       const c = spawn(bin(), args, { cwd: path.dirname(bin()), windowsHide: true });
       let o = '', e = '';

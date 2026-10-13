@@ -1,6 +1,6 @@
 // Cockpit EFB – Windows-App (Electron): Server starten/stoppen, Copilot, Einstellungen, Updates.
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, Menu, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, safeStorage, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -134,6 +134,14 @@ function state() {
   return { status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '' }, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
 }
 
+// Eigene Sounds des Bodenpersonals: Ordner „sounds“ in der EFB, Dateiname = Ereignis (z. B. pushback.ack.S1.mp3)
+const SOUNDS_DIR = () => path.join(EFB_DIR, 'sounds');
+const SND_RE = /^[\w.-]{1,60}$/;
+function soundList() {
+  try { return fs.readdirSync(SOUNDS_DIR()).filter((f) => /\.(mp3|wav|ogg)$/i.test(f)).map((f) => ({ key: f.replace(/\.[^.]+$/, ''), file: f, path: path.join(SOUNDS_DIR(), f) })); } catch { return []; }
+}
+function soundRemove(key) { for (const f of soundList()) if (f.key.toLowerCase() === key.toLowerCase()) try { fs.unlinkSync(f.path); } catch { /* weg */ } }
+
 function copilotFile() { return path.join(EFB_DIR, 'copilot.json'); }
 
 app.whenReady().then(() => {
@@ -166,6 +174,19 @@ app.whenReady().then(() => {
     return state();
   });
   ipcMain.handle('copilot:open', () => { if (proc.status !== 'running') throw new Error('Der Server läuft nicht.'); if (releases.cmp(efbVersion(), '1.2.0') < 0) throw new Error('Das Copilot-Fenster braucht EFB 1.2.0 oder neuer. Bitte unter „Updates“ zuerst die EFB aktualisieren.'); openCopilot(); });
+  ipcMain.handle('sounds:list', () => soundList());
+  ipcMain.handle('sounds:set', async (_e, key) => {
+    if (!SND_RE.test(String(key))) throw new Error('Ungültiger Name.');
+    const r = await dialog.showOpenDialog(win, { title: 'Sound auswählen', properties: ['openFile'], filters: [{ name: 'Audio (MP3, WAV, OGG)', extensions: ['mp3', 'wav', 'ogg'] }] });
+    if (r.canceled || !r.filePaths[0]) return soundList();
+    const src = r.filePaths[0];
+    if (fs.statSync(src).size > 15e6) throw new Error('Die Datei ist größer als 15 MB.');
+    fs.mkdirSync(SOUNDS_DIR(), { recursive: true });
+    soundRemove(key);
+    fs.copyFileSync(src, path.join(SOUNDS_DIR(), key + path.extname(src).toLowerCase()));
+    return soundList();
+  });
+  ipcMain.handle('sounds:remove', (_e, key) => { if (SND_RE.test(String(key))) soundRemove(key); return soundList(); });
   ipcMain.handle('stt:status', () => sttState());
   ipcMain.handle('stt:install', async (_e, id) => {
     const prog = (what) => (p) => send('stt:progress', { what, p });

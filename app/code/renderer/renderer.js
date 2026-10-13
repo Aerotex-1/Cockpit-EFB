@@ -76,6 +76,33 @@ document.addEventListener('click', async (e) => {
 });
 bridge.on('stt:progress', ({ what, p }) => { const b = document.querySelector('[data-sget][disabled]'); if (b) b.textContent = what + ' ' + Math.round(p * 100) + ' %'; });
 
+// ---- Eigene Sounds
+const SND_GEN = [['ack', 'Bestätigung („Roger“)'], ['negative', 'Ablehnung („Negative“)'], ['again', 'Nachfragen („Say again“)']];
+const SND_SVC = [['boarding', 'Boarding'], ['deboarding', 'Deboarding'], ['catering', 'Catering'], ['refueling', 'Betanken'], ['pushback', 'Pushback'], ['jetway', 'Fluggastbrücke'], ['stairs', 'Treppen'], ['gpu', 'GPU'], ['deice', 'De-Icing']];
+const SND_EV = [['ack', 'angefordert / genehmigt'], ['progress', 'läuft'], ['done', 'fertig']];
+let snd = [];
+const sndRow = (key, label, rm) => { const f = snd.find((x) => x.key.toLowerCase() === key.toLowerCase());
+  return `<div class="v ${f ? 'on' : ''}"><div><b>${esc(label)}</b> <span class="sub">${f ? esc(f.file) : 'eingebaute Stimme'}</span></div><span>${f ? `<button data-splay="${esc(key)}">▶</button>` : ''}<button data-sset="${esc(key)}">${f ? 'Ändern' : 'Datei wählen'}</button>${f ? `<button data-srmv="${esc(key)}">${rm ? 'Entfernen' : '×'}</button>` : ''}</span></div>`; };
+function renderSounds() {
+  const prof = snd.filter((x) => /^pushback\.ack\./i.test(x.key));
+  $('#sndProf').innerHTML = prof.map((x) => sndRow(x.key, 'Pushback ' + x.key.slice('pushback.ack.'.length).replace('.', ' · facing '), true)).join('') || '<p class="note">Noch keine Profile.</p>';
+  $('#sndList').innerHTML = SND_GEN.map(([k, l]) => sndRow(k, l)).join('') + SND_SVC.map(([s, l]) => SND_EV.map(([e, t]) => sndRow(s + '.' + e, l + ': ' + t)).join('')).join('');
+}
+async function loadSounds() { snd = await bridge.invoke('sounds:list'); renderSounds(); }
+$('#sndAdd').onclick = async () => {
+  const c = $('#sndCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''), d = $('#sndDir').value;
+  if (!c && !d) { $('#sndMsg').textContent = 'Bitte einen Namen (z. B. S1) und/oder eine Richtung wählen.'; return; }
+  try { snd = await bridge.invoke('sounds:set', 'pushback.ack.' + [c, d].filter(Boolean).join('.')); renderSounds(); $('#sndCode').value = ''; $('#sndMsg').textContent = ''; } catch (e) { $('#sndMsg').textContent = 'Fehler: ' + e.message.replace(/^Error invoking remote method[^:]*: /, ''); }
+};
+document.addEventListener('click', async (e) => {
+  const st = e.target.closest('[data-sset]'), rm = e.target.closest('[data-srmv]'), pl = e.target.closest('[data-splay]');
+  try {
+    if (st) { snd = await bridge.invoke('sounds:set', st.dataset.sset); renderSounds(); }
+    if (rm) { snd = await bridge.invoke('sounds:remove', rm.dataset.srmv); renderSounds(); }
+    if (pl) { const f = snd.find((x) => x.key === pl.dataset.splay); if (f) new Audio('file:///' + f.path.replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/').replace(/^([A-Za-z])%3A/, '$1:')).play().catch(() => { $('#sndMsg').textContent = 'Wiedergabe nicht möglich.'; }); }
+  } catch (er) { $('#sndMsg').textContent = 'Fehler: ' + er.message.replace(/^Error invoking remote method[^:]*: /, ''); }
+});
+
 // ---- Copilot
 let cp = {};
 const voices = () => speechSynthesis.getVoices();
@@ -93,6 +120,8 @@ function fillVoices() {
 function fillVoiceEn() {
   const lang = $('#cLang').value; $('#cVoiceEnL').hidden = lang !== 'de';
   const cur = (cp.voice && cp.voice.en) || '', mine = vInfo.voices.filter((v) => v.installed && v.lang === 'en');
+  const grCur = (cp.voice && cp.voice.ground) || '';
+  $('#cVoiceGr').innerHTML = `<option value="">Automatisch (andere Stimme als der Copilot)</option>` + vInfo.voices.filter((v) => v.installed && v.lang === 'en').map((v) => `<option value="piper:${v.id}" ${'piper:' + v.id === grCur ? 'selected' : ''}>★ ${esc(v.name)}</option>`).join('');
   $('#cVoiceEn').innerHTML = `<option value="">Automatisch (eingebaut)</option>` + mine.map((v) => `<option value="piper:${v.id}" ${'piper:' + v.id === cur ? 'selected' : ''}>★ ${esc(v.name)}</option>`).join('');
 }
 function renderVoices() {
@@ -117,6 +146,7 @@ async function loadCopilot() {
 speechSynthesis.onvoiceschanged = fillVoices;
 const saveCp = (patch) => bridge.invoke('copilot:set', patch).then((o) => { cp = o; });
 $('#cLang').onchange = () => { saveCp({ lang: $('#cLang').value }); fillVoices(); };
+$('#cVoiceGr').onchange = () => saveCp({ voice: { ground: $('#cVoiceGr').value } });
 $('#cVoiceEn').onchange = () => saveCp({ voice: { en: $('#cVoiceEn').value } });
 $('#cVoice').onchange = () => saveCp({ voice: { [$('#cLang').value]: $('#cVoice').value } });
 $('#cRate').oninput = () => { $('#cRateV').textContent = (+$('#cRate').value).toFixed(2); saveCp({ rate: +$('#cRate').value }); };
@@ -155,4 +185,4 @@ $('#uInstCode').onclick = () => bridge.invoke('update:code').catch((e) => { $('#
 bridge.on('update:info', (u) => { st.update = u; renderUpdate(u); });
 bridge.on('update:progress', (p) => { $('#uBar').hidden = false; $('#uBar div').style.width = Math.round(p.p * 100) + '%'; $('#uProg').textContent = p.text; });
 
-bridge.invoke('state').then((s) => { render(s); loadVoiceList(); loadCopilot(); loadStt(); });
+bridge.invoke('state').then((s) => { render(s); loadVoiceList(); loadCopilot(); loadStt(); loadSounds(); });

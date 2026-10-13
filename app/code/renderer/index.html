@@ -32,13 +32,23 @@
       <label class="chk"><input type="checkbox" id="cpOnStart"> Copilot-Fenster automatisch öffnen, wenn der Server startet</label>
     </div>
     <div class="card"><h2>Spracherkennung (Open Source, offline)</h2>
-      <p class="note" id="sttNote">Whisper erkennt deine Sprache direkt auf dem PC, ohne Internet und ohne Cloud. Beim ersten Mal lädt die App das Programm (4 MB) und das Modell nach.</p>
+      <p class="note" id="sttNote">Whisper erkennt deine Sprache direkt auf dem PC, ohne Internet und ohne Cloud. Beim ersten Mal lädt die App das Programm (4 MB) und das Modell nach. Wenn sie dich nicht gut versteht, nimm „Klein (genauer)“.</p>
       <div id="sttList" class="vlist"></div>
       <p id="sttMsg" class="note"></p>
+    </div>
+    <div class="card"><h2>Eigene Sounds für das Bodenpersonal (MP3)</h2>
+      <p class="note">Statt der Computerstimme kann das Bodenpersonal eigene Aufnahmen abspielen (MP3, WAV oder OGG). Ohne Datei spricht die eingebaute Stimme. Die Dateien liegen im EFB-Ordner unter „sounds“ und bleiben bei Updates erhalten.</p>
+      <h3>Pushback-Punkte (z. B. R2, C3-28 aus dem GSX-Menü)</h3>
+      <p class="note">Sagst du „Cockpit to ground, pushback approved Release Point Romeo Two“ (oder nur „… Romeo Two“, „… Charlie three two eight“), wählt der Copilot den passenden Eintrag im GSX-Pushback-Menü und spielt, falls vorhanden, die Datei dazu. Das NATO-Alphabet und Zahlwörter werden verstanden. Bei Einträgen wie „FACING WEST“ genügt „… facing west“. Für die Datei trägst du den markanten Teil des Menünamens ein, ohne Striche (C3-28 wird zu C328).</p>
+      <div id="sndProf"></div>
+      <div class="row"><input id="sndCode" placeholder="Name im GSX-Menü, z. B. R2 oder C3-28" maxlength="14" autocomplete="off"><select id="sndDir"><option value="">ohne Richtung</option><option value="north">facing north</option><option value="south">facing south</option><option value="east">facing east</option><option value="west">facing west</option></select><button id="sndAdd">MP3 wählen und hinzufügen …</button></div>
+      <details><summary>Allgemeine Sounds je Dienst</summary><div id="sndList" class="vlist"></div></details>
+      <p id="sndMsg" class="note"></p>
     </div>
     <div class="card"><h2>Sprach-Copilot</h2>
       <label>Sprache<select id="cLang"><option value="de">Deutsch</option><option value="en">English</option></select></label>
       <label>Stimme<select id="cVoice"></select></label>
+      <label>Stimme des Bodenpersonals (GSX)<select id="cVoiceGr"></select></label>
       <label id="cVoiceEnL">Stimme für englische Wörter<select id="cVoiceEn"></select></label>
       <div class="row"><button id="cTest">Stimme anhören</button></div>
       <label>Tempo <span id="cRateV"></span><input type="range" id="cRate" min="0.8" max="1.4" step="0.05"></label>

@@ -25,10 +25,12 @@
     const parts = buf; const v = voiced; reset();
     if (v < 0.35) return; // zu kurz (Klick, Husten)
     let n = 0; parts.forEach((p) => { n += p.length; });
-    const all = new Float32Array(n); let o = 0; parts.forEach((p) => { all.set(p, o); o += p.length; });
+    const all = new Float32Array(n + RATE * 0.3); let o = 0; parts.forEach((p) => { all.set(p, o); o += p.length; });
+    let pk = 0; for (let i = 0; i < n; i++) { const a = Math.abs(all[i]); if (a > pk) pk = a; }
+    if (pk > 0.005) { const g = Math.min(10, 0.8 / pk); if (g > 1.1) for (let i = 0; i < n; i++) all[i] *= g; } // leises Mikrofon anheben
     const o2 = opts ? opts() : {};
     const url = '/api/stt?lang=' + encodeURIComponent(o2.lang || 'auto') + '&prompt=' + encodeURIComponent(o2.prompt || '');
-    busy = busy.then(() => fetch(url, { method: 'POST', body: wav(all) }).then((r) => r.json()).then((j) => { if (j && j.text && on && !paused) cb(j.text); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}));
+    busy = busy.then(() => fetch(url, { method: 'POST', body: wav(all) }).then((r) => r.json()).then((j) => { if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}));
   }
   function onAudio(ev) {
     if (!on) return;
@@ -37,16 +39,16 @@
     if (paused || now < resumeAt) { if (speaking || buf.length) reset(); return; }
     const f = down(ev.inputBuffer.getChannelData(0), ctx.sampleRate).slice();
     let s = 0; for (let i = 0; i < f.length; i++) s += f[i] * f[i];
-    const rms = Math.sqrt(s / f.length), dur = f.length / RATE, thr = Math.max(0.012, floor * 3.2);
+    const rms = Math.sqrt(s / f.length), dur = f.length / RATE, thr = Math.max(0.007, Math.min(0.03, floor * 2.8));
     if (!speaking) {
       if (rms > thr) { speaking = true; buf = pre.concat([f]); voiced = dur; silent = 0; pre = []; if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(true); }
-      else { floor = floor * 0.95 + rms * 0.05; pre.push(f); if (pre.length > 3) pre.shift(); }
+      else { floor = Math.min(0.02, floor * 0.95 + rms * 0.05); pre.push(f); if (pre.length > 3) pre.shift(); }
       return;
     }
     buf.push(f);
     if (rms > thr) { voiced += dur; silent = 0; } else silent += dur;
     let len = 0; buf.forEach((p) => { len += p.length; });
-    if (silent >= 0.75 || len / RATE > 14) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
+    if (silent >= 0.6 || len / RATE > 14) { if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(false); flush(); }
   }
   window.WhisperMic = {
     async start(onText, getOpts) {

@@ -7,7 +7,7 @@ const zlib = require('zlib');
 
 const ROOT = __dirname;
 // Diese Pfade gehören dem Nutzer und werden nie überschrieben.
-const KEEP = [/^copilot\.json$/, /^clstate\.json$/, /^auth\.json$/, /^settings\.json$/, /^logbook[^/]*\.json$/, /^last-ofp\.json$/, /^config\.json$/, /^backgrounds\//, /^cache\//, /^node_modules\//, /^_backup\//, /^_update\//, /^charts\//];
+const KEEP = [/^copilot\.json$/, /^clstate\.json$/, /^auth\.json$/, /^settings\.json$/, /^logbook[^/]*\.json$/, /^last-ofp\.json$/, /^config\.json$/, /^backgrounds\//, /^cache\//, /^node_modules\//, /^_backup\//, /^_update\//, /^charts\//, /^sounds\//];
 
 function readZip(buf) {
   let e = -1;

@@ -191,7 +191,7 @@ class Gsx {
     this.sim.on('demoChoice', (i) => {
       const item = this.demoMenu && this.demoMenu.items[i];
       if (item === 'Request Pushback') {
-        this.demoMenu = { title: 'Pushback direction', items: ['Nose left (facing right)', 'Nose right (facing left)', 'Straight'] };
+        this.demoMenu = { title: 'Pushback direction', items: ['FACING WEST (Taxiway A)', 'FACING EAST (Taxiway A)', 'QuickEdit Pushback', 'LFRN_C3-28', 'LFRN_C3-10', 'Straight pushback (manual stop, max 60 m)'] };
       } else if (item === 'Additional services') {
         this.demoMenu = extra;
       } else if (item === 'Back') {
