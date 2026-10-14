@@ -22,7 +22,7 @@ const SERVICES = {
   pushback: { label: 'Pushback', path: [has(/push/i)] },
   jetway: { label: 'Fluggastbrücke', path: [has(/jetway|jet bridge|jetbridge/i)] },
   stairs: { label: 'Treppen', path: [has(/stair/i)] },
-  gpu: { label: 'GPU', path: [has(/\bgpu\b|ground power/i)] },
+  gpu: { label: 'GPU', path: [has(/\bgpu\b|ground ?power|external power/i)], alt: [ADD, has(/\bgpu\b|ground ?power|external power/i)] }, // je nach GSX-Version im Hauptmenü oder unter „Additional services“
   deice: { label: 'De-Icing', path: [has(/de-?ic/i)] },
   followme: { label: 'Follow-me', path: [has(/follow/i)] },
   parking: { label: 'Parkposition', path: [has(/parking|gate|stand|warp/i, /customi/i)] },
@@ -173,13 +173,15 @@ class Gsx {
     const stand = menu.title; // Titel des GSX-Hauptmenüs nennt Flughafen und Standplatz
     const chosen = [];
     // Steht GSX schon in einem Untermenü (z. B. Zusatzdienste), dort weitermachen
+    let sp = svc.path;
+    if (svc.alt && menu.items.findIndex(sp[0]) < 0 && menu.items.findIndex(svc.alt[0]) >= 0) sp = svc.alt; // Dienst nur unter den Zusatzdiensten
     let startStep = 0;
-    if (menu.items.findIndex(svc.path[0]) < 0) {
-      const later = svc.path.findIndex((f, i) => i > 0 && menu.items.findIndex(f) >= 0);
+    if (menu.items.findIndex(sp[0]) < 0) {
+      const later = sp.findIndex((f, i) => i > 0 && menu.items.findIndex(f) >= 0);
       if (later > 0) startStep = later;
     }
-    for (let step = startStep; step < svc.path.length; step++) {
-      const idx = menu.items.findIndex(svc.path[step]);
+    for (let step = startStep; step < sp.length; step++) {
+      const idx = menu.items.findIndex(sp[step]);
       if (idx < 0) {
         return { stand, ok: false, error: `„${svc.label}“ steht gerade nicht im GSX-Menü.`, menu, partial: chosen };
       }
@@ -187,9 +189,9 @@ class Gsx {
       const before = menu.mtime;
       this.choose(idx);
       chosen.push(menu.items[idx]);
-      if (step < svc.path.length - 1 || svc.menu) menu = await this._waitMenuChange(before);
+      if (step < sp.length - 1 || svc.menu) menu = await this._waitMenuChange(before);
       else { const m2 = await this._waitMenuChange(before, 2000); if (m2 && m2.mtime !== before && m2.items && m2.items.length) menu = m2; else menu = null; }
-      if (!menu && step < svc.path.length - 1) return { stand, ok: false, error: 'GSX hat das Untermenü nicht geöffnet.', partial: chosen };
+      if (!menu && step < sp.length - 1) return { stand, ok: false, error: 'GSX hat das Untermenü nicht geöffnet.', partial: chosen };
     }
     return { stand, ok: true, chosen: chosen.join(' › '), menu: menu || undefined };
   }
@@ -197,7 +199,7 @@ class Gsx {
   // ---------- Demo ----------
   _setupDemo() {
     const main = { title: 'GSX - Leipzig/Halle Stand 12', items: ['Request Deboarding', 'Request Catering', 'Request Refueling', 'Request Boarding', 'Request Pushback', 'Request De-Icing', 'Operate jetways', 'Operate stairs', 'Additional services', 'Change parking position', 'Customize aircraft position'] };
-    const extra = { title: 'Additional services', items: ['Request cleaning', 'Request lavatory service', 'Request water service', 'Request crew bus', 'Back'] };
+    const extra = { title: 'Additional services', items: ['Request ground power', 'Request cleaning', 'Request lavatory service', 'Request water service', 'Request crew bus', 'Back'] };
     this.sim.on('demoOpen', () => { this.demoMenu = this.demoMenu && this.demoMenu.title === 'Pushback direction' ? this.demoMenu : main; this.demoMtime = Date.now(); });
     this.sim.on('demoChoice', (i) => {
       const item = this.demoMenu && this.demoMenu.items[i];

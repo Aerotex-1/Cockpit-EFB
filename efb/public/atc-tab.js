@@ -3,7 +3,7 @@
 'use strict';
 
 const AtcTab = (() => {
-  const FIELDS = ['cs', 'dep', 'dest', 'rte', 'sid', 'rwy', 'alt', 'sqk', 'atis', 'qnh', 'note'];
+  const FIELDS = ['cs', 'dep', 'dest', 'rte', 'sid', 'rwy', 'alt', 'sqk', 'atis', 'qnh', 'park', 'note'];
   let clr = store.get('clr', { flightKey: '' });
   let active = store.get('atcActive', null);
   let prev = store.get('atcPrev', null);
@@ -31,7 +31,7 @@ const AtcTab = (() => {
     const route = (o.general && o.general.route) || '';
     clr = {
       flightKey: key, cs: (o.atc && o.atc.callsign) || '', dep: (o.origin && o.origin.icao_code) || '', dest: (o.destination && o.destination.icao_code) || '',
-      rte: route, sid: sidFromRoute(route), rwy: (o.origin && o.origin.plan_rwy) || '', alt: '', sqk: '', atis: '', qnh: '', note: '', rb: false,
+      rte: route, sid: sidFromRoute(route), rwy: (o.origin && o.origin.plan_rwy) || '', alt: '', cvs: false, sqk: '', atis: '', qnh: '', park: '', note: '', rb: false,
     };
     applySidAlt();
     save();
@@ -60,7 +60,9 @@ const AtcTab = (() => {
       <div><small>Ziel</small><b>${v(upper(clr.dest))}</b></div>
       <div><small>SID</small><b>${v(upper(clr.sid))}</b></div>
       <div><small>Piste</small><b>${v(upper(clr.rwy))}</b></div>
-      <div><small>Anfangshöhe</small><b>${v(clr.alt)}</b></div>
+      <div><small>Parkposition</small><b>${v(upper(clr.park))}</b></div>
+      <div><small>Steigflug</small><b>${clr.cvs ? 'Climb via SID' : 'Climb ' + v(clr.alt)}</b></div>
+      <div><small>ATIS / QNH</small><b>${v(upper(clr.atis))}${clr.qnh ? ' / ' + esc(clr.qnh) : ''}</b></div>
       <div class="sq ${sqkOk(clr.sqk) ? '' : 'miss'}"><small>Squawk</small><b>${v(clr.sqk, '––––')}</b></div>
     </div>`;
   }
@@ -75,6 +77,8 @@ const AtcTab = (() => {
         <label>SID<input id="clr_sid" value="${esc(clr.sid || '')}" list="sidList" autocomplete="off" autocapitalize="characters" autocorrect="off"></label>
         <datalist id="sidList">${sidList().map((s) => `<option value="${esc(s)}">`).join('')}</datalist>
         ${inp('Piste', 'rwy', 'maxlength="3"')}${inp('Anfangshöhe', 'alt', 'inputmode="text" placeholder="z. B. 5000 / FL60"')}
+        ${inp('Parkposition', 'park', 'maxlength="8" placeholder="z. B. A12"')}
+        <label class="chk"><input type="checkbox" id="clr_cvs" ${clr.cvs ? 'checked' : ''}> Climb via SID <small>(sonst nur „Climb“ auf die Anfangshöhe)</small></label>
         ${inp('Squawk', 'sqk', 'inputmode="numeric" maxlength="4" placeholder="0000"')}${inp('ATIS', 'atis', 'maxlength="1"')}${inp('QNH', 'qnh', 'inputmode="numeric" maxlength="4"')}
       </div>
       <label class="clr-note">Route / Notizen<textarea id="clr_note" rows="3" autocapitalize="off">${esc(clr.note || '')}</textarea></label>
@@ -176,6 +180,33 @@ const AtcTab = (() => {
     const step = Math.max(1, Math.ceil(pts.length / 120));
     return pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
   }
+  // ATIS-Buchstabe und QNH vom VATSIM-ATIS des Abflughafens (solange du sie nicht selbst geändert hast)
+  function autoAtis() {
+    const a = data && data.dep && (data.dep.atis || [])[0]; if (!a) return;
+    if (clr.atis && clr.atisAuto === false) return;
+    const code = String(a.code || '').toUpperCase().slice(0, 1);
+    const txt = asArr(a.text).join(' ');
+    const m = /\b(?:QNH|Q)\s*:?\s*(\d{3,4})\b/i.exec(txt) || /\bA(\d{4})\b/.exec(txt);
+    let q = m ? m[1] : '';
+    if (/^A?\d{4}$/.test(q) && /\bA\d{4}\b/.test(txt) && !/QNH/i.test(txt)) q = String(Math.round(Number(q) / 100 * 33.8639));
+    if (code && (clr.atis !== code || (q && clr.qnh !== q))) {
+      clr.atis = code; if (q) clr.qnh = q; clr.atisAuto = true; save();
+      const A = $('#clr_atis'), Q = $('#clr_qnh'); if (A) A.value = clr.atis; if (Q) Q.value = clr.qnh || '';
+      const S = $('#clrSum'); if (S) S.innerHTML = summary();
+    }
+  }
+  // Parkposition: vor dem Abflug nächster OSM-Standplatz, solange der Flieger steht (Eingabe von Hand gewinnt)
+  function autoPark() {
+    const s = app.sim || {}; if (!s.connected || !s.onGround || (s.gs || 0) > 1 || s.lat == null) return;
+    if (clr.park && clr.parkAuto === false) return;
+    const icao = upper(clr.dep); if (!icao || !window.TaxiNav) return;
+    if (!TaxiNav.data[icao]) { if (!autoPark.req) { autoPark.req = true; TaxiNav.ensure(icao, s.lat, s.lon).finally(() => { autoPark.req = false; }); } return; }
+    const st = TaxiNav.nearestStand(icao, s.lat, s.lon, 60); if (!st || st === clr.park) return;
+    clr.park = st; clr.parkAuto = true; save();
+    const P = $('#clr_park'); if (P) P.value = st;
+    const S = $('#clrSum'); if (S) S.innerHTML = summary();
+  }
+  setInterval(() => { if (app.tab === 'atc') autoPark(); }, 3000);
   async function poll(force) {
     if (!force && Date.now() - lastPoll < 10000) return;
     lastPoll = Date.now();
@@ -188,7 +219,7 @@ const AtcTab = (() => {
     } catch (e) {
       err = `Keine Daten von VATSIM: ${e.message || e}. Hat der PC Internet?`;
     }
-    renderFreq(); sqkButton();
+    autoAtis(); renderFreq(); sqkButton();
   }
   const startPolling = () => { stopPolling(); poll(true); timer = setInterval(() => poll(), 20000); };
   const stopPolling = () => { if (timer) clearInterval(timer); timer = null; };
@@ -198,7 +229,9 @@ const AtcTab = (() => {
     const id = e.target.id;
     if (!id || !id.startsWith('clr_')) return;
     const f = id.slice(4);
-    clr[f] = e.target.value;
+    clr[f] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    if (f === 'atis' || f === 'qnh') clr.atisAuto = false;
+    if (f === 'park') clr.parkAuto = false;
     if (f === 'alt') {
       clr.altAuto = false;
       const dep = upper(clr.dep), sid = upper(clr.sid);

@@ -40,15 +40,16 @@
     if (!st.onRoute && st.cur >= 0 && gs > 3) { offSince = offSince || Date.now(); if (Date.now() - offSince > 15000 && Date.now() - offSaid > 90000) { offSaid = Date.now(); return talk(de() ? 'Achtung, wir sind nicht mehr auf dem geplanten Rollweg.' : 'Careful, we are off the planned taxi route.'); } } else offSince = 0;
     if (st.cur < 0 || st.distToJ == null) return;
     const k = plan.key + ':' + st.cur;
+    // Vorlauf: Sprachausgabe braucht Zeit (Berechnung + Sprechen) – früher ansagen, je schneller wir rollen; Satz vorher schon berechnen lassen
+    const lead = Math.min(320, Math.max(130, 45 + 12 * gs * 0.514));
+    const turnTxt = () => { const dir = st.turn === 'straight' ? (de() ? 'geradeaus weiter auf' : 'continue straight onto') : st.turn === 'left' ? (de() ? (st.sharp ? 'scharf links auf' : 'links auf') : (st.sharp ? 'sharp left onto' : 'turn left onto')) : (de() ? (st.sharp ? 'scharf rechts auf' : 'rechts auf') : (st.sharp ? 'sharp right onto' : 'turn right onto')); return de() ? `Gleich ${dir} Taxiway ${nameSay(st.next)}.` : `Next, ${dir} taxiway ${nameSay(st.next)}.`; };
+    if (!st.atEnd && st.next && st.turn && !done.has(k + ':pf') && st.distToJ < lead + 250) { done.add(k + ':pf'); try { c.prefetch(turnTxt(), undefined); } catch (e) { /* egal */ } }
+    if (st.holdAhead && st.holdAhead.dist < lead && !done.has(k + ':th' + st.holdAhead.ref)) { done.add(k + ':th' + st.holdAhead.ref); return talk(de() ? `Gleich Halt vor Taxiway ${nameSay(st.holdAhead.ref)}.` : `Hold short of taxiway ${nameSay(st.holdAhead.ref)}.`); }
     if (st.atEnd) {
-      if (st.hold && st.distToJ < 90 && !done.has(k + ':hold')) { done.add(k + ':hold'); return talk(de() ? `Gleich Halt vor Piste ${rw || ''}.` : `Hold short of runway ${rw || ''}.`); }
+      if (st.hold && st.holdKind !== 'twy' && st.distToJ < Math.max(90, lead * 0.8) && !done.has(k + ':hold')) { done.add(k + ':hold'); return talk(de() ? `Gleich Halt vor Piste ${rw || ''}.` : `Hold short of runway ${rw || ''}.`); }
       return;
     }
-    if (st.distToJ < 120 && st.next && !done.has(k)) {
-      done.add(k);
-      const dir = st.turn === 'straight' ? (de() ? 'geradeaus weiter auf' : 'continue straight onto') : st.turn === 'left' ? (de() ? (st.sharp ? 'scharf links auf' : 'links auf') : (st.sharp ? 'sharp left onto' : 'turn left onto')) : (de() ? (st.sharp ? 'scharf rechts auf' : 'rechts auf') : (st.sharp ? 'sharp right onto' : 'turn right onto'));
-      return talk(de() ? `Gleich ${dir} Taxiway ${nameSay(st.next)}.` : `Next, ${dir} taxiway ${nameSay(st.next)}.`);
-    }
+    if (st.distToJ < lead && st.next && !done.has(k)) { done.add(k); return talk(turnTxt()); }
   }
 
   // ---------- Verkehr (VATSIM) ----------

@@ -238,7 +238,12 @@ const server = http.createServer(async (req, res) => {
         if (!(hz >= 118000000 && hz <= 136992000)) return sendJson(res, 400, { error: 'Frequenz außerhalb 118.000–136.990.' });
         return sendJson(res, 200, { ok: !!sim.sendEvent('COM_STBY_RADIO_SET_HZ', hz), hz });
       }
-      if (b.action === 'swap') return sendJson(res, 200, { ok: !!sim.sendEvent('COM_RADIO_SWAP', 0) });
+      if (b.action === 'swap') { const ev = ['COM_RADIO_SWAP', 'COM_STBY_RADIO_SWAP', 'COM1_RADIO_SWAP'].includes(b.ev) ? b.ev : 'COM_RADIO_SWAP'; return sendJson(res, 200, { ok: !!sim.sendEvent(ev, 0), ev }); }
+      if (b.action === 'active') { // aktive Frequenz direkt setzen (falls das Funkgerät den Swap-Befehl ignoriert)
+        const hz = Math.round(Number(b.hz));
+        if (!(hz >= 118000000 && hz <= 136992000)) return sendJson(res, 400, { error: 'Frequenz außerhalb 118.000–136.990.' });
+        return sendJson(res, 200, { ok: !!sim.sendEvent('COM_RADIO_SET_HZ', hz), hz });
+      }
       return sendJson(res, 400, { error: 'ungültig' });
     }
     if (p === '/api/cp/event' && req.method === 'POST') {
@@ -274,6 +279,7 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.autostart === 'boolean') o.autostart = b.autostart;
         if (typeof b.packsOff === 'boolean') o.packsOff = b.packsOff;
         if (typeof b.gsxKeys === 'boolean') o.gsxKeys = b.gsxKeys;
+        if (['mix', 'clear', 'call', 'wait'].includes(b.pushEng)) o.pushEng = b.pushEng;
         if (b.life && typeof b.life === 'object') o.life = { taxi: b.life.taxi !== false, traffic: b.life.traffic !== false, calls: b.life.calls !== false, ground: b.life.ground !== false, groundPush: b.life.groundPush === true };
         if (b.voice && typeof b.voice === 'object') { o.voice = o.voice || {}; for (const k of ['de', 'en', 'ground']) if (typeof b.voice[k] === 'string') o.voice[k] = b.voice[k].slice(0, 200); }
         if (b.amb && typeof b.amb === 'object') {

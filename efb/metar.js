@@ -45,6 +45,12 @@ async function query({ icaos, lat, lon }) {
       list.forEach((i) => { out.stations[i] = { metar: norm(arr.find((m) => m.icaoId === i)) }; });
     } catch (e) { out.error = e.message; list.forEach((i) => { out.stations[i] = { metar: null }; }); }
   }
+  if (list.length) { // TAF (Vorhersage) – darf ausfallen, ohne dass METAR/ATIS leiden
+    try {
+      const tafs = await get(`https://aviationweather.gov/api/data/taf?ids=${list.join(',')}&format=json`);
+      list.forEach((i) => { const t = (Array.isArray(tafs) ? tafs : []).find((x) => x.icaoId === i); out.stations[i].taf = t && t.rawTAF ? { raw: t.rawTAF, issued: t.issueTime || t.bulletinTime || null, from: num(t.validTimeFrom) ? t.validTimeFrom * 1000 : null, to: num(t.validTimeTo) ? t.validTimeTo * 1000 : null } : null; });
+    } catch { list.forEach((i) => { if (out.stations[i]) out.stations[i].taf = null; }); }
+  }
   list.forEach((i) => {
     const a = at.filter((x) => x.cs.startsWith(i + '_') || x.cs.startsWith(i.slice(1) + '_'));
     out.stations[i].atis = a.map((x) => ({ cs: x.cs, freq: x.freq, code: x.code, text: x.text }));
@@ -68,7 +74,7 @@ function demo({ icaos, lat, lon }) {
     return { icao: i, name: i + ' Demo', raw: `${i} ${String(now.getUTCDate()).padStart(2, '0')}${hh}Z ${w}${String(s).padStart(2, '0')}KT 9999 FEW040 BKN090 ${12 + k}/0${5 + k} Q${q} NOSIG`, time: Date.now(), lat: 51, lon: 12, temp: 12 + k, dew: 5 + k, wdir: w, wspd: s, wgst: k === 1 ? 22 : null, vis: '10+', qnh: q, clouds: [{ cover: 'FEW', base: 4000 }, { cover: 'BKN', base: 9000 }], cat: 'VFR' };
   };
   const out = { updated: Date.now(), demo: true, stations: {}, here: null, error: null };
-  list.forEach((i, k) => { out.stations[i] = { metar: mk(i, k), atis: k === 0 ? [{ cs: i + '_ATIS', freq: '118.025', code: 'C', text: `${i} INFORMATION CHARLIE. RUNWAY IN USE 26L. WIND 180 DEGREES 8 KNOTS. QNH ${1010}.` }] : [] }; });
+  list.forEach((i, k) => { out.stations[i] = { metar: mk(i, k), taf: { raw: `TAF ${i} ${String(now.getUTCDate()).padStart(2, '0')}0500Z ${String(now.getUTCDate()).padStart(2, '0')}0606 18008KT 9999 FEW040 BKN090 TEMPO ${String(now.getUTCDate()).padStart(2, '0')}0912 4000 SHRA BKN020 BECMG ${String(now.getUTCDate()).padStart(2, '0')}1215 22012G25KT PROB30 TEMPO ${String(now.getUTCDate()).padStart(2, '0')}1518 TSRA BKN015CB`, issued: null, from: Date.now() - 3600000, to: Date.now() + 24 * 3600000 }, atis: k === 0 ? [{ cs: i + '_ATIS', freq: '118.025', code: 'C', text: `${i} INFORMATION CHARLIE. RUNWAY IN USE 26L. WIND 180 DEGREES 8 KNOTS. QNH ${1010}.` }] : [] }; });
   if (isFinite(lat) && isFinite(lon)) out.here = { ...mk('EDDP', 2), distNm: 14 };
   return out;
 }

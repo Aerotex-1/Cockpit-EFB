@@ -10,6 +10,8 @@ const MapLayers = (() => {
   let groundBusy = false;
   let vatsimTimer = null, radarTimer = null, cv = null;
   const seen = new Set();
+  const lbAll = [], lbS = { addLayer(mk) { lbAll.push(mk); } }; // Beschriftungen: nur die im Bildausschnitt liegen im DOM (sonst tausende Elemente → Ruckeln)
+  let drawGen = 0;
 
   function init(map) {
     m = map;
@@ -23,6 +25,7 @@ const MapLayers = (() => {
     L_.vatsim = L.layerGroup().addTo(m);
     let mvT = null;
     m.on('zoomend', syncZoomClass);
+    let lbT = null; m.on('moveend', () => { clearTimeout(lbT); lbT = setTimeout(syncLabels, 80); });
     m.on('moveend', () => { clearTimeout(mvT); mvT = setTimeout(() => { if (on.ground) loadGround(); if (on.vatsim) loadVatsim(); }, 450); });
     syncButtons(); syncZoomClass();
     Object.keys(on).forEach((k) => { if (on[k]) enable(k); });
@@ -32,7 +35,14 @@ const MapLayers = (() => {
     const z = m.getZoom();
     const c = m.getContainer().classList;
     c.toggle('z15', z >= 15); c.toggle('z16', z >= 16); c.toggle('z9', z >= 9);
-    if (L_.labels) { if (z >= 15 && on.ground) { if (!m.hasLayer(L_.labels)) L_.labels.addTo(m); } else if (m.hasLayer(L_.labels)) m.removeLayer(L_.labels); }
+    syncLabels();
+  }
+  function syncLabels() {
+    if (!m || !L_.labels) return;
+    if (!(m.getZoom() >= 15 && on.ground)) { L_.labels.clearLayers(); return; }
+    if (!m.hasLayer(L_.labels)) L_.labels.addTo(m);
+    const b = m.getBounds().pad(0.35);
+    for (const mk of lbAll) { const inb = b.contains(mk.getLatLng()), has = L_.labels.hasLayer(mk); if (inb && !has) L_.labels.addLayer(mk); else if (!inb && has) L_.labels.removeLayer(mk); }
   }
 
   function enable(k) {
@@ -55,7 +65,7 @@ const MapLayers = (() => {
   function info(html) { const el = $('#mapInfo'); el.hidden = !html; el.innerHTML = html || ''; }
 
   // ---------- Bodenkarte aus OpenStreetMap (Overpass) ----------
-  function resetGround() { L_.ground.clearLayers(); L_.labels.clearLayers(); groundCache = new Map(); seen.clear(); for (const x of [twy, stands]) for (const q in x) delete x[q]; document.dispatchEvent(new Event('ground:clear')); }
+  function resetGround() { drawGen++; lbAll.length = 0; L_.ground.clearLayers(); L_.labels.clearLayers(); groundCache = new Map(); seen.clear(); for (const x of [twy, stands]) for (const q in x) delete x[q]; document.dispatchEvent(new Event('ground:clear')); }
   let groundFails = 0;
   async function loadGround() {
     if (!m || m.getZoom() < 13 || groundBusy) return;
@@ -72,7 +82,7 @@ const MapLayers = (() => {
       let d = null;
       try { const r0 = await fetch(`/api/ground?bbox=${[s, w, n, e].map((x) => x.toFixed(3)).join(',')}`); if (r0.ok) d = await r0.json(); } catch { /* weiter */ }
       if (!d) { const r = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }); d = await r.json(); }
-      drawGround(d.elements || []);
+      await drawGround(d.elements || []);
       groundFails = 0;
     } catch {
       groundCache.delete(key);
@@ -81,13 +91,18 @@ const MapLayers = (() => {
       else if (groundFails === 4) { info('Bodenkarte konnte nicht geladen werden (OpenStreetMap nicht erreichbar).'); setTimeout(() => info(''), 5000); }
     } finally { groundBusy = false; }
   }
-  function drawGround(els) {
-    const g = L_.ground, lb = L_.labels, R = { pane: 'groundPane', renderer: cv, interactive: false };
+  // Rollwege, die nach Farben benannt sind (Blue, Orange …), erscheinen in dieser Farbe
+  const COLORS = [[/\b(blue|blau|bleu)\b/i, '#3a8dff', '#fff'], [/\b(orange)\b/i, '#ff8a1f', '#000'], [/\b(green|grün|gruen|vert)\b/i, '#3fe27a', '#000'], [/\b(red|rot|rouge)\b/i, '#ff4d4d', '#fff'], [/\b(yellow|gelb|jaune)\b/i, '#ffe14a', '#000'], [/\b(pink|rosa)\b/i, '#ff7ac8', '#000'], [/\b(purple|violet|lila)\b/i, '#b36bff', '#fff'], [/\b(brown|braun)\b/i, '#a0713d', '#fff'], [/\b(white|weiss|weiß|blanc)\b/i, '#f2f2f2', '#000'], [/\b(grey|gray|grau)\b/i, '#9aa3ad', '#000'], [/\b(black|schwarz)\b/i, '#6b7480', '#fff'], [/\b(gold)\b/i, '#e8b923', '#000']];
+  const colorOf = (txt) => { const h = COLORS.find(([re]) => re.test(txt)); return h ? { c: h[1], fg: h[2] } : null; };
+  async function drawGround(els) {
+    const gen = ++drawGen, g = L_.ground, lb = lbS, R = { pane: 'groundPane', renderer: cv, interactive: false };
     const order = { apron: 0, terminal: 1, taxilane: 2, taxiway: 3, runway: 4, parking_position: 5, gate: 6, holding_position: 7 };
     els = els.filter((el) => { const k = el.type + el.id; if (seen.has(k)) return false; seen.add(k); return true; }); // jedes OSM-Objekt nur einmal zeichnen
     els.sort((a, b) => (order[a.tags && a.tags.aeroway] || 0) - (order[b.tags && b.tags.aeroway] || 0));
     const tag = (cls, text, at) => L.marker(at, { pane: 'labelPane', icon: L.divIcon({ className: cls, html: esc(text) }), interactive: false, keyboard: false });
+    let tStart = performance.now();
     for (const el of els) {
+      if (performance.now() - tStart > 10) { await new Promise((r) => setTimeout(r, 0)); if (gen !== drawGen) return; tStart = performance.now(); } // in Häppchen zeichnen, damit die Karte bedienbar bleibt
       const t = el.tags || {}, type = t.aeroway, ref = t.ref || t.name || '';
       if (el.type === 'way' && el.geometry) {
         const pts = el.geometry.map((p) => [p.lat, p.lon]);
@@ -102,18 +117,22 @@ const MapLayers = (() => {
             if (parts[1]) tag('rwy-label', parts[1], b).addTo(g);
           }
         } else if (type === 'taxiway' || type === 'taxilane') {
-          const line = L.polyline(pts, { ...R, color: type === 'taxiway' ? '#c9a227' : '#7d6a2a', weight: type === 'taxiway' ? 2.5 : 1.5 }).addTo(g);
+          const cw = colorOf(`${t.ref || ''} ${t.name || ''}`);
+          const line = L.polyline(pts, { ...R, color: cw ? cw.c : type === 'taxiway' ? '#c9a227' : '#7d6a2a', weight: type === 'taxiway' ? (cw ? 3 : 2.5) : 1.5 }).addTo(g);
           (twy[ref] = twy[ref] || []).push(line);
-          if (ref && type === 'taxiway') tag('twy-tag', ref, pts[Math.floor(pts.length / 2)]).addTo(lb);
+          if (ref && type === 'taxiway') {
+            if (cw) L.marker(pts[Math.floor(pts.length / 2)], { pane: 'labelPane', icon: L.divIcon({ className: 'twy-tag2', html: `<span style="background:${cw.c};color:${cw.fg}">${esc(ref)}</span>` }), interactive: false, keyboard: false }).addTo(lbS);
+            else tag('twy-tag', ref, pts[Math.floor(pts.length / 2)]).addTo(lbS);
+          }
         } else if (type === 'parking_position' && ref) {
           L.polyline(pts, { ...R, color: '#34c6f4', weight: 1, opacity: 0.6 }).addTo(g);
           stands[ref] = pts[0];
-          tag('gate-label', ref, pts[0]).addTo(lb);
+          tag('gate-label', ref, pts[0]).addTo(lbS);
         }
       } else if (el.type === 'node') {
         if ((type === 'parking_position' || type === 'gate') && ref) {
           stands[ref] = [el.lat, el.lon];
-          tag('gate-label', ref, [el.lat, el.lon]).addTo(lb);
+          tag('gate-label', ref, [el.lat, el.lon]).addTo(lbS);
         } else if (type === 'holding_position') {
           L.circleMarker([el.lat, el.lon], { ...R, radius: 2.5, color: '#ff4d4d', weight: 1, fillOpacity: 1 }).addTo(g);
         }

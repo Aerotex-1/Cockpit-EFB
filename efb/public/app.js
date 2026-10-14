@@ -4,10 +4,26 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const store = {
-  get(k, d) { try { const v = localStorage.getItem('efb.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('efb.' + k, JSON.stringify(v)); } catch { /* egal */ } },
+const store = { // Werte im Speicher zwischenhalten: localStorage-Zugriffe sind auf dem iPad langsam und werden pro Sekunde oft gebraucht
+  _c: new Map(),
+  get(k, d) { try { let v = this._c.get(k); if (v === undefined) { v = localStorage.getItem('efb.' + k); this._c.set(k, v); } return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { const j = JSON.stringify(v); this._c.set(k, j); localStorage.setItem('efb.' + k, j); } catch { /* egal */ } },
 };
+window.addEventListener('storage', () => store._c.clear());
+// Gewichtseinheit (pro Gerät): intern rechnet alles in kg, angezeigt wird kg oder lb
+const WU = (() => {
+  const LB = 0.45359237, subs = [];
+  const unit = () => (store.get('wunit', 'kg') === 'lbs' ? 'lbs' : 'kg');
+  return {
+    unit, label: () => (unit() === 'lbs' ? 'lb' : 'kg'),
+    toKg: (v) => (v === null || v === undefined || isNaN(v) ? v : unit() === 'lbs' ? v * LB : v),      // Eingabe (Anzeigeeinheit) -> kg
+    fromKg: (kg) => (kg === null || kg === undefined || isNaN(kg) ? kg : unit() === 'lbs' ? kg / LB : kg), // kg -> Anzeigeeinheit
+    ofpKg: (v, o) => { const x = Number(v); return isNaN(x) ? null : ((o && o.params && o.params.units) === 'lbs' ? x * LB : x); }, // OFP-Wert -> kg
+    show: (kg, step = 1) => (kg === null || kg === undefined || isNaN(kg) ? '–' : `${fmt(Math.round((unit() === 'lbs' ? kg / LB : kg) / step) * step)} ${unit() === 'lbs' ? 'lb' : 'kg'}`),
+    set: (u) => { const old = unit(); store.set('wunit', u === 'lbs' ? 'lbs' : 'kg'); if (old !== unit()) subs.forEach((f) => { try { f(old, unit()); } catch (e) { /* weiter */ } }); },
+    on: (f) => subs.push(f),
+  };
+})();
 const num = (v) => (v === undefined || v === null || v === '' ? null : Number(v));
 const fmt = (v, d = 0) => (v === null || v === undefined || isNaN(v) ? '–' : Number(v).toLocaleString(window.LANG === 'en' ? 'en-US' : 'de-DE', { maximumFractionDigits: d, minimumFractionDigits: d }));
 
@@ -175,12 +191,13 @@ let lastProfileId = null;
 function onSim() {
   const s = app.sim;
   const lamp = $('#simLamp');
-  lamp.className = 'lamp' + (s.connected ? ' ok' : s.bridgeDown ? '' : ' warn');
+  const lampCls = 'lamp' + (s.connected ? ' ok' : s.bridgeDown ? '' : ' warn'); if (lamp.className !== lampCls) lamp.className = lampCls;
   lamp.title = s.bridgeDown ? 'PC-Brücke nicht erreichbar' : s.connected ? (s.demo ? 'Demo-Modus' : 'Mit MSFS verbunden') : 'Warte auf MSFS';
 
-  $('#stripLive').innerHTML = s.connected && s.lat !== null
+  const stripHtml = s.connected && s.lat !== null
     ? `<span><small>GS</small>${fmt(s.gs)}</span><span><small>ALT</small>${fmt(s.alt)}</span><span><small>HDG</small>${String(Math.round(s.hdg) % 360).padStart(3, '0')}</span>`
     : `<span class="dim-t">${s.bridgeDown ? 'PC-Brücke offline' : 'Sim nicht verbunden'}</span>`;
+  if (stripHtml !== onSim._strip) { onSim._strip = stripHtml; $('#stripLive').innerHTML = stripHtml; } // nur bei Änderung schreiben (spart Layout und Neuzeichnen)
 
   const p = currentProfile();
   if ((p && p.id) !== lastProfileId) {
@@ -207,7 +224,9 @@ function renderLive() {
   const rows = [
     ['Flieger', s.title || '–'],
     ['Position', s.lat !== null && s.lat !== undefined ? `${s.lat.toFixed(4)} ${s.lon.toFixed(4)}` : '–'],
-    ['Höhe', `${fmt(s.alt)} ft`], ['Groundspeed', `${fmt(s.gs)} kt`],
+    ['Höhe (MSL)', `${fmt(s.alt)} ft`],
+    ['Höhe (AGL)', s.agl !== null && s.agl !== undefined ? `${fmt(s.agl)} ft` : '–'],
+    ['Groundspeed', `${fmt(s.gs)} kt`],
     ['Vertikal', `${fmt(s.vs)} ft/min`],
     ['Wind', s.windDir !== null && s.windDir !== undefined ? `${String(Math.round(s.windDir)).padStart(3, '0')}° / ${fmt(s.windSpd)} kt` : '–'],
     ['OAT / QNH', s.oat !== null && s.oat !== undefined ? `${fmt(s.oat)} °C / ${Math.round(s.qnh)} hPa` : '–'],
@@ -236,10 +255,22 @@ async function loadOfp(silent) {
   }
 }
 
+function renderWt() {
+  const o = app.ofp; if (!o) return;
+  const g = o.general || {};
+  const w = o.weights || {}, f = o.fuel || {};
+  const wt = [
+    ['Block Fuel', f.plan_ramp], ['Trip', f.enroute_burn], ['Reserve', f.reserve], ['Alternate', f.alternate_burn],
+    ['ZFW', w.est_zfw], ['TOW', w.est_tow], ['LDW', w.est_ldw], ['PAX', w.pax_count],
+  ];
+  $('#wtKv').innerHTML = wt.map(([k, v]) => `<dt>${k}</dt><dd>${k === 'PAX' ? fmt(num(v)) : WU.show(WU.ofpKg(v, o))}</dd>`).join('') +
+    `<dt>Cost Index</dt><dd>${esc(g.costindex ?? '–')}</dd>`;
+}
+WU.on(() => { renderWt(); });
+
 function setOfp(o) {
   app.ofp = o;
   const g = o.general || {}, or = o.origin || {}, de = o.destination || {}, al = o.alternate || {};
-  const unit = (o.params && o.params.units) === 'lbs' ? 'lb' : 'kg';
   const callsign = (o.atc && o.atc.callsign) || `${g.icao_airline || ''}${g.flight_number || ''}`;
   const fl = num(g.initial_altitude);
   const block = num(o.times && o.times.est_block);
@@ -253,13 +284,7 @@ function setOfp(o) {
     <div class="apt dest">${esc(de.icao_code)}<small>${esc(de.name)} · RWY ${esc(de.plan_rwy || '–')}</small></div>
     <div class="route-meta">${esc(g.route || '')}</div>`;
 
-  const w = o.weights || {}, f = o.fuel || {};
-  const wt = [
-    ['Block Fuel', f.plan_ramp], ['Trip', f.enroute_burn], ['Reserve', f.reserve], ['Alternate', f.alternate_burn],
-    ['ZFW', w.est_zfw], ['TOW', w.est_tow], ['LDW', w.est_ldw], ['PAX', w.pax_count],
-  ];
-  $('#wtKv').innerHTML = wt.map(([k, v]) => `<dt>${k}</dt><dd>${k === 'PAX' ? fmt(num(v)) : fmt(num(v)) + ' ' + unit}</dd>`).join('') +
-    `<dt>Cost Index</dt><dd>${esc(g.costindex ?? '–')}</dd>`;
+  renderWt();
 
   const wx = o.weather || {};
   $('#wxBox').innerHTML = [['DEP', or.icao_code, wx.orig_metar], ['ARR', de.icao_code, wx.dest_metar], ['ALT', al.icao_code, wx.altn_metar]]
@@ -374,7 +399,10 @@ function updatePlane() {
     planeMarker.setLatLng(pos);
     if (Math.abs(((hdg - planeHdg + 540) % 360) - 180) >= 2) { planeHdg = hdg; const el = planeMarker.getElement(); const sv = el && el.querySelector('svg'); if (sv) sv.style.transform = `rotate(${hdg}deg)`; } // nur drehen, Symbol nicht neu bauen
   }
-  if (follow && app.tab === 'map' && now - panAt > 400) { panAt = now; map.panTo(pos, { animate: false }); }
+  if (follow && app.tab === 'map' && now - panAt > 400) { // nur nachführen, wenn sich das Flugzeug merklich von der Mitte entfernt hat (jedes Verschieben zeichnet die Karte neu)
+    const c = map.latLngToContainerPoint(pos), sz = map.getSize();
+    if (Math.hypot(c.x - sz.x / 2, c.y - sz.y / 2) > 6) { panAt = now; map.panTo(pos, { animate: false }); }
+  }
 }
 function drawRoute() {
   if (!map || !app.ofp) return;
@@ -382,17 +410,33 @@ function drawRoute() {
   const or = app.ofp.origin, de = app.ofp.destination;
   const pts = [];
   if (or && or.pos_lat) pts.push({ ident: or.icao_code, lat: +or.pos_lat, lon: +or.pos_long });
-  fixes.forEach((f) => pts.push({ ident: f.ident, lat: +f.pos_lat, lon: +f.pos_long, type: f.type }));
+  fixes.forEach((f) => pts.push({ ident: f.ident, lat: +f.pos_lat, lon: +f.pos_long, type: f.type, altFt: Number(f.altitude_feet), wd: f.wind_dir, ws: f.wind_spd }));
   if (routeLayer) routeLayer.remove();
   routeLayer = L.layerGroup().addTo(map);
   L.polyline(pts.map((p) => [p.lat, p.lon]), { color: '#e040fb', weight: 3 }).addTo(routeLayer);
   pts.filter((p) => p.type !== 'ltlg' && p.ident !== 'TOC' && p.ident !== 'TOD').forEach((p) => {
-    L.circleMarker([p.lat, p.lon], { radius: 3, color: '#e040fb', fillOpacity: 1 })
+    L.circleMarker([p.lat, p.lon], { radius: 4, color: '#e040fb', fillOpacity: 1 })
       .bindTooltip(p.ident, { permanent: true, direction: 'right', className: 'wpt-label', offset: [4, 0] })
+      .on('click', () => showWpWind(p))
       .addTo(routeLayer);
   });
   routeLayer.bounds = L.latLngBounds(pts.map((p) => [p.lat, p.lon]));
   void de;
+}
+
+// Wind an einem Wegpunkt: Vorhersage auf mehreren Höhen (Open-Meteo), die Zeile der OFP-Flughöhe ist markiert
+async function showWpWind(p) {
+  const pad3 = (n) => String(Math.round(n)).padStart(3, '0');
+  const head = `<b>${esc(p.ident)}</b>${Number.isFinite(p.altFt) && p.altFt > 0 ? ` · OFP ${p.altFt >= 18000 ? 'FL' + Math.round(p.altFt / 100) : fmt(p.altFt) + ' ft'}` : ''}${p.wd !== undefined && p.wd !== '' ? ` · OFP-Wind ${pad3(p.wd)}°/${Math.round(p.ws)} kt` : ''}`;
+  const pop = L.popup({ maxWidth: 280, className: 'wp-pop' }).setLatLng([p.lat, p.lon]).setContent(`${head}<p class="wx-note">Lade Wind …</p>`).openOn(map);
+  try {
+    const r = await fetch(`/api/wx/profile?lat=${p.lat.toFixed(3)}&lon=${p.lon.toFixed(3)}`); if (!r.ok) throw new Error(r.status);
+    const d = await r.json(), lv = d.levels || [], pt = (d.point && d.point.levels) || {};
+    const want = Number.isFinite(p.altFt) && p.altFt > 0 ? p.altFt / 100 : null;
+    let near = null; if (want !== null) lv.forEach((l) => { if (near === null || Math.abs(l.fl - want) < Math.abs(near.fl - want)) near = l; });
+    const rows = lv.map((l) => { const v = pt[l.id]; return `<tr class="${near && near.id === l.id ? 'hit' : ''}"><td>${esc(l.label)}</td><td>${v && v.dir != null ? pad3(v.dir) + '°' : '–'}</td><td>${v && v.kt != null ? Math.round(v.kt) + ' kt' : '–'}</td><td>${v && v.temp != null ? Math.round(v.temp) + ' °C' : '–'}</td></tr>`; }).join('');
+    pop.setContent(`${head}<table class="wp-wind"><thead><tr><th>Höhe</th><th>Wind</th><th>Stärke</th><th>Temp</th></tr></thead><tbody>${rows}</tbody></table><p class="wx-note">Vorhersage von Open-Meteo${d.demo ? ' (Demo)' : ''}${near ? ' · markiert: nächste Stufe zur OFP-Höhe' : ''}</p>`);
+  } catch (e) { pop.setContent(`${head}<p class="wx-note">Wind konnte nicht geladen werden (${esc(String(e.message || e))}). Braucht Internet am PC.</p>`); }
 }
 
 // ---------- Checklisten ----------

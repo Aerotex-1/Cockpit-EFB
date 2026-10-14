@@ -9,7 +9,7 @@
   const sim = () => app.sim || {};
   const gnd = () => (sim().efb || {}).ground || {};
   const F = { prevPush: false, pushSaid: false, engSaid: false, engSince: 0, discSaid: false, flown: false, arrSaid: false, brakeSince: 0 };
-  function reset() { core().S.pushAt = 0; F.pushSaid = F.engSaid = F.discSaid = F.arrSaid = false; F.engSince = F.brakeSince = 0; const S = core().S; S.pushDone = S.engCleared = S.discDone = 0; }
+  function reset() { core().S.pb = null; core().S.pushAt = 0; F.pushSaid = F.engSaid = F.discSaid = F.arrSaid = false; F.engSince = F.brakeSince = 0; const S = core().S; S.pushDone = S.engCleared = S.discDone = 0; }
   function tick() {
     const c = core(), s = sim(); if (!c || !on() || !s.connected) return;
     const S = c.S, g = gnd(), now = Date.now();
@@ -19,7 +19,7 @@
       if (!F.arrSaid && ready()) {
         F.arrSaid = true; F.flown = false;
         c.efbAct && g.chocks === false && c.efbAct('chocks');
-        c.call('Welcome. Chocks are in place, ground power is available on request.', ['arrival', 'welcome']);
+        c.call(c.misc ? c.misc('welcome') : 'Welcome. Chocks are in place, ground power is available on request.', ['arrival', 'welcome']);
       }
       return;
     }
@@ -27,12 +27,13 @@
     if (g.pushback) F.prevPush = true;
     else if (F.prevPush) {
       F.prevPush = false;
-      if (!S.pushDone || now - S.pushDone > 30000) { const loud = !c.pushBusy() || c.lifeOn('groundPush'); if (!loud) { S.pushDone = now; S.pushOver = true; } else if (ready()) { S.pushDone = now; S.pushOver = true; c.call('Pushback complete, set parking brake.', ['pushback.done']); } else F.prevPush = true; }
+      if (!S.pushDone || now - S.pushDone > 30000) { const loud = !c.pushBusy() || c.lifeOn('groundPush') || c.pbOn(); if (!loud) { S.pushDone = now; S.pushOver = true; } else if (ready()) c.pushEnded(); else F.prevPush = true; }
     }
     if ((s.gs || 0) > 3) return;
     // Parkbremse gesetzt nach Pushback → Triebwerke starten
     const pushedAt = S.pushDone && now - S.pushDone < 15 * 60000;
-    if (pushedAt && !g.pushback && c.brk() !== false && !g.enginesRunning && !F.engSaid) {
+    if (c.pbOn()) return; // Pushback-Ablauf mit Bestätigung läuft: Triebwerke und Abkoppeln führt der Ablauf
+    if (pushedAt && !g.pushback && c.brk() !== false && !g.enginesRunning && !F.engSaid && !(S.engCleared && now - S.engCleared < 15 * 60000)) {
       F.brakeSince = F.brakeSince || now;
       if (now - F.brakeSince > (c.brk() === true ? 3000 : 12000) && ready()) { F.engSaid = true; c.engineClear(false); }
     } else if (c.brk() === false) F.brakeSince = 0;

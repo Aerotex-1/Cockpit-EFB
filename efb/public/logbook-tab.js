@@ -11,7 +11,7 @@ const LogbookTab = (() => {
   const day = (ms) => { const d = new Date(ms); return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${String(d.getUTCFullYear()).slice(2)}`; };
   const dur = (min) => { if (min == null || !isFinite(min) || min < 0) return '–'; const m = Math.round(min); return `${Math.floor(m / 60)}:${pad(m % 60)} h`; };
   const mins = (a, b) => (a && b ? (b - a) / 60000 : null);
-  const kg = (v) => (v == null ? '–' : `${fmt(v)} kg`);
+  const kg = (v) => (v == null ? '–' : WU.show(v));
   const block = (e) => mins(e.t.off, e.t.on);
   const airMin = (e) => mins(e.t.to, e.t.ldg);
   const airlineOf = (e) => Settings.airlines().find((a) => a.id === e.airline);
@@ -220,5 +220,6 @@ const LogbookTab = (() => {
       if (name === 'logbook') { view = { ...L() }; open = null; selMode = false; sel.clear(); adding = false; render(); load(); timer = setInterval(() => { if (!document.activeElement.matches('textarea,input,select')) load(); }, 15000); }
     });
   });
+  WU.on(() => { if (typeof render === 'function' && app.tab === 'logbook') render(); });
   return { load };
 })();

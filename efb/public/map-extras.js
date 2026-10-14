@@ -84,7 +84,7 @@ const MapExtras = (() => {
     return out;
   };
   const apt = (icao) => airports().find((a) => a.icao === icao) || (app.airports || []).find((a) => a.icao === icao);
-  const tokens = (s) => String(s || '').toUpperCase().split(/[\s,;>→]+|\s-\s|-(?=\s|$)/).map((t) => t.trim()).filter(Boolean);
+  const tokens = (s) => String(s || '').toUpperCase().replace(/\(([^)]*)\)/g, (m, x) => ' (' + x.trim().replace(/\s+/g, '') + ') ').split(/[\s,;>→]+|\s-\s|-(?=\s|$)/).map((t) => t.trim()).filter(Boolean);
   function entry() { return store_()[keyOf(cur.icao, cur.mode)] || { stand: '', rwy: '', route: '' }; }
 
   function bar() {
@@ -94,8 +94,10 @@ const MapExtras = (() => {
     if (!b) { b = document.createElement('div'); b.id = 'taxiBar'; b.className = 'taxi-bar'; q('tab-map').appendChild(b); }
     b.hidden = false;
     const e = all[keyOf(cur.icao, cur.mode)] || shown[0][1], [ic, md] = (all[keyOf(cur.icao, cur.mode)] ? keyOf(cur.icao, cur.mode) : shown[0][0]).split(':');
-    const t = tokens(e.route), chips = md === 'arr' ? [e.rwy, ...t, e.stand] : [e.stand, ...t, e.rwy];
-    b.innerHTML = `<span class="tb-h">${esc(ic)} ${md === 'arr' ? 'Ankunft' : 'Abflug'}</span>` + chips.filter(Boolean).map((c, i, a) => `<span class="tb-c${RWY.test(c) ? ' rw' : (c === e.stand ? ' st' : '')}">${esc(c)}</span>${i < a.length - 1 ? '<i>›</i>' : ''}`).join('') + '<button class="tb-x" id="tbClear" title="Rollweg löschen" aria-label="Rollweg löschen">×</button>';
+    let t = tokens(e.route).map((c) => ({ c }));
+    try { const a = apt(ic), pv = window.TaxiNav && a && TaxiNav.data[ic] && TaxiNav.preview(TaxiNav.planFrom(ic, md, e, a.lat, a.lon)); if (pv && pv.bar) t = pv.bar.map((x) => ({ c: x.hold ? '(' + x.ref + ')' : x.ref, gap: x.gap, hold: x.hold })); else if (window.TaxiNav && a && !TaxiNav.data[ic]) TaxiNav.ensure(ic, a.lat, a.lon).then((d) => { if (d) bar(); }); } catch (e2) { /* Eingabe zeigen */ }
+    const chips = md === 'arr' ? [{ c: e.rwy }, ...t, { c: e.stand }] : [{ c: e.stand }, ...t, { c: e.rwy }];
+    b.innerHTML = `<span class="tb-h">${esc(ic)} ${md === 'arr' ? 'Ankunft' : 'Abflug'}</span>` + chips.filter((x) => x.c).map((x, i, a) => `<span class="tb-c${RWY.test(x.c) ? ' rw' : (x.c === e.stand ? ' st' : '')}${x.gap ? ' gap' : ''}${x.hold ? ' hold' : ''}"${x.gap ? ' title="automatisch eingefügte Verbindung"' : ''}>${esc(x.c)}</span>${i < a.length - 1 ? '<i>›</i>' : ''}`).join('') + '<button class="tb-x" id="tbClear" title="Rollweg löschen" aria-label="Rollweg löschen">×</button>';
   }
   // Mit Position vom Sim zeigt die Karte nur den Abschnitt, auf dem du gerade bist, und den nächsten (nicht die ganze Route).
   function liveState() {
@@ -105,13 +107,31 @@ const MapExtras = (() => {
     const st = TaxiNav.compute(plan, { lat: s.lat, lon: s.lon, hdg: s.hdg, gs: s.gs });
     return st && !st.missing ? { st, plan } : null;
   }
+  // Roter Strich quer zum Rollweg: Halt vor einem Rollweg (Klammer in der Eingabe)
+  function drawHolds(hs, P) {
+    for (const h of hs || []) {
+      if (!h.line || h.line.length < 2) continue;
+      L.polyline(h.line, { ...P, color: '#ff3b3b', weight: 5, opacity: 1, lineCap: 'butt' }).addTo(hlLayer);
+      L.marker(h.line[1], { ...P, icon: L.divIcon({ className: 'tx-hold', html: 'Halt ' + esc(h.ref), iconSize: null }) }).addTo(hlLayer);
+    }
+  }
+  const previewOf = (e) => {
+    if (!window.TaxiNav || !cur.icao) return null; const a = apt(cur.icao); if (!a || !isFinite(a.lat) || !isFinite(a.lon)) return null;
+    if (!TaxiNav.data[cur.icao]) { TaxiNav.ensure(cur.icao, a.lat, a.lon).then((d) => { if (d) highlight(); }); return null; }
+    return TaxiNav.preview(TaxiNav.planFrom(cur.icao, cur.mode, e, a.lat, a.lon));
+  };
+  let hlSig = '';
   function highlight() {
     if (!m) return;
-    if (hlLayer) hlLayer.clearLayers(); else hlLayer = L.layerGroup().addTo(m);
     const e = entry(), ML = MapLayers; if (!ML) return;
     const live = taxiOpen ? null : liveState();
+    const sig = live ? `${live.plan.key}|${live.st.cur}|${live.st.turn}|${Math.round((live.st.distToJ || 0) / 3)}|${(live.st.legCur || []).length}|${(live.st.legNext || []).length}` : '';
+    if (live && sig === hlSig && hlLayer) return; // nichts hat sich geändert: nicht neu zeichnen
+    hlSig = sig;
+    if (hlLayer) hlLayer.clearLayers(); else hlLayer = L.layerGroup().addTo(m);
     if (live) {
       const { st } = live, P = { pane: 'hlPane', interactive: false };
+      drawHolds(st.holdLines, P);
       if (st.legNext && st.legNext.length > 1) L.polyline(st.legNext, { ...P, color: '#34c6f4', weight: 5, opacity: 0.55, dashArray: '2 9', lineCap: 'round' }).addTo(hlLayer);
       if (st.legCur && st.legCur.length > 1) L.polyline(st.legCur, { ...P, color: '#34c6f4', weight: 7, opacity: 0.9 }).addTo(hlLayer);
       const lbl = st.cur < 0 ? `weiter zu ${st.toFirst}` : st.next ? `${st.turn === 'left' ? '↰ links' : st.turn === 'right' ? '↱ rechts' : '↑ geradeaus'} ${st.next}` : (st.hold ? 'Halt vor der Piste' : '');
@@ -120,8 +140,15 @@ const MapExtras = (() => {
       return;
     }
     if (!taxiOpen) return; // Vorschau der ganzen Route nur, solange das Rollweg-Fenster offen ist
-    const wanted = new Set(tokens(e.route).filter((x) => !RWY.test(x)));
-    for (const ref of wanted) for (const line of ML.twy[ref] || []) L.polyline(line.getLatLngs(), { color: '#34c6f4', weight: 4, opacity: 0.6, dashArray: '10 8', interactive: false, pane: 'hlPane' }).addTo(hlLayer);
+    const pv = previewOf(e);
+    if (pv && pv.legs) {
+      const P = { pane: 'hlPane', interactive: false };
+      for (const l of pv.legs) if (l.pts.length > 1) L.polyline(l.pts, l.gap ? { ...P, color: '#7fd8f5', weight: 4, opacity: 0.8, dashArray: '3 8', lineCap: 'round' } : { ...P, color: '#34c6f4', weight: 6, opacity: 0.85, lineCap: 'round' }).addTo(hlLayer);
+      drawHolds(pv.holds, P);
+    } else {
+      const wanted = new Set(TaxiNav.parse(e.route).route);
+      for (const ref of wanted) for (const line of ML.twy[ref] || []) L.polyline(line.getLatLngs(), { color: '#34c6f4', weight: 4, opacity: 0.6, dashArray: '10 8', interactive: false, pane: 'hlPane' }).addTo(hlLayer);
+    }
     const st = e.stand && ML.stands[String(e.stand).toUpperCase()];
     if (st) L.circleMarker(st, { pane: 'hlPane', radius: 9, color: '#3fe27a', weight: 3, fillColor: '#3fe27a', fillOpacity: .25, interactive: false }).addTo(hlLayer);
   }
@@ -144,9 +171,9 @@ const MapExtras = (() => {
       <div class="tx-row"><label>Stand<input id="txStand" list="txStands" value="${esc(e.stand)}" placeholder="A12" autocapitalize="characters"></label>
       <label>Piste<input id="txRwy" value="${esc(e.rwy)}" placeholder="26R" autocapitalize="characters"></label></div>
       <datalist id="txStands">${listStands().map((s) => `<option value="${esc(s)}">`).join('')}</datalist>
-      <label>Rollweg ${cur.mode === 'arr' ? '(von der Piste zum Stand)' : '(vom Stand zur Piste)'}<input id="txRoute" value="${esc(e.route)}" placeholder="z. B. B A N5" autocapitalize="characters"></label>
+      <label>Rollweg ${cur.mode === 'arr' ? '(von der Piste zum Stand)' : '(vom Stand zur Piste)'}<input id="txRoute" value="${esc(e.route)}" placeholder="z. B. B A N5 oder B (A) für Halt vor A" autocapitalize="characters"></label>
       <div class="tx-btns"><button class="btn-s" id="txShow">Anzeigen</button><button class="btn-s" id="txFly">Zum Flughafen</button><button class="btn-s" id="txStandGo">Stand zeigen</button><button class="btn-s" id="txClear">Löschen</button><button class="btn-s" id="txClearAll">Alle löschen</button></div>
-      <p class="wx-help">Die Rollwege werden in der Bodenkarte hervorgehoben (ab Zoom 13 geladen). Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.</p>`;
+      <p class="wx-help">Die Rollwege werden nur bis zur jeweiligen Kreuzung markiert. Fehlt eine Verbindung, wird die kürzeste eingefügt (gestrichelt). Ein Rollweg in Klammern, z. B. B (A), bedeutet: Halt vor A, mit rotem Strich. Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.</p>`;
   }
   function openTaxi(v) {
     taxiOpen = v; const b = q('btnTaxi'); if (b) b.classList.toggle('on', v);
@@ -213,8 +240,8 @@ const MapExtras = (() => {
     if (e.target.id === 'txAptT') { cur.icao = e.target.value.toUpperCase(); openTaxi(true); fly(cur.icao); }
     if (['txStand', 'txRwy', 'txRoute'].includes(e.target.id)) save();
   });
-  document.addEventListener('ground:drawn', () => { highlight(); const dl = q('txStands'); if (dl) dl.innerHTML = listStands().map((s) => `<option value="${esc(s)}">`).join(''); });
-  document.addEventListener('ground:clear', () => { if (hlLayer) hlLayer.clearLayers(); });
+  document.addEventListener('ground:drawn', () => { hlSig = ''; highlight(); const dl = q('txStands'); if (dl) dl.innerHTML = listStands().map((s) => `<option value="${esc(s)}">`).join(''); });
+  document.addEventListener('ground:clear', () => { hlSig = ''; if (hlLayer) hlLayer.clearLayers(); });
   hooks.ofp.push(() => { showPanel(); if (taxiOpen) openTaxi(true); bar(); });
 
   hooks.tab.push((n) => {

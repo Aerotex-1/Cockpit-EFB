@@ -282,6 +282,7 @@ window.EN_DICT = {
 "Stand zeigen": "Show stand",
 "Löschen": "Delete",
 "Die Rollwege werden in der Bodenkarte hervorgehoben (ab Zoom 13 geladen). Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.": "Taxiways are highlighted on the ground map (loaded from zoom 13). Your entry is saved, also for the arrival airport.",
+"Die Rollwege werden nur bis zur jeweiligen Kreuzung markiert. Fehlt eine Verbindung, wird die kürzeste eingefügt (gestrichelt). Ein Rollweg in Klammern, z. B. B (A), bedeutet: Halt vor A, mit rotem Strich. Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.": "Taxiways are only marked up to the next junction. If a link is missing, the shortest one is inserted (dashed). A taxiway in brackets, e.g. B (A), means: hold short of A, with a red line. Your entry is saved, also for the arrival airport.",
 "Bodenkarte konnte nicht geladen werden (OpenStreetMap nicht erreichbar).": "Ground map could not be loaded (OpenStreetMap unreachable).",
 "Lade einen OFP, um Lotsen für deine Flughäfen zu sehen.": "Load an OFP to see controllers for your airports.",
 "keine Daten": "no data",
@@ -1011,6 +1012,11 @@ window.EN_DICT = {
     'Automatisch starten': 'Start automatically',
     'Tempo': 'Speed',
     'Mikrofon': 'Microphone',
+    'Gewicht lb': 'Weight lb', 'Gewichte': 'Weights', 'Kilogramm': 'Kilograms', 'Pfund': 'Pounds',
+    'Höchstgewicht Piste': 'Max weight runway', 'Höchstgewichte laut OFP (TLR)': 'Max weights per OFP (TLR)',
+    'Parkposition': 'Parking position', 'Steigflug': 'Climb', 'ATIS / QNH': 'ATIS / QNH',
+    'Höhe (MSL)': 'Altitude (MSL)', 'Höhe (AGL)': 'Height (AGL)', 'Höhe': 'Altitude', 'Stärke': 'Speed',
+    'Climb via SID': 'Climb via SID', '(sonst nur „Climb“ auf die Anfangshöhe)': '(otherwise plain “Climb” to the initial altitude)',
   });
   window.EN_SUBS = [["\\bGegenwind\\b", "Headwind"], ["\\bSeitenwind\\b", "Crosswind"], ["\\bRückenwind\\b", "Tailwind"], ["\\bvon rechts\\b", "from the right"], ["\\bvon links\\b", "from the left"], ["\\bReserve\\b", "reserve"], ["\\bKurs\\b", "Course"], ["\\bPiste\\b", "Runway"], ["\\bDemo-Daten\\b", "demo data"], ["\\bFlughäfen\\b", "airports"], ["\\bTitel\\b", "tracks"]].map(([re, r]) => [new RegExp(re, 'g'), r]);
 })();

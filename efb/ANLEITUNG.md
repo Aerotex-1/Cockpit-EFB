@@ -83,7 +83,7 @@ Bei FBW A32NX, A380X und Headwind A339X zeigt die EFB-Seite ein eigenes EFB mit 
 ## Schritt 9: Karte, Wind und Rollweg
 
 - **Wind & Wolken:** Pfeile zeigen, wohin der Wind weht, mit Richtung/Stärke und Wolkenbedeckung. Oben rechts wählst du die Höhe (Boden bis FL390). Pfeil antippen zeigt alle Höhen. Im Fenster stehen die Wolkenuntergrenzen aus den METARs deines OFP. Die Daten stammen von Open-Meteo und sind eine Vorhersage.
-- **Rollweg:** Abflug oder Ankunft wählen, Stand, Piste und Rollwege eintragen (z. B. `B A N5`). Der Weg erscheint als Leiste oben und wird auf der Bodenkarte hervorgehoben. „Zum Flughafen“ springt dorthin und lädt die Bodenkarte, „Stand zeigen“ springt zum Stand.
+- **Rollweg:** Abflug oder Ankunft wählen, Stand, Piste und Rollwege eintragen (z. B. `B A N5`). Der Weg erscheint als Leiste oben und wird auf der Bodenkarte nur bis zur jeweiligen Kreuzung hervorgehoben. Fehlt zwischen zwei Rollwegen eine Verbindung, fügt der EFB die kürzeste ein (gestrichelt, in der Leiste gestrichelt umrandet). Ein Rollweg in Klammern, z. B. `B (A)`, ist ein Halt vor diesem Rollweg und bekommt einen roten Strich. Rollwege mit Farbnamen (Blue, Orange …) erscheinen in der Bodenkarte in dieser Farbe. „Zum Flughafen“ springt dorthin und lädt die Bodenkarte, „Stand zeigen“ springt zum Stand.
 - **Stands:** Die Standnummern erscheinen ab Zoom 15. Die Bodenkarte kommt aus OpenStreetMap und wird in `cache\` gespeichert.
 
 Alles hier ist reine Anzeige und wirkt nicht auf den Sim.

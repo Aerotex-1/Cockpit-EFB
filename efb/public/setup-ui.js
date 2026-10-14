@@ -184,7 +184,13 @@ const SetupUi = (() => {
         <button class="th-card ${cur === 'de' ? 'on' : ''}" data-lang="de"><b>Deutsch</b><small>German</small></button>
         <button class="th-card ${cur === 'en' ? 'on' : ''}" data-lang="en"><b>English</b><small>Englisch</small></button>
       </div>
-      <p class="note">Checklisten, Flugplan-Texte (SimBrief) und Wetter-Meldungen sind ohnehin englisch.</p>`;
+      <p class="note">Checklisten, Flugplan-Texte (SimBrief) und Wetter-Meldungen sind ohnehin englisch.</p>
+      <h3>Gewichte</h3>
+      <p class="note">Gilt für dieses Gerät: Flugplan-Gewichte, Performance-Rechner und Logbuch. Rechnen tut die App intern immer in kg.</p>
+      <div class="th-grid lang-grid">
+        <button class="th-card ${WU.unit() === 'kg' ? 'on' : ''}" data-wu="kg"><b>Kilogramm</b><small>kg</small></button>
+        <button class="th-card ${WU.unit() === 'lbs' ? 'on' : ''}" data-wu="lbs"><b>Pfund</b><small>lb</small></button>
+      </div>`;
   }
 
   const RENDER = { lang: renderLang, airlines: renderAirlines, design: renderDesign, tabs: renderTabs, presets: renderPresets, logbook: renderLogbook };
@@ -226,6 +232,7 @@ const SetupUi = (() => {
       if (t.dataset.bg === 'pick') t.parentElement.querySelector('input[type=file]').click();
       if (t.dataset.bg === 'clear') { Settings.change((d) => { d.bgDefault = ''; }); renderDesign(); }
       if (t.dataset.lang) { window.i18n.set(t.dataset.lang); return; }
+      if (t.dataset.wu) { WU.set(t.dataset.wu); renderLang(); return; }
       // Design
       if (t.dataset.theme) { Settings.change((d) => { d.theme = t.dataset.theme; }); renderDesign(); }
       // Tabs

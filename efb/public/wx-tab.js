@@ -4,7 +4,7 @@
 const WxTab = (() => {
   let data = null, busy = false, err = '', lastKey = '';
   let mode = store.get('wxMode', 'metar');
-  const MODES = [['metar', 'METAR'], ['atis', 'ATIS'], ['vals', 'Werte']];
+  const MODES = [['metar', 'METAR'], ['taf', 'TAF'], ['atis', 'ATIS'], ['vals', 'Werte']];
 
   const icaos = () => {
     const o = app.ofp; if (!o) return [];
@@ -39,7 +39,12 @@ const WxTab = (() => {
     const stale = m && m.time && Date.now() - m.time > 75 * 60000;
     const age = m ? `<span class="wx-age${stale ? ' old' : ''}">${ago(m.time)}</span>` : '';
     let main = '';
-    if (mode === 'atis' && !item.here) {
+    if (mode === 'taf') {
+      const t = st.taf;
+      if (item.here) main = '<p class="wx-note">Für den aktuellen Standort gibt es kein TAF. Das TAF siehst du bei Abflug, Ziel und Ausweichflughafen.</p>';
+      else if (t && t.raw) main = `<p class="wx-raw wx-taf">${esc(t.raw).replace(/\s+(?=(FM\d{6}|BECMG|TEMPO|PROB\d{2})\b)/g, '<br>&nbsp;&nbsp;')}</p>${t.to ? `<p class="wx-note">Gültig bis ${new Date(t.to).toISOString().slice(5, 16).replace('T', ' ')} UTC</p>` : ''}`;
+      else main = '<p class="wx-note">Kein TAF verfügbar (viele kleine Flughäfen geben keins aus).</p>';
+    } else if (mode === 'atis' && !item.here) {
       if (at.length) {
         main = at.map((a) => `<div class="wx-atis"><b>${esc(a.cs)}</b> · ${esc(a.freq || '')}${a.code ? ' · Information ' + esc(a.code) : ''}<p>${esc(a.text || 'Kein Text.')}</p></div>`).join('');
       } else main = `<p class="wx-note">Keine ATIS auf VATSIM online.${m ? ' Stattdessen das METAR:' : ''}</p>${m ? `<p class="wx-raw">${esc(m.raw)}</p>` : ''}`;
@@ -53,6 +58,7 @@ const WxTab = (() => {
 
   function card(item) {
     const b = body(item, mode);
+    if (mode === 'taf' && item.here) return '';
     const title = item.here ? `Aktueller Standort · ${esc(item.here.icao)} (${item.here.distNm} NM)` : `<b>${item.role}</b> ${esc(item.icao)}`;
     return `<div class="panel wx-card"><h3>${title}${b.cat ? `<span class="wx-cat ${esc(b.cat)}">${esc(b.cat)}</span>` : ''}${b.age}</h3>${b.main}</div>`;
   }

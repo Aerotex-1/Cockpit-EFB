@@ -38,11 +38,14 @@
     if (!on) return;
     const now = performance.now();
     window.WhisperMic._d = { paused, speaking, resumeIn: Math.round(resumeAt - now), floor };
-    if (paused || now < resumeAt) { if (speaking || buf.length) reset(); return; }
     const f = down(ev.inputBuffer.getChannelData(0), ctx.sampleRate).slice();
     const gain = window.AudioDev && window.AudioDev.cfg().gain; if (gain && gain !== 1) for (let i = 0; i < f.length; i++) f[i] = Math.max(-1, Math.min(1, f[i] * gain));
     let s = 0; for (let i = 0; i < f.length; i++) s += f[i] * f[i];
-    const rms = Math.sqrt(s / f.length), dur = f.length / RATE, thr = Math.max(0.007, Math.min(0.03, floor * 2.8), now < noiseUntil ? noiseThr : 0);
+    const rms = Math.sqrt(s / f.length), dur = f.length / RATE;
+    const manual = window.AudioDev && window.AudioDev.cfg().thr; // von Hand gesetzte Mindestlautstärke (0 = automatisch)
+    const thr = manual > 0 ? manual : Math.max(0.007, Math.min(0.03, floor * 2.8), now < noiseUntil ? noiseThr : 0);
+    window.WhisperMic.level = { rms, thr, at: now, speaking, paused: paused || now < resumeAt };
+    if (paused || now < resumeAt) { if (speaking || buf.length) reset(); return; }
     if (!speaking) {
       if (rms > thr) { speaking = true; buf = pre.concat([f]); voiced = dur; silent = 0; pre = []; if (window.Copilot && window.Copilot.sttLevel) window.Copilot.sttLevel(true); }
       else { floor = Math.min(0.02, floor * 0.95 + rms * 0.05); pre.push(f); if (pre.length > 3) pre.shift(); }

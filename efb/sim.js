@@ -91,6 +91,7 @@ class SimLink extends EventEmitter {
     h.addToDataDefinition(DEF.POS, 'AIRSPEED INDICATED', 'knots', F);
     h.addToDataDefinition(DEF.POS, 'VERTICAL SPEED', 'feet per minute', F);
     h.addToDataDefinition(DEF.POS, 'SIM ON GROUND', 'bool', F);
+    h.addToDataDefinition(DEF.POS, 'PLANE ALT ABOVE GROUND', 'feet', F);
 
     // Langsame Daten (Flieger, Wetter, GSX)
     h.addToDataDefinition(DEF.MISC, 'TITLE', null, T.STRING256);
@@ -116,7 +117,7 @@ class SimLink extends EventEmitter {
         this._patch({
           lat: d.readFloat64(), lon: d.readFloat64(), alt: d.readFloat64(),
           hdg: d.readFloat64(), gs: d.readFloat64(), ias: d.readFloat64(),
-          vs: d.readFloat64(), onGround: d.readFloat64() > 0.5,
+          vs: d.readFloat64(), onGround: d.readFloat64() > 0.5, agl: d.readFloat64(),
         });
       } else if (recv.requestID === REQ.WATCH) {
         const vars = {};
@@ -264,7 +265,7 @@ class SimLink extends EventEmitter {
       this._patch({
         lat: start.lat + Math.cos(rad) * dist * 0.6,
         lon: start.lon + Math.sin(rad) * dist,
-        alt, hdg, gs, ias: gs, vs, onGround,
+        alt, agl: onGround ? 0 : Math.max(0, alt - 430), hdg, gs, ias: gs, vs, onGround,
         oat: 14, windDir: 250, windSpd: 9, qnh: 1018,
         weightKg: 62000 - (5200 - fuel) , fuelKg: fuel, parkingBrake: brake, brakeKnown: true,
         com1: this.state.com1 || 121700000, com1s: this.state.com1s || 118000000,
@@ -317,7 +318,8 @@ class SimLink extends EventEmitter {
       dv[k] = dv[k] ? 0 : 1;
     }
     if (name === 'COM_STBY_RADIO_SET_HZ') this.state.com1s = Number(value);
-    if (name === 'COM_RADIO_SWAP') { const a = this.state.com1; this.state.com1 = this.state.com1s; this.state.com1s = a; }
+    if (name === 'COM_RADIO_SET_HZ') this.state.com1 = Number(value);
+    if (name === 'COM_RADIO_SWAP' || name === 'COM_STBY_RADIO_SWAP' || name === 'COM1_RADIO_SWAP') { const a = this.state.com1; this.state.com1 = this.state.com1s; this.state.com1s = a; }
     if (name === 'REQUEST_POWER_SUPPLY') dv['L:A32NX_EXT_PWR_AVAIL:1'] = dv['L:A32NX_EXT_PWR_AVAIL:1'] ? 0 : 1;
     return true;
   }
