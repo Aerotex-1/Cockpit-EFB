@@ -53,7 +53,10 @@ Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.3.10, enthält EFB 1.2.42)
+## Stand dieser Version (App 1.4.0, enthält EFB 1.3.0)
+
+- **Versionen der EFB (1.4.0):** Neue App-Seite „Version“ (beim ersten Start automatisch). Lite, Medium, Voll, Copilot & Ground und eigene Auswahl; alle stecken in derselben EFB, die App schreibt nur `edition.json` in den EFB-Ordner, die EFB blendet die übrigen Tabs aus (`editions.js` in der EFB definiert die Tabs je Version – dort ändern, wenn sich die Aufteilung ändern soll). Ohne `edition.json` gilt „Voll“. Die Copilot-Seite der App und das Copilot-Fenster entfallen in Versionen ohne Copilot. Test: `node app/tools/test-editions.js`.
+- **Copilot & Ground im Sim-EFB:** Das Sim-Modul `cockpit-efb-link` 0.8.0 (Ordner `efb/community`) zeigt im EFB des Simulators eine Einstellungsseite für den Copiloten. Quelle: `efb/tools/cp-sim-ui.js`, eingebaut mit `python3 efb/tools/build-sim-app.py 0.8.0`. Im echten MSFS ungetestet.
 
 - **Kokoro (1.3.10):** Karte „Natürliche Stimmen (Kokoro, Englisch)“ in der App; lib/kokoro.js lädt sherpa-onnx (win-x64-shared, v1.12.20, 26 MB) und das Modell kokoro-int8-en-v0_19 (103 MB) von GitHub nach `userData/kokoro` und entpackt mit dem in Windows 10/11 vorhandenen `tar`. Der EFB bekommt `EFB_KOKORO` und `EFB_KOKORO_DIR`; tts.js ruft `sherpa-onnx-offline-tts.exe` pro Satz auf (Zwischenspeicher in cache/tts). Test: `node app/tools/test-kokoro.js`. Auf einem Linux-Rechner mit dem Linux-Paket wurde die Sprachausgabe geprüft, unter Windows noch nicht. Benötigt die Visual-C++-Laufzeit (auf MSFS-PCs vorhanden).
 - **Stimmen (1.3.9):** Katalog um hochwertigere Piper-Stimmen erweitert (Ryan high, Lessac high, Cori high, HFC Male, Joe, John, Norman). Die Bodencrew nimmt automatisch die beste installierte (Ryan high zuerst). Nach dem Installieren in der App unter Stimmen auswählbar.

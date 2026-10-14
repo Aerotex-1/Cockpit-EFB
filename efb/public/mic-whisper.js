@@ -3,7 +3,7 @@
 (function () {
   const RATE = 16000;
   let ctx = null, stream = null, node = null, src = null, on = false, paused = true, cb = null, opts = null;
-  let pre = [], buf = [], voiced = 0, silent = 0, speaking = false, floor = 0.004, sumRms = 0, nRms = 0, noiseThr = 0, noiseUntil = 0, busy = Promise.resolve(), resumeAt = 0, tok = 0;
+  let pre = [], buf = [], voiced = 0, silent = 0, speaking = false, floor = 0.004, sumRms = 0, nRms = 0, noiseThr = 0, noiseUntil = 0, busy = Promise.resolve(), resumeAt = 0, tok = 0, gen = 0, epoch = 0;
   const hop = 2048;
 
   function wav(samples) {
@@ -23,16 +23,17 @@
   function reset() { pre = []; buf = []; voiced = 0; silent = 0; speaking = false; sumRms = 0; nRms = 0; }
   function flush() {
     const parts = buf; const v = voiced; reset();
-    if (v < 0.35) return; // zu kurz (Klick, Husten)
+    if (v < 0.2) return; // zu kurz (Klick, Husten); ein einzelnes Wort wie „Checked“ dauert oft nur ~0,3 s
     let n = 0; parts.forEach((p) => { n += p.length; });
-    const all = new Float32Array(n + RATE * 0.3); let o = 0; parts.forEach((p) => { all.set(p, o); o += p.length; });
-    let pk = 0; for (let i = 0; i < n; i++) { const a = Math.abs(all[i]); if (a > pk) pk = a; }
-    if (pk > 0.005) { const g = Math.min(10, 0.8 / pk); if (g > 1.1) for (let i = 0; i < n; i++) all[i] *= g; } // leises Mikrofon anheben
-    const o2 = opts ? opts() : {};
+    const lead = Math.round(RATE * 0.2), short = (n + lead) / RATE < 2.5; // sehr kurze Clips: Stille davor/danach, mindestens 1,5 s – Whisper erkennt Einzelwörter sonst schlecht
+    const all = new Float32Array(Math.max(n + lead + RATE * 0.3, short ? RATE * 1.5 : 0)); let o = lead; parts.forEach((p) => { all.set(p, o); o += p.length; });
+    let pk = 0; for (let i = lead; i < lead + n; i++) { const a = Math.abs(all[i]); if (a > pk) pk = a; }
+    if (pk > 0.005) { const g = Math.min(10, 0.8 / pk); if (g > 1.1) for (let i = lead; i < lead + n; i++) all[i] *= g; } // leises Mikrofon anheben
+    const o2 = opts ? opts(short) : {};
     const url = '/api/stt?lang=' + encodeURIComponent(o2.lang || 'auto') + '&prompt=' + encodeURIComponent(o2.prompt || '');
-    const my = ++tok, body = wav(all), t0 = performance.now();
-    busy = busy.then(() => { if ((my !== tok && tok - my >= 2) || performance.now() - t0 > 8000) return; // zu alt: verwerfen, damit die Wartezeit nicht wächst
-       return fetch(url, { method: 'POST', body }).then((r) => r.json()).then((j) => { window.WhisperMic.last = { ms: Math.round(performance.now() - t0), srv: j && j.ms, via: j && j.via }; if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}); });
+    const my = ++tok, body = wav(all), t0 = performance.now(), ep = epoch;
+    busy = busy.then(() => { if (ep !== epoch || (my !== tok && tok - my >= 2) || performance.now() - t0 > 8000) return; // zu alt: verwerfen, damit die Wartezeit nicht wächst
+       return fetch(url, { method: 'POST', body }).then((r) => r.json()).then((j) => { window.WhisperMic.last = { ms: Math.round(performance.now() - t0), srv: j && j.ms, via: j && j.via }; if (ep !== epoch) return; if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}); });
   }
   function onAudio(ev) {
     if (!on) return;
@@ -62,10 +63,12 @@
   }
   window.WhisperMic = {
     async start(onText, getOpts) {
-      cb = onText; opts = getOpts; if (on) { resumeAt = performance.now() + 350; paused = false; return true; }
+      cb = onText; opts = getOpts; const my = ++gen; if (on) { resumeAt = performance.now() + 350; paused = false; return true; }
       const AD = window.AudioDev;
-      try { stream = await navigator.mediaDevices.getUserMedia({ audio: AD ? AD.micConstraints() : { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }); }
-      catch (er) { if (!AD || !AD.cfg().mic) throw er; stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }); } // gewähltes Gerät fehlt → Standard
+      let st; try { st = await navigator.mediaDevices.getUserMedia({ audio: AD ? AD.micConstraints() : { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }); }
+      catch (er) { if (!AD || !AD.cfg().mic) throw er; st = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } }); } // gewähltes Gerät fehlt → Standard
+      if (my !== gen || on) { try { st.getTracks().forEach((t) => t.stop()); } catch { /* weg */ } return false; }
+      stream = st; // währenddessen stumm geschaltet/gestoppt: Mikrofon gleich wieder freigeben
       try { ctx = new AudioContext({ sampleRate: RATE }); } catch { ctx = new AudioContext(); }
       src = ctx.createMediaStreamSource(stream);
       node = ctx.createScriptProcessor(hop, 1, 1);
@@ -76,9 +79,9 @@
       return true;
     },
     async restart() { const c = cb, o = opts, was = paused; this.stop(); await this.start(c, o); if (was) this.pause(); },
-    pause() { paused = true; reset(); },
+    pause() { paused = true; epoch++; reset(); },
     resume() { resumeAt = performance.now() + 350; paused = false; },
-    stop() { on = false; paused = true; reset(); try { node && node.disconnect(); src && src.disconnect(); } catch { /* weg */ } try { stream && stream.getTracks().forEach((t) => t.stop()); } catch { /* weg */ } try { ctx && ctx.close(); } catch { /* weg */ } ctx = stream = node = src = null; },
+    stop() { gen++; epoch++; on = false; paused = true; reset(); try { node && node.disconnect(); src && src.disconnect(); } catch { /* weg */ } try { stream && stream.getTracks().forEach((t) => t.stop()); } catch { /* weg */ } try { ctx && ctx.close(); } catch { /* weg */ } ctx = stream = node = src = null; },
     get active() { return on && !paused; },
   };
 })();

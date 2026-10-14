@@ -45,7 +45,7 @@ window.TaxiNav = (() => {
     d.stands = {};
     for (const el of els || []) { // Standplätze (für den Rollweg ab/bis Stand)
       const t = el.tags || {}, ref = String(t.ref || t.name || '').toUpperCase(); if (!ref || (t.aeroway !== 'parking_position' && t.aeroway !== 'gate')) continue;
-      const g0 = el.type === 'node' ? { lat: el.lat, lon: el.lon } : el.geometry && el.geometry[0]; if (g0) d.stands[ref] = P.xy(g0.lat, g0.lon);
+      const g0 = el.type === 'node' ? { lat: el.lat, lon: el.lon } : el.geometry && el.geometry[el.geometry.length - 1]; if (g0) d.stands[ref] = P.xy(g0.lat, g0.lon);
     }
     try { d.g = mkGraph(els || [], P); } catch (e) { d.g = null; }
     data[icao] = d; return d;
@@ -161,10 +161,14 @@ window.TaxiNav = (() => {
   function parse(str) {
     const s = String(str || '').toUpperCase().replace(/\(([^)]*)\)/g, (m, x) => ' (' + x.trim().replace(/\s+/g, '') + ') ');
     const raw = s.split(/[\s,;>→]+|\s-\s|-(?=\s|$)/).map((t) => t.trim()).filter(Boolean), route = [], holds = [];
-    for (const t of raw) {
-      if (t[0] === '(') { const n = t.replace(/[()]/g, ''); if (n && !RWY_RE.test(n)) holds.push({ after: route.length - 1, ref: n }); }
-      else if (!RWY_RE.test(t)) route.push(t);
-    }
+    raw.forEach((t, i) => {
+      if (t[0] === '(') {
+        const n = t.replace(/[()]/g, ''); if (!n || RWY_RE.test(n)) return;
+        const more = raw.slice(i + 1).some((x) => x[0] !== '(' && !RWY_RE.test(x));
+        if (more && route.length) { route.push(n); holds.push({ after: route.length - 2, ref: n, enter: true }); } // Klammer mitten in der Route: Rollweg wird befahren, roter Strich davor
+        else holds.push({ after: route.length - 1, ref: n });                                                    // Klammer am Ende: nur Halt davor
+      } else if (!RWY_RE.test(t)) route.push(t);
+    });
     return { route, holds };
   }
   const solved = {};
@@ -173,7 +177,7 @@ window.TaxiNav = (() => {
     const d = data[plan.icao]; if (!d || !d.g || !plan.route.length) return null;
     const g = d.g, stand = d.stands && d.stands[String(plan.stand || '').toUpperCase()] || null, P = proj(d);
     const useLive = !stand && pos && plan.mode !== 'arr';
-    const ck = plan.key + '|' + (plan.stand || '') + '|' + (plan.rwy || '') + (useLive ? '|live' : '');
+    const ck = plan.key + '|' + (plan.stand || '') + '|' + (plan.rwy || '') + (plan.lineup ? '|lu' : '') + (useLive ? '|live' : '');
     if (solved[ck] !== undefined) return solved[ck];
     const missing = plan.route.filter((t) => !g.refNodes.has(t)), toks = plan.route.filter((t) => g.refNodes.has(t));
     if (!toks.length) return (solved[ck] = { missing });
@@ -182,25 +186,38 @@ window.TaxiNav = (() => {
     const start = stand && plan.mode !== 'arr' ? stand : useLive ? P.xy(pos.lat, pos.lon) : null;
     const path = solve(d, toks, { start, end: stand && plan.mode === 'arr' ? stand : null, chains, mode: plan.mode, holdRef: lastHold ? lastHold.ref : null });
     if (!path) return (solved[ck] = { missing });
+    // Weg beginnt am Stand (bzw. endet dort bei Ankunft): Verbindungsstück vom Stand zum Rollwegnetz dem ersten/letzten Abschnitt zuschlagen
+    if (start && stand && plan.mode !== 'arr') { const dd = dist(start, path.pts[0]); if (dd > 3 && dd < 260) { path.pts.unshift({ x: start.x, y: start.y }); path.nid.unshift(-1); path.legs.forEach((l) => { l.i0++; l.i1++; }); path.legs[0].i0 = 0; } }
+    if (stand && plan.mode === 'arr') { const e = path.pts[path.pts.length - 1], dd = dist(stand, e); if (dd > 3 && dd < 260) { path.pts.push({ x: stand.x, y: stand.y }); path.nid.push(-1); path.legs[path.legs.length - 1].i1 = path.pts.length - 1; } }
     finish(path); path.missing = missing; path.rwyChains = chains;
     // Halt vor der Piste: ~55 m vor der Pistenmitte stoppen
     path.holds = [];
-    if (path.endKind === 'rwy' && chains) {
+    // Mit „Line up“ (plan.lineup) entfällt der Halt: der Weg läuft auf die Piste
+    if (path.endKind === 'rwy' && chains && !plan.lineup) {
       const ch = path.chain; let cutS = null;
       for (let s = Math.max(0, ch.len - 400); s <= ch.len; s += 4) { const q = at(ch, s); if (rwyDist(chains, q) <= 55 && s > 25) { cutS = s; break; } }
-      if (cutS !== null) cutPath(path, cutS);
+      if (cutS !== null) {
+        cutPath(path, cutS);
+        const c2 = path.chain, sH = c2.len, q = at(c2, sH), b = bearing(at(c2, Math.max(0, sH - 6)), at(c2, sH)) * RAD, nx = Math.cos(b) * 14, ny = -Math.sin(b) * 14;
+        path.holds.push({ s: sH, ref: rwyRef || 'Piste', a: { x: q.x - nx, y: q.y - ny }, b: { x: q.x + nx, y: q.y + ny }, end: true, rwy: true });
+      }
     }
     // Halt vor einem Rollweg (Klammer): roter Strich ~22 m vor der Kreuzung
     for (const hs of plan.holds || []) {
       const ti = toks.indexOf(plan.route[hs.after]); if (ti < 0 || !g.refNodes.has(hs.ref)) continue;
       const ch = path.chain; let sJ = null;
+      if (hs.enter) { // Rollweg wird befahren: Strich ~22 m vor dem Einbiegen
+        const tn = toks.indexOf(plan.route[hs.after + 1]), ln = tn >= 0 ? path.legs.find((x) => x.tok === tn && !x.gap) : null;
+        if (ln && ln.s0 > 3) { const sH = Math.max(0, ln.s0 - 22), q = at(ch, sH), b = bearing(at(ch, Math.max(0, sH - 6)), at(ch, sH + 6)) * RAD, nx = Math.cos(b) * 14, ny = -Math.sin(b) * 14; path.holds.push({ s: sH, ref: hs.ref, a: { x: q.x - nx, y: q.y - ny }, b: { x: q.x + nx, y: q.y + ny }, end: false }); }
+        continue;
+      }
       for (let i = 0; i < path.nid.length; i++) { const l = path.legs.find((x) => i >= x.i0 && i <= x.i1); if (!l || l.tok !== ti || l.gap) continue; const nd = path.nid[i] >= 0 ? g.list[path.nid[i]] : null; if (nd && nd.refs.has(hs.ref) && ch.cum[i] > 3) { sJ = ch.cum[i]; break; } }
       if (sJ === null) continue;
       const sH = Math.max(0, sJ - 22), q = at(ch, sH), b = bearing(at(ch, Math.max(0, sH - 6)), at(ch, sH + 6)) * RAD, nx = Math.cos(b) * 14, ny = -Math.sin(b) * 14;
       path.holds.push({ s: sH, ref: hs.ref, a: { x: q.x - nx, y: q.y - ny }, b: { x: q.x + nx, y: q.y + ny }, end: false });
     }
     if (lastHold && path.endKind === 'twy') { const hd = path.holds.find((x) => x.ref === lastHold.ref); if (hd) { cutPath(path, hd.s); hd.end = true; } }
-    path.holdKind = lastHold && path.endKind === 'twy' ? 'twy' : path.endKind === 'rwy' ? 'rwy' : null; path.holdRef = lastHold ? lastHold.ref : null;
+    path.holdKind = lastHold && path.endKind === 'twy' ? 'twy' : path.endKind === 'rwy' && !plan.lineup ? 'rwy' : null; path.holdRef = lastHold ? lastHold.ref : null;
     return (solved[ck] = path);
   }
   // Anzeige: Abschnitte (blau; eingefügte Verbindungen gestrichelt), rote Halte-Striche, Kette der Rollwege für die Leiste
@@ -236,7 +253,7 @@ window.TaxiNav = (() => {
     out.legCur = ll(slice(ch, s, leg.s1));
     if (nx) { Object.assign(out, turnAt(ch, leg.s1)); out.legNext = ll(slice(ch, leg.s1, nx.s1)); }
     const ha = path.holds.filter((h2) => h2.s > s - 2).sort((a, b) => a.s - b.s)[0];
-    if (ha) { out.holdAhead = { dist: ha.s - s, ref: ha.ref, end: ha.end }; }
+    if (ha) { out.holdAhead = { dist: ha.s - s, ref: ha.ref, end: ha.end, rwy: !!ha.rwy }; }
     return out;
   }
   async function ensure(icao, lat, lon) {
@@ -356,7 +373,7 @@ window.TaxiNav = (() => {
   }
   function planFrom(icao, mode, e, lat, lon) {
     const { route, holds } = parse(e.route);
-    return { key: icao + ':' + mode + ':' + String(e.route || '').toUpperCase().replace(/\s+/g, '.'), icao, mode, route, holds, rwy: e.rwy || '', stand: e.stand || '', lat, lon };
+    return { key: icao + ':' + mode + ':' + String(e.route || '').toUpperCase().replace(/\s+/g, '.') + (e.lineup ? ':lu' : ''), icao, mode, route, holds, rwy: e.rwy || '', stand: e.stand || '', lineup: !!e.lineup, lat, lon };
   }
   const reset = (key) => { if (key) { delete progress[key]; for (const k of Object.keys(solved)) if (k.startsWith(key)) delete solved[k]; } else { for (const k of Object.keys(progress)) delete progress[k]; for (const k of Object.keys(solved)) delete solved[k]; } };
   // nächster Standplatz (OSM) zur Flugzeugposition – für die automatische Parkposition im ATC-Tab

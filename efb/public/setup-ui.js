@@ -110,8 +110,9 @@ const SetupUi = (() => {
     const { order, hidden } = s.tabs;
     $('#sec-tabs').innerHTML = `
       <h2>Tabs</h2>
-      <p class="note">Blende Tabs aus, die du nicht brauchst, und lege die Reihenfolge fest. Setup bleibt immer sichtbar und steht am Ende.</p>
+      <p class="note">Blende Tabs aus, die du nicht brauchst, und lege die Reihenfolge fest. Setup bleibt immer sichtbar und steht am Ende.${window.EDITION && window.EDITION.id !== 'full' ? ` Gewählte Ausgabe: <b>${esc(window.EDITION.name)}</b> (wechseln in der Windows-App unter „Version“).` : ''}</p>
       <div class="tab-list">${order.map((t, i) => {
+        if (window.EDITION && !window.EDITION.has(t)) return ''; // nicht Teil der gewählten Ausgabe (wird in der Windows-App geändert)
         const fixed = t === 'setup';
         return `<div class="tab-row ${hidden.includes(t) ? 'off' : ''}" data-t="${t}">
           <span class="tab-name">${esc(TAB_LABELS[t])}</span>

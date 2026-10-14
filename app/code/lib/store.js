@@ -3,7 +3,7 @@
 const fs = require('fs');
 const DEFAULTS = {
   repo: '', token: '', edition: 'public', checkOnStart: true,
-  autoStartServer: true, openBrowserOnStart: false, startWithWindows: false, closeStopsServer: true, openIn: 'browser', copilotOnStart: false, sttModel: '', communityDir: '', communityAuto: true,
+  autoStartServer: true, openBrowserOnStart: false, startWithWindows: false, closeStopsServer: true, openIn: 'browser', copilotOnStart: false, sttModel: '', communityDir: '', communityAuto: true, editionChosen: false,
 };
 function load(file, safe) {
   let o = {}; try { o = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* neu */ }

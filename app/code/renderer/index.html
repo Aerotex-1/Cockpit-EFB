@@ -7,7 +7,8 @@
   <h1>Cockpit EFB</h1>
   <nav>
     <button data-p="home" class="on">Start</button>
-    <button data-p="copilot">Copilot</button>
+    <button data-p="edition">Version <span id="edBadge" hidden>●</span></button>
+    <button data-p="copilot" id="navCopilot">Copilot</button>
     <button data-p="settings">Einstellungen</button>
     <button data-p="updates">Updates <span id="badge" hidden>●</span></button>
     <button data-p="log">Protokoll</button>
@@ -18,11 +19,24 @@
   <section id="p-home" class="page on">
     <div class="card status"><div><span id="dot" class="dot"></span><b id="stText">–</b><div class="sub" id="stSub"></div></div>
       <div class="row"><button id="bStart" class="primary">Server starten</button><button id="bStop">Stoppen</button><button id="bRestart">Neustart</button></div></div>
+    <div class="card"><h2>Version</h2><p class="note" id="edHome">–</p><div class="row"><button id="edGo">Version wechseln …</button></div></div>
     <div class="card"><h2>EFB öffnen</h2>
       <div class="row"><button id="bBrowser" class="primary">Im Browser öffnen</button><button id="bWindow">Im App-Fenster öffnen</button></div>
       <p class="note">Das iPad zeigt die Checkliste. Der Copilot spricht und hört am PC: dafür unter „Copilot“ das Copilot-Fenster öffnen.</p>
       <p class="sub">Adresse am iPad: <code id="addr">–</code></p></div>
     <div class="card"><h2>Daten</h2><p class="note">Logbuch, Charts, Einstellungen und PIN liegen in diesem Ordner und bleiben bei Updates erhalten.</p><button id="bFolder">Ordner öffnen</button></div>
+  </section>
+
+  <section id="p-edition" class="page">
+    <div class="card"><h2>Welche Version der EFB?</h2>
+      <p class="note" id="edNote">Alle Versionen stecken in derselben EFB. Hier wählst du, welche Tabs du siehst – du kannst jederzeit wechseln. Logbuch, Charts, Einstellungen und PIN bleiben dabei erhalten. Nach dem Wechsel die EFB im Browser bzw. auf dem iPad neu laden.</p>
+      <p class="note" id="edFirst" hidden><b>Neu:</b> Wähle hier deine Version. „Voll“ entspricht dem bisherigen Stand.</p>
+      <div id="edList" class="vlist"></div>
+      <p id="edMsg" class="note"></p></div>
+    <div class="card"><h2>Eigene Auswahl</h2>
+      <p class="note">Hake genau die Tabs an, die du brauchst. „Setup“ ist immer dabei.</p>
+      <div id="edTabs" class="edtabs"></div>
+      <div class="row"><button id="edCustom">Eigene Auswahl verwenden</button></div></div>
   </section>
 
   <section id="p-copilot" class="page">

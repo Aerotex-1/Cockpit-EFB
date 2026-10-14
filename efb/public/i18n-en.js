@@ -1,6 +1,12 @@
 // Englische Übersetzung (erzeugt aus dem deutschen Quelltext). Schlüssel = deutscher Text.
 'use strict';
 window.EN_DICT = {
+"Steuerung": "Controls",
+"Nachrichten": "Messages",
+"Letzte Nachrichten": "Latest messages",
+"Verpasste vorlesen": "Read missed messages aloud",
+"Neueste oben. „Verpasst“ heißt: Copilot oder Ground haben gesprochen, während alles stumm war.": "Newest first. “Missed” means copilot or ground spoke while everything was muted.",
+"Noch keine Nachrichten.": "No messages yet.",
 "Neu laden": "Reload",
 "Demo-Modus": "Demo mode",
 "Flieger wählen": "Choose aircraft",
@@ -282,7 +288,7 @@ window.EN_DICT = {
 "Stand zeigen": "Show stand",
 "Löschen": "Delete",
 "Die Rollwege werden in der Bodenkarte hervorgehoben (ab Zoom 13 geladen). Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.": "Taxiways are highlighted on the ground map (loaded from zoom 13). Your entry is saved, also for the arrival airport.",
-"Die Rollwege werden nur bis zur jeweiligen Kreuzung markiert. Fehlt eine Verbindung, wird die kürzeste eingefügt (gestrichelt). Ein Rollweg in Klammern, z. B. B (A), bedeutet: Halt vor A, mit rotem Strich. Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.": "Taxiways are only marked up to the next junction. If a link is missing, the shortest one is inserted (dashed). A taxiway in brackets, e.g. B (A), means: hold short of A, with a red line. Your entry is saved, also for the arrival airport.",
+"Die Rollwege werden nur bis zur jeweiligen Kreuzung markiert. Fehlt eine Verbindung, wird die kürzeste eingefügt (gestrichelt). Ein Rollweg in Klammern, z. B. B (A) D, bedeutet: Halt vor A mit rotem Strich. Folgt danach noch ein Rollweg, wird A trotzdem befahren; steht die Klammer am Ende, endet der Weg am Halt. Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.": "Taxiways are only marked up to the next junction. If a link is missing, the shortest one is inserted (dashed). A taxiway in brackets, e.g. B (A) D, means: hold short of A with a red line. If another taxiway follows, A is still taxied; if the bracket is last, the route ends at the hold. Your entry is saved, also for the arrival airport.",
 "Bodenkarte konnte nicht geladen werden (OpenStreetMap nicht erreichbar).": "Ground map could not be loaded (OpenStreetMap unreachable).",
 "Lade einen OFP, um Lotsen für deine Flughäfen zu sehen.": "Load an OFP to see controllers for your airports.",
 "keine Daten": "no data",
@@ -1013,7 +1019,7 @@ window.EN_DICT = {
     'Tempo': 'Speed',
     'Mikrofon': 'Microphone',
     'Gewicht lb': 'Weight lb', 'Gewichte': 'Weights', 'Kilogramm': 'Kilograms', 'Pfund': 'Pounds',
-    'Höchstgewicht Piste': 'Max weight runway', 'Höchstgewichte laut OFP (TLR)': 'Max weights per OFP (TLR)',
+    'Höchstes Startgewicht auf dieser Piste': 'Max takeoff weight on this runway', 'Höchstes Landegewicht auf dieser Piste': 'Max landing weight on this runway',
     'Parkposition': 'Parking position', 'Steigflug': 'Climb', 'ATIS / QNH': 'ATIS / QNH',
     'Höhe (MSL)': 'Altitude (MSL)', 'Höhe (AGL)': 'Height (AGL)', 'Höhe': 'Altitude', 'Stärke': 'Speed',
     'Climb via SID': 'Climb via SID', '(sonst nur „Climb“ auf die Anfangshöhe)': '(otherwise plain “Climb” to the initial altitude)',

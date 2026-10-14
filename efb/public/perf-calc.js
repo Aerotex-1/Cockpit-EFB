@@ -15,13 +15,6 @@ const PerfCalc = (() => {
   const airport = (icao) => (app.airports || []).find((a) => a.icao === String(icao || '').toUpperCase().trim());
   const kg = (x) => WU.show(x, 10);
   const wtxt = (w) => String(w).replace(/(\d+) kg/g, (m, n) => WU.show(+n, 10));
-  // Höchstgewichte je Piste aus dem TLR des OFP (SimBrief): max_weight steht dort in der OFP-Einheit
-  function tlrTable(part) {
-    const o = app.ofp, d = o && o.tlr && o.tlr[part]; if (!d) return '';
-    const rows = asArray(d.runway).map((r) => ({ id: r.identifier, w: WU.ofpKg(r.max_weight != null ? r.max_weight : r.maximum_weight, o), lim: r.limit_code || r.limiting_factor || '', plan: r.identifier === (d.conditions && d.conditions.planned_runway) })).filter((r) => r.w);
-    if (!rows.length) return '';
-    return `<h4 class="tlr-h">Höchstgewichte laut OFP (TLR)</h4><table class="tlr-t"><tbody>${rows.map((r) => `<tr class="${r.plan ? 'hit' : ''}"><td>${esc(r.id)}${r.plan ? ' ◂' : ''}</td><td>${WU.show(r.w, 10)}</td><td>${esc(r.lim)}</td></tr>`).join('')}</tbody></table>`;
-  }
   WU.on((old, nu) => { // Eingaben in die neue Einheit umrechnen, Beschriftung anpassen
     if (!built) return;
     ['#tTow', '#lLw'].forEach((id) => {
@@ -113,18 +106,17 @@ const PerfCalc = (() => {
     const pct = Math.min(100, (r.req / p.tora) * 100);
     out.innerHTML = `
       ${bad ? `<p class="bad strong">Zu schwer für diese Piste – höchstens ${kg(r.maxTow)}.</p>` : ''}
-      <div class="maxw ${bad ? 'bad' : ''}"><small>Höchstgewicht Piste</small><b>${kg(r.maxTow)}</b><span>${bad ? 'Du bist ' + kg(p.tow - r.maxTow) + ' darüber' : 'Reserve ' + kg(r.maxTow - p.tow)} · ${r.limitedBy}</span></div>
       <div class="speeds ${bad ? 'dim' : ''}"><div><small>V1</small>${r.v1}</div><div><small>VR</small>${r.vr}</div><div><small>V2</small>${r.v2}</div>
         <div class="thr"><small>Schub</small>${bad ? '–' : r.flex ? `${M.FAMILIES[M.TYPES[type].fam].atm} ${r.flex}°` : 'TOGA'}</div></div>
       <div class="ldg-row ${bad ? 'bad' : 'ok'}"><span>Nötige Strecke</span><span>${fmt(Math.round(r.req))} m</span><div class="ldg-bar"><div style="width:${pct}%"></div></div></div>
       <dl class="kv">
         <dt>Verfügbar</dt><dd>${fmt(p.tora)} m · Reserve ${fmt(Math.max(0, Math.round(p.tora - r.req)))} m</dd>
         <dt>Mit voller Leistung</dt><dd>${fmt(Math.round(r.reqToga))} m</dd>
-        <dt>Höchstgewicht Piste</dt><dd>${kg(r.maxTow)} <small>(${r.limitedBy})</small></dd>
+        <dt>Höchstes Startgewicht auf dieser Piste</dt><dd>${kg(r.maxTow)} <small>(${r.limitedBy})</small></dd>
         <dt>Wind</dt><dd>${hdg === null ? 'Pistenkurs fehlt' : `${r.head >= 0 ? 'Gegen' : 'Rücken'}wind ${fmt(Math.abs(r.head))} kt · Seitenwind ${fmt(Math.abs(r.cross))} kt`}</dd>
         <dt>Druckhöhe</dt><dd>${fmt(Math.round(r.pa))} ft · ISA ${r.isaDev >= 0 ? '+' : ''}${fmt(r.isaDev)}</dd>
       </dl>
-      ${r.warnings.map((w) => `<p class="bad">${esc(wtxt(w))}</p>`).join('')}${rwyHint('t').warn ? `<p class="note">${esc(rwyHint('t').warn)}</p>` : ''}${tlrTable('takeoff')}`;
+      ${r.warnings.map((w) => `<p class="bad">${esc(wtxt(w))}</p>`).join('')}${rwyHint('t').warn ? `<p class="note">${esc(rwyHint('t').warn)}</p>` : ''}`;
   }
 
   function calcLanding() {
@@ -142,16 +134,15 @@ const PerfCalc = (() => {
       return `<div class="ldg-row ${ok ? 'ok' : 'bad'} ${r.rec === k ? 'rec' : ''}"><span>${names[k]}${r.rec === k ? ' ◂' : ''}</span><span>${fmt(Math.round(r.dist[k]))} m</span><div class="ldg-bar"><div style="width:${Math.min(100, (r.dist[k] / p.lda) * 100)}%"></div></div></div>`;
     }).join('');
     out.innerHTML = `
-      <div class="maxw"><small>Höchstgewicht Piste</small><b>${kg(r.maxLw)}</b><span>Reserve ${kg(r.maxLw - p.lw)} · mit Autobrake MED</span></div>
       <div class="speeds"><div><small>VLS</small>${r.vls}</div><div><small>+ Wind</small>${r.add}</div><div><small>VAPP</small>${r.vapp}</div>
         <div class="thr"><small>Empfehlung</small>${r.rec ? r.rec.toUpperCase() : '–'}</div></div>
       ${rows}
       <dl class="kv">
         <dt>Verfügbar</dt><dd>${fmt(p.lda)} m</dd>
-        <dt>Höchstgewicht Piste</dt><dd>${kg(r.maxLw)} <small>(mit Autobrake MED)</small></dd>
+        <dt>Höchstes Landegewicht auf dieser Piste</dt><dd>${kg(r.maxLw)} <small>(mit Autobrake MED)</small></dd>
         <dt>Wind</dt><dd>${hdg === null ? 'Pistenkurs fehlt' : `${r.head >= 0 ? 'Gegen' : 'Rücken'}wind ${fmt(Math.abs(r.head))} kt · Seitenwind ${fmt(Math.abs(r.cross))} kt`}</dd>
       </dl>
-      ${r.warnings.map((w) => `<p class="bad">${esc(wtxt(w))}</p>`).join('')}${rwyHint('l').warn ? `<p class="note">${esc(rwyHint('l').warn)}</p>` : ''}${tlrTable('landing')}`;
+      ${r.warnings.map((w) => `<p class="bad">${esc(wtxt(w))}</p>`).join('')}${rwyHint('l').warn ? `<p class="note">${esc(rwyHint('l').warn)}</p>` : ''}`;
   }
 
   function calc() { if (!built) return; calcTakeoff(); calcLanding(); }

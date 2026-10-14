@@ -74,9 +74,9 @@ async function profile(lat, lon) {
 async function ground(bbox, overpassUrl) {
   const [s, w, n, e] = bbox.map(Number);
   if (![s, w, n, e].every(isFinite) || n - s > 0.5 || e - w > 0.8) throw new Error('Ausschnitt zu groß');
-  const f = path.join(CACHE, `ground-${s.toFixed(2)}_${w.toFixed(2)}_${n.toFixed(2)}_${e.toFixed(2)}.json`);
+  const f = path.join(CACHE, `ground2-${s.toFixed(2)}_${w.toFixed(2)}_${n.toFixed(2)}_${e.toFixed(2)}.json`);
   try { const st = fs.statSync(f); if (Date.now() - st.mtimeMs < 30 * 86400000) return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { /* neu laden */ }
-  const q = `[out:json][timeout:25];(way["aeroway"~"^(runway|taxiway|taxilane|apron)$"](${s},${w},${n},${e});node["aeroway"~"^(parking_position|gate|holding_position)$"](${s},${w},${n},${e});way["aeroway"~"^(parking_position|terminal)$"](${s},${w},${n},${e}););out geom;`;
+  const q = `[out:json][timeout:25];(way["aeroway"~"^(runway|taxiway|taxilane|apron)$"](${s},${w},${n},${e});node["aeroway"~"^(parking_position|gate|holding_position)$"](${s},${w},${n},${e});way["aeroway"~"^(parking_position|terminal)$"](${s},${w},${n},${e});way["aeroway"~"de-?ic",i](${s},${w},${n},${e});way["apron"~"de-?ic",i](${s},${w},${n},${e});way["name"~"de-?ic|enteis",i]["aeroway"](${s},${w},${n},${e});node["aeroway"~"de-?ic",i](${s},${w},${n},${e}););out geom;`;
   // Der öffentliche Overpass-Server ist oft ausgelastet: mehrere Server nacheinander versuchen, zur Not alte Daten zeigen
   const own = (process.env.OVERPASS_BASE || overpassUrl || '').replace(/\/+$/, '');
   const bases = [own, 'https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'].filter(Boolean);
@@ -129,6 +129,7 @@ function demoGround(bbox) {
     way(7, { aeroway: 'apron' }, [[-200, -440], [900, -440], [900, -720], [-200, -720], [-200, -440]]),
     way(8, { aeroway: 'terminal' }, [[0, -780], [600, -780], [600, -840], [0, -840], [0, -780]]),
   ];
+  el.push(way(9, { aeroway: 'apron', apron: 'deicing', name: 'De-icing pad 1' }, [[1000, 40], [1300, 40], [1300, 160], [1000, 160], [1000, 40]]));
   for (let i = 0; i < 10; i++) el.push({ type: 'node', id: 100 + i, tags: { aeroway: 'parking_position', ref: 'A' + (i + 1) }, lat: P(0, 0).lat - 600 * ky, lon: P(i * 60 - 100, 0).lon });
   for (let i = 0; i < 6; i++) el.push({ type: 'node', id: 200 + i, tags: { aeroway: 'gate', ref: 'B' + (i + 1) }, lat: P(0, 0).lat - 520 * ky, lon: P(i * 90 + 250, 0).lon });
   return { elements: el };

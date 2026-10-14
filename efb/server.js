@@ -14,6 +14,7 @@ const vatsim = require('./vatsim');
 const metar = require('./metar');
 let lights = null;
 try { lights = require('./lights'); } catch { /* öffentliche Version ohne Lichter */ }
+const edition = require('./editions').make(__dirname, { hasLights: !!lights });
 const atc = require('./atc');
 const wx = require('./wx');
 const { Settings, BG_DIR } = require('./settings');
@@ -103,9 +104,10 @@ let clState = {}; try { clState = JSON.parse(fs.readFileSync(CL_FILE, 'utf8')); 
 let clTimer = 0;
 const clSave = () => { clearTimeout(clTimer); clTimer = setTimeout(() => { try { fs.writeFileSync(CL_FILE, JSON.stringify(clState)); } catch { /* egal */ } }, 800); };
 let cpHost = { id: '', t: 0 };
+let cpMicMuted = false; // nur das Mikrofon stumm (Copilot und Ground sprechen weiter)
 let cpMuted = false; // Copilot stumm (Sprache und Mikrofon) – gilt für alle Geräte
 const CP_TYPES = new Set(['pick', 'input', 'show', 'log', 'cmd', 'prefs']);
-const CP_ACTIONS = new Set(['mute', 'start', 'stop', 'test-amb', 'test-radio', 'voice', 'voiceEn', 'ground']);
+const CP_ACTIONS = new Set(['mute', 'micmute', 'flush', 'start', 'stop', 'test-amb', 'test-radio', 'voice', 'voiceEn', 'ground']);
 
 // ---------- Hilfsfunktionen ----------
 const MIME = {
@@ -256,16 +258,17 @@ const server = http.createServer(async (req, res) => {
         if (!CP_ACTIONS.has(b.action)) return sendJson(res, 400, { error: 'ungültig' });
         ev.action = b.action; ev.id = String(b.id || '').slice(0, 80);
         if (b.action === 'mute') { cpMuted = ev.id === '1'; ev.id = cpMuted ? '1' : '0'; }
+        if (b.action === 'micmute') { cpMicMuted = ev.id === '1'; ev.id = cpMicMuted ? '1' : '0'; }
         // Läuft am PC kein Copilot-Fenster, bittet der Server die Windows-App, es zu öffnen
         if (b.action === 'start' && Date.now() - cpHost.t >= 15000) console.log('@@EFB:COPILOT_OPEN@@');
       }
-      if (b.type === 'log') { ev.who = String(b.who || '').slice(0, 20); ev.text = String(b.text || '').slice(0, 400); }
+      if (b.type === 'log') { ev.who = String(b.who || '').slice(0, 20); ev.text = String(b.text || '').slice(0, 400); ev.at = Number(b.at) || Date.now(); ev.miss = !!b.miss; }
       bcast('cp', ev);
       return sendJson(res, 200, { ok: true });
     }
     if (p === '/api/cp/host') {
       if (req.method === 'POST') { const b = await readBody(req); cpHost = b.off ? { id: '', t: 0 } : { id: String(b.id || '').slice(0, 40), t: Date.now() }; return sendJson(res, 200, { ok: true }); }
-      return sendJson(res, 200, { active: Date.now() - cpHost.t < 15000, id: cpHost.id, local, mute: cpMuted });
+      return sendJson(res, 200, { active: Date.now() - cpHost.t < 15000, id: cpHost.id, local, mute: cpMuted, micmute: cpMicMuted });
     }
     if (p === '/api/copilot') {
       const f = path.join(__dirname, 'copilot.json');
@@ -280,6 +283,7 @@ const server = http.createServer(async (req, res) => {
         if (typeof b.packsOff === 'boolean') o.packsOff = b.packsOff;
         if (typeof b.gsxKeys === 'boolean') o.gsxKeys = b.gsxKeys;
         if (['mix', 'clear', 'call', 'wait'].includes(b.pushEng)) o.pushEng = b.pushEng;
+        if (['off', 'low', 'mid'].includes(b.human)) o.human = b.human;
         if (b.life && typeof b.life === 'object') o.life = { taxi: b.life.taxi !== false, traffic: b.life.traffic !== false, calls: b.life.calls !== false, ground: b.life.ground !== false, groundPush: b.life.groundPush === true };
         if (b.voice && typeof b.voice === 'object') { o.voice = o.voice || {}; for (const k of ['de', 'en', 'ground']) if (typeof b.voice[k] === 'string') o.voice[k] = b.voice[k].slice(0, 200); }
         if (b.amb && typeof b.amb === 'object') {
@@ -304,6 +308,7 @@ const server = http.createServer(async (req, res) => {
       if (managed) setTimeout(() => process.exit(42), 400);
       return;
     }
+    if (p === '/api/edition') return sendJson(res, 200, edition.info()); // Ausgabe (Lite/Medium/Voll/Copilot & Ground): welche Tabs; gesetzt wird sie in der Windows-App
     if (p === '/api/info') return sendJson(res, 200, { ips: localIps(), port: config.port, version: VERSION });
 
     if (p === '/api/config' && req.method === 'GET') return sendJson(res, 200, cfgFor());

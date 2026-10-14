@@ -1,7 +1,66 @@
 # Änderungen
 
-## 1.2.42
-- **Performance:** Das Höchstgewicht der Piste steht jetzt groß oben im Ergebnis (Takeoff und Landung), mit Reserve bzw. Überschreitung. Stehen im SimBrief-TLR Höchstgewichte je Piste, zeigt eine Tabelle darunter alle Pisten (geplante Piste markiert, mit Begrenzungsgrund).
+## 1.3.0
+- **Versionen (Lite, Medium, Voll, Copilot & Ground):** Die EFB kennt jetzt Ausgaben, die unterschiedlich viele Tabs zeigen. **Lite:** Flug, EFB, OFP, Performance, Checklisten. **Medium:** zusätzlich Finder, Karte, Charts, Wetter, Logbuch. **Voll:** alles. **Copilot & Ground:** nur Copilot, Checklisten und GSX. Dazu eine eigene Auswahl. Gewählt wird die Version in der Windows-App (Seite „Version“); die EFB blendet die übrigen Tabs aus, auch in den Tab-Einstellungen. Ohne Auswahl bleibt alles wie bisher („Voll“). Die Wahl bleibt bei EFB-Updates erhalten (edition.json).
+- **Copilot & Ground im Sim-EFB:** Das Sim-Modul „Cockpit EFB Link“ (0.8.0) hat jetzt eine Einstellungsseite für den Copiloten direkt im EFB des Simulators: Copilot starten/stoppen, alles stumm, nur Mikrofon stumm, Sprache, Stimmen für Copilot und Bodencrew, Tempo, natürlicher sprechen, „Mehr Leben“. Die Stimmen selbst laufen weiter am PC.
+- **Einstellung „Natürlicher sprechen“** wird jetzt auch gespeichert und auf allen Geräten übernommen.
+- Nur in der Demo bzw. im Browser getestet; die Seite im echten MSFS-EFB konnte ich nicht ausprobieren.
+
+## 1.2.51
+- **Zahlen mit Einheit:** „55820kg“ (ohne Leerzeichen, so schreibt Whisper es) wurde nicht als Menge erkannt, ebenso „1014qnh“ oder „2nh1014“. Zahl und Buchstaben werden jetzt getrennt.
+- **QNH:** „Qnh 103 zero“ gilt als 1030, und Verhörer wie „Run zero, Trie zero“ (= eins null drei null) werden verstanden. Ein Punkt hinter dem letzten Wort („… zero.“) stört nicht mehr.
+- **Skip:** „Skip“ hat zwar „Moving on“ gesagt, aber denselben Punkt gleich wieder gefragt. Übersprungene Punkte kommen in diesem Durchgang nicht mehr dran; am Ende sagt der Copilot, wie viele übersprungen wurden.
+- **Pushback:** Sagst du, während der Pushback schon läuft, „Cockpit to ground, pushback approved, facing east“, gilt das als Antwort auf die Richtungsfrage und nicht mehr als neue Anforderung. Dadurch kam „Confirm doors closed and bridge retracted“ doppelt.
+- **Taxi-Checkliste:** Wird erst angeboten, wenn der Flieger am Boden schneller als 15 kt rollt, nicht schon beim Pushback.
+- Nur in der Demo bzw. im Code geprüft (Zahlen, Skip); den Ablauf mit echtem GSX-Pushback habe ich nicht testen können.
+
+## 1.2.50
+- **Einzelwörter („Checked“, „Yes“) wurden oft nicht erkannt:** Sehr kurze Äußerungen unter 0,35 Sekunden wurden als Husten verworfen (jetzt erst unter 0,2 s), und bei so kurzem Ton rät die automatische Spracherkennung die Sprache oft falsch (z. B. Japanisch), was die App dann wegfiltert. Bei kurzen Äußerungen gilt jetzt die eingestellte Copilot-Sprache, und Whisper bekommt etwas Stille vor und nach dem Wort (mindestens 1,5 s Ton), womit Einzelwörter deutlich besser ankommen sollten.
+- Nur im Code geprüft; mit echtem Mikrofon und Whisper konnte ich es nicht testen.
+
+## 1.2.49
+- **Zwei Stumm-Knöpfe in der Kopfleiste:** Der Lautsprecher-Knopf schaltet **alles** stumm (Copilot, Ground und Mikrofon). Der Mikrofon-Knopf schaltet **nur dein Mikrofon** aus: Copilot und Ground sprechen weiter, hören dich aber nicht. Beides gilt auf allen Geräten gleichzeitig.
+- **Mikrofon hörte trotz Stumm weiter zu:** Wurde der Knopf schnell mehrmals gedrückt, konnte das Mikrofon noch starten oder eine schon laufende Erkennung noch ausgewertet werden. Das Mikrofon wird jetzt sofort freigegeben, und Erkennungen, die noch unterwegs sind, werden verworfen, sobald stumm geschaltet ist.
+- **Seite „Nachrichten“:** Im Copilot-Tab oben umschalten zwischen „Steuerung“ und „Nachrichten“. Die Seite zeigt die letzten Nachrichten groß und mit Uhrzeit, getrennt nach Copilot, Ground und dir; Verpasstes (während alles stumm war) ist gelb markiert, mit Knopf „Verpasste vorlesen“. Das ✉-Symbol in der Kopfleiste öffnet jetzt diese Seite, auf jedem Gerät.
+- Nur in der Demo getestet (Knöpfe, Verwerfen von Erkennungen, Nachrichtenseite). Das echte Mikrofon mit Whisper habe ich nicht prüfen können.
+
+## 1.2.48
+- **Natürlicher sprechen:** Im Copilot-Tab (Stimme) gibt es die Einstellung „Natürlicher sprechen“ (aus, selten = Standard, etwas öfter). Copilot und Ground zögern dann gelegentlich wie ein Mensch, auf Englisch z. B. „Um, let's do the Before Start checklist“, „Let's, let's do …“ oder „… do the, um, Before Start …“, auf Deutsch „Äh, …“. Die Füllwörter stehen im selben Satz und sind kurz, ohne gedehnte oder abgehackte Laute, damit es nicht stottert. Zahlen und Inhalte werden nie verändert.
+- Die Einstellung ist Teil der EFB-Version und kommt damit auch über die Windows-App.
+- Nur in der Demo getestet; wie es mit deiner Stimme klingt, hörst du erst im Sim.
+
+## 1.2.47
+- **Rollroute, Piste:** Endet die Route an einer Piste, ist dort automatisch ein Halt (roter Strich quer vor der Piste, Beschriftung „Halt 26R“, Ansage „Gleich Halt vor Piste“). Im Rollweg-Fenster der Karte gibt es dafür den Haken **Line up**: Ist er gesetzt, entfallen roter Strich und Halt-Ansage, und die Route läuft auf die Piste. Der Haken wird je Flughafen gespeichert (nur beim Abflug).
+- **Verkehrshinweise (VATSIM):** Lassen sich im Copilot-Tab unter „Mehr Leben“ ein- und ausschalten. Eingeschaltet nennen sie jetzt mehr: Entfernung, Typ, Ziel, Rollgeschwindigkeit bzw. Flughöhe und Kurs (gleiche Richtung, entgegenkommend, kreuzend). Während einer Checkliste und solange die Bodencrew spricht (Pushback, GSX-Menü) schweigen sie automatisch.
+- **Rollweg-Ansagen:** Hinter einer Ansage mit englischem Teil (z. B. „…Taxiway Sierra Seven.“) wurde noch ein Wort angefangen und sofort abgebrochen. Der Schlusspunkt wird jetzt nicht mehr als eigenes Stück gesprochen.
+- Nur in der Demo getestet, nicht mit echtem Sim und echten Flughafendaten.
+
+## 1.2.46
+- **Pushback, Triebwerke:** Hat Ground „Wait with engine start …“ gesagt, kommt nach dem Abkoppeln des Schlepperes jetzt die Freigabe („Tug is disconnected. You are clear to start engines.“).
+- **Richtung per Sprache:** „Whiskey two“ wurde als „Viscatou“ verstanden und nicht erkannt. Solche Verhörer (Whisky, Wisky, Viscatou …) werden jetzt als „Whiskey“ bzw. „Whiskey two“ gewertet, auch bei „Facing North Whiskey Two“.
+- **Enteisungsflächen (De-icing pads):** Sie erscheinen auf der Bodenkarte als hellblaue, gestrichelte Fläche mit der Beschriftung „DE-ICE …“. Die App erkennt sie an apron=deicing, einem eigenen aeroway-Wert oder am Namen („De-icing“, „Enteisung“). Die Bodenkarten-Daten werden dafür einmal neu geladen.
+- **Enteisung anfordern:** „Cockpit to ground, request deicing“ fordert den GSX-De-Icing-Dienst an. Klappt das nicht und steht der Flieger nicht auf einer bekannten Enteisungsfläche, sagt Ground, dass du erst dorthin rollen sollst.
+- **Sicherheit:** Beim automatischen Abkoppeln wählt die App im GSX-Hauptmenü keinen Eintrag mehr auf Verdacht.
+- Ungetestet mit echtem GSX und echten Flughafendaten. Ob die Enteisungsflächen deines Flughafens in OpenStreetMap so getaggt sind, dass die App sie erkennt, weiß ich nicht.
+
+## 1.2.45
+- **Rollroute, Klammern:** Ein Rollweg in Klammern mitten in der Route (z. B. `W2 S7 (S) B15`) wird jetzt trotzdem befahren und auf der Karte markiert, aber vor dem Einbiegen steht ein roter Strich quer auf dem Rollweg davor. Steht die Klammer am Ende (`B (A)`), endet der Weg weiterhin am Halt.
+- **Rollroute, Stand:** Die Linie beginnt jetzt am Stand (bei Ankunft endet sie dort). Als Stand gilt bei OpenStreetMap-Linien die Halteposition (letzter Punkt der Linie), nicht mehr der Anfang.
+- **Bodenkarte, Beschriftungen:** Überlappende Beschriftungen werden ausgeblendet (Stände, Rollwege), und derselbe Rollweg-Name wird nicht mehr in kurzem Abstand mehrfach angezeigt. Beim Hineinzoomen erscheinen mehr.
+- **Bodenkarte, Farben:** Die Farbe eines Rollwegs wird jetzt nicht nur aus Kennung und Name erkannt, sondern auch aus weiteren OpenStreetMap-Feldern (Alternativname, Beschreibung, Farbangabe).
+- Ungetestet mit echten Flughafendaten (nur eigene Testdaten).
+
+## 1.2.44
+- **GPU abkoppeln/anfordern:** Fehler gefunden. Die App suchte im GSX-Hauptmenü den Eintrag „Additional Services“, traf aber zuerst „Departure clearance requested, waiting for other services to complete“ und wählte den falschen Eintrag. Jetzt wird nur noch „Additional Services“ erkannt.
+- **Pushback:** „Release parking brake“ kommt nur noch einmal und erst, nachdem die Richtung gewählt ist. „Tug is connected“ wird nur einmal gesagt. Öffnet GSX „Interrupt pushback?“, ohne dass du eine Richtung genannt hast, wählt die App „Select pushback direction“ und fragt dich dann nach der Richtung.
+- **Pushback-Ende:** Die Abfrage „Engines gut gestartet?“ ist entfernt. Nach „Set parking brake“ wartet Ground, bis die Bremse gesetzt ist (oder bis zu 8 Sekunden, wenn der Flieger keinen Wert meldet), bestätigt in GSX den Eintrag zum Abkoppeln, falls GSX fragt, und verabschiedet sich.
+- **Copilot versteht mehr:** QNH „101.3“ oder „10.13“ gilt jetzt als 1013. Auf eine Frage wie „Soll ich die Checkliste starten?“ genügt „5 Min.“ als Antwort, dann fragt er erst später wieder.
+- **Spracherkennung:** Texte in japanischer, chinesischer, russischer, arabischer oder anderer nicht-lateinischer Schrift werden verworfen. Whisper erfindet sie bei Rauschen.
+- **Nachrichten-Symbol im Kopf:** Antippen hebt Stumm auf und spielt die wartenden Meldungen ab. Läuft der Copilot nicht, stehen sie danach im Verlauf, statt dass nichts passiert.
+- Ungetestet gegen den echten Sim: GSX-Menü-Schritte (GPU, Pushback-Ende).
+
+## 1.2.43
+- **Performance:** Die Zeile „Höchstgewicht Piste“ heißt jetzt „Höchstes Startgewicht auf dieser Piste“ bzw. „Höchstes Landegewicht auf dieser Piste“. Das ist das Gewicht, bis zu dem Start oder Landung auf der gewählten Piste noch möglich ist.
 - **Einstellungen → Sprache → Gewichte:** Umschalten zwischen kg und lb (gilt pro Gerät). Betrifft die Gewichte im Flugplan, den Performance-Rechner (Eingaben werden beim Umschalten umgerechnet) und das Logbuch.
 - **Fehler behoben:** Hatte SimBrief den Flugplan in lbs geliefert, wurden Start- und Landegewicht im Rechner als kg übernommen. Jetzt wird umgerechnet.
 - **ATC-Tab:** Parkposition (nächster Stellplatz laut OpenStreetMap, solange der Flieger steht), ATIS-Buchstabe und QNH vom VATSIM-ATIS des Abflughafens werden automatisch eingetragen. Was du von Hand änderst, bleibt stehen.
@@ -9,7 +68,7 @@
 - **Karte:** Tippe auf einen Wegpunkt der Route: Es öffnet sich eine Tabelle mit Wind und Temperatur auf mehreren Höhen. Die Zeile, die der OFP-Flughöhe am Wegpunkt am nächsten liegt, ist markiert; der Wind laut OFP steht darüber. Der Wind ist eine Vorhersage (Open-Meteo), keine Messung.
 - **Flug-Tab:** Höhe jetzt MSL und AGL (neue Sim-Variable „Plane Alt Above Ground“).
 - **Wetter-Tab:** neuer Reiter TAF für Abflug, Ziel und Ausweichflughafen (aviationweather.gov, kostenlos).
-- Ungetestet gegen den echten Sim: AGL-Wert, TAF-Abruf und die TLR-Felder `max_weight`/`limit_code` (nur Demo geprüft).
+- Ungetestet gegen den echten Sim: AGL-Wert und TAF-Abruf (nur Demo geprüft).
 
 ## 1.2.41
 - Leistung, vor allem Karte und iPad (Aussehen unverändert):

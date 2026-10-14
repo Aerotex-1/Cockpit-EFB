@@ -49,9 +49,20 @@ window.addEventListener('unhandledrejection', (e) => showError(String((e.reason 
 // ---------- Start ----------
 // Erst die Bedienung aktivieren, dann Daten laden. So bleiben die Tasten auch
 // dann bedienbar, wenn eine Anfrage hängt oder fehlschlägt.
+// Ausgabe (Lite / Medium / Voll / Copilot & Ground): nicht gebrauchte Tabs ausblenden. Gewählt wird sie in der Windows-App; ohne Angabe gilt „Voll“.
+window.EDITION = { id: 'full', name: 'Voll', tabs: null, voiceOnly: false, has: () => true };
+function applyEdition(cur) {
+  const set = new Set(cur.tabs || []);
+  window.EDITION = { id: cur.id, name: cur.name, tabs: cur.tabs, voiceOnly: !!cur.voiceOnly, has: (t) => set.has(t) };
+  $$('.pb[data-tab]').forEach((b) => { b.hidden = !set.has(b.dataset.tab); });
+  $$('.tab').forEach((t) => { if (!set.has(t.id.replace(/^tab-/, ''))) t.setAttribute('data-off', '1'); });
+  if (!set.has('copilot')) ['cpMute', 'cpMicMute', 'cpMsgs'].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); }); // Stumm-Knöpfe des Copilots
+  if (!set.has(app.tab)) app.tab = cur.voiceOnly && set.has('copilot') ? 'copilot' : cur.tabs[0];
+}
 async function init() {
   app.config = { port: 8090, simbriefUser: '', aircraft: [] };
   bindUi();
+  try { const e = await fetch('/api/edition', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)); if (e && e.current && Array.isArray(e.current.tabs) && e.current.tabs.length) applyEdition(e.current); } catch { /* ältere EFB oder Web-Version: alles anzeigen */ }
   showTab(app.tab);
   setInterval(tickClock, 1000); tickClock();
   applyDim(store.get('dim', 0));
@@ -59,7 +70,7 @@ async function init() {
 
   await loadConfig();
   app.checklists = await fetch('data/checklists.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({}));
-  fetch('/api/info').then((r) => r.json()).then((i) => { const el = $('#verInfo'); if (el) el.textContent = `Version ${i.version}`; }).catch(() => {});
+  fetch('/api/info').then((r) => r.json()).then((i) => { const el = $('#verInfo'); if (el) el.textContent = `Version ${i.version}` + (window.EDITION && window.EDITION.id !== 'full' ? ` · Ausgabe ${window.EDITION.name}` : ''); }).catch(() => {});
   app.airports = await fetch('data/airports.json').then((r) => r.json()).catch(() => []);
   app.defs = await fetch('data/aircraft.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ kinds: {} }));
   lastProfileId = undefined; onSim();
@@ -97,6 +108,7 @@ function connectEvents() {
 
 // ---------- Tabs ----------
 function showTab(name) {
+  if (window.EDITION && !window.EDITION.has(name)) name = (window.EDITION.tabs || [])[0] || 'flight'; // Tab gehört nicht zur gewählten Ausgabe
   app.tab = name; store.set('tab', name);
   $$('.pb').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
   $$('.tab').forEach((t) => t.classList.toggle('on', t.id === 'tab-' + name));

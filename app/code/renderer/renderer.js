@@ -7,10 +7,11 @@ const bridge = window.api || { invoke: async () => ({ settings: {}, logs: [], up
 let st = null;
 const ST = { stopped: 'Server gestoppt', starting: 'Server startet …', running: 'Server läuft', crashed: 'Server abgestürzt', error: 'Fehler' };
 
-document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
-  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
-  document.querySelectorAll('.page').forEach((p) => p.classList.toggle('on', p.id === 'p-' + b.dataset.p));
-});
+const goPage = (name) => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x.dataset.p === name));
+  document.querySelectorAll('.page').forEach((p) => p.classList.toggle('on', p.id === 'p-' + name));
+};
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => goPage(b.dataset.p));
 
 function renderStatus(s) {
   $('#dot').className = 'dot ' + s; $('#stText').textContent = ST[s] || s;
@@ -26,8 +27,35 @@ function renderUpdate(u) {
   if (u.shell) { shell.querySelector('b').textContent = `Installer ${u.shell.version} verfügbar (installiert: ${st.shellVersion})`; shell.querySelector('pre').textContent = u.shell.notes || ''; }
   $('#uState').textContent = u.error ? u.error : !u.checkedAt ? 'Noch nicht gesucht.' : (u.efb || u.code || u.shell) ? 'Neue Version gefunden.' : `Alles aktuell${u.latestEfb ? ' (neueste EFB: ' + u.latestEfb + ')' : ''}.`;
 }
+// ---- Version (Ausgaben)
+let edShown = false;
+const TABN = {};
+function renderEdition(s) {
+  const e = s.edition || { supported: false, editions: [], tabs: [], current: { id: 'full', name: 'Voll', tabs: [] } };
+  (e.tabs || []).forEach((t) => { TABN[t.id] = t.label; });
+  const cur = e.current || {}, tabs = cur.tabs || [];
+  $('#navCopilot').hidden = !!tabs.length && !tabs.includes('copilot'); // ohne Copilot in der gewählten Version keine Copilot-Seite
+  $('#edHome').textContent = e.supported ? `Aktiv: ${cur.name}${cur.id === 'custom' ? '' : ''} (${tabs.length} Tabs). ${cur.id === 'voice' ? 'Die Einstellungen steuerst du auch im Sim-EFB unter „Cockpit EFB Link“.' : ''}` : 'Die installierte EFB kennt noch keine Versionen (Updates → EFB aktualisieren).';
+  const chosen = !!(s.settings && s.settings.editionChosen);
+  $('#edBadge').hidden = chosen || !e.supported; $('#edFirst').hidden = chosen;
+  $('#edList').innerHTML = !e.supported ? '<p class="note">Die installierte EFB kennt noch keine Versionen. Bitte unter „Updates“ die EFB aktualisieren.</p>' : e.editions.map((x) => `<div class="ed ${cur.id === x.id ? 'on' : ''}"><div class="top"><div><b>${esc(x.name)}</b> ${cur.id === x.id ? '<span class="sub">aktiv</span>' : ''}</div>${cur.id === x.id ? '' : `<button class="primary" data-ed="${esc(x.id)}">Verwenden</button>`}</div><span class="sub">${esc(x.desc)}</span><div class="chips">${x.tabs.map((t) => `<span>${esc(TABN[t] || t)}</span>`).join('')}</div></div>`).join('');
+  const sel = new Set(cur.id === 'custom' ? tabs : []);
+  $('#edTabs').innerHTML = (e.tabs || []).filter((t) => t.id !== 'setup').map((t) => `<label class="chk"><input type="checkbox" data-et="${esc(t.id)}" ${(cur.id === 'custom' ? sel.has(t.id) : tabs.includes(t.id)) ? 'checked' : ''}> ${esc(t.label)}</label>`).join('');
+  $('#edCustom').disabled = !e.supported;
+  if (!chosen && e.supported && !edShown) { edShown = true; goPage('edition'); }
+}
+async function setEdition(sel) {
+  $('#edMsg').textContent = 'Wird gesetzt …';
+  try { const r = await bridge.invoke('edition:set', sel); st.edition = r; st.settings.editionChosen = true; renderEdition(st); $('#edMsg').textContent = `Aktiv: ${r.current.name}. Lade die EFB im Browser bzw. auf dem iPad neu (F5).`; }
+  catch (er) { $('#edMsg').textContent = 'Fehler: ' + String(er.message || er).replace(/^Error invoking remote method[^:]*: /, ''); }
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-ed]'); if (b) setEdition({ id: b.dataset.ed }); });
+$('#edCustom').onclick = () => setEdition({ id: 'custom', tabs: [...document.querySelectorAll('[data-et]:checked')].map((x) => x.dataset.et) });
+$('#edGo').onclick = () => goPage('edition');
+
 function render(s) {
   st = s;
+  renderEdition(s);
   renderStatus(s.status);
   $('#stSub').textContent = s.status === 'running' ? `Port ${s.port} · EFB ${s.efbVersion}` : s.status === 'crashed' ? `Beendet mit Code ${s.lastExit} – siehe Protokoll` : '';
   $('#addr').textContent = `http://<PC-IP>:${s.port}`;

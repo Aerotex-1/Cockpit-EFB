@@ -97,7 +97,9 @@ async function transcribe(wav, { lang = 'auto', prompt = '' } = {}) {
     try { out = await viaServer(wav, lang, prompt); lastVia = 'server'; } catch { out = null; stopServer(); srvFailed++; }
     if (out === null) { out = await viaCli(wav, lang, prompt); lastVia = 'cli'; }
     lastMs = Date.now() - t0;
-    return clean(out);
+    const txt = clean(out);
+    // Whisper „erfindet“ bei Rauschen gern japanische, chinesische oder russische Sätze: Texte in fremder Schrift verwerfen (Deutsch und Englisch sind lateinisch)
+    return /[\u0400-\u04ff\u0590-\u06ff\u0900-\u0dff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(txt) ? '' : txt;
   } finally { release(); }
 }
 // Modell schon beim Start laden, damit der erste Satz nicht wartet

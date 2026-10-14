@@ -6,6 +6,8 @@
   const core = () => window.Copilot && window.Copilot._core;
   const on = (k) => { const c = core(); return !!c && (!c.pref.life || c.pref.life[k] !== false); }; // Standard: alles an
   const ready = () => { const c = core(); return !!c && c.S.on && !c.isMuted() && !c.S.speaking && c.S.mode !== 'gsxMenu'; };
+  // Verkehrshinweise schweigen bei Checklisten und solange die Bodencrew spricht (Pushback, GSX-Menü)
+  const crewBusy = () => { const c = core(); if (!c) return false; const m = String(c.S.mode || ''); return m === 'run' || m.startsWith('ask') || m === 'gsxMenu' || !!c.pbOn() || !!c.pushBusy(); };
   const sim = () => app.sim || {};
   const de = () => (core() ? core().pref.lang === 'de' : true);
   const say = (t, l) => core().say(t, l);
@@ -44,7 +46,7 @@
     const lead = Math.min(320, Math.max(130, 45 + 12 * gs * 0.514));
     const turnTxt = () => { const dir = st.turn === 'straight' ? (de() ? 'geradeaus weiter auf' : 'continue straight onto') : st.turn === 'left' ? (de() ? (st.sharp ? 'scharf links auf' : 'links auf') : (st.sharp ? 'sharp left onto' : 'turn left onto')) : (de() ? (st.sharp ? 'scharf rechts auf' : 'rechts auf') : (st.sharp ? 'sharp right onto' : 'turn right onto')); return de() ? `Gleich ${dir} Taxiway ${nameSay(st.next)}.` : `Next, ${dir} taxiway ${nameSay(st.next)}.`; };
     if (!st.atEnd && st.next && st.turn && !done.has(k + ':pf') && st.distToJ < lead + 250) { done.add(k + ':pf'); try { c.prefetch(turnTxt(), undefined); } catch (e) { /* egal */ } }
-    if (st.holdAhead && st.holdAhead.dist < lead && !done.has(k + ':th' + st.holdAhead.ref)) { done.add(k + ':th' + st.holdAhead.ref); return talk(de() ? `Gleich Halt vor Taxiway ${nameSay(st.holdAhead.ref)}.` : `Hold short of taxiway ${nameSay(st.holdAhead.ref)}.`); }
+    if (st.holdAhead && !st.holdAhead.rwy && st.holdAhead.dist < lead && !done.has(k + ':th' + st.holdAhead.ref)) { done.add(k + ':th' + st.holdAhead.ref); return talk(de() ? `Gleich Halt vor Taxiway ${nameSay(st.holdAhead.ref)}.` : `Hold short of taxiway ${nameSay(st.holdAhead.ref)}.`); }
     if (st.atEnd) {
       if (st.hold && st.holdKind !== 'twy' && st.distToJ < Math.max(90, lead * 0.8) && !done.has(k + ':hold')) { done.add(k + ':hold'); return talk(de() ? `Gleich Halt vor Piste ${rw || ''}.` : `Hold short of runway ${rw || ''}.`); }
       return;
@@ -64,22 +66,27 @@
   const me = () => (app.ofp && app.ofp.atc && app.ofp.atc.callsign) || '';
   function csSay(cs) { return String(cs).replace(/^([A-Z]{3})(\d)/, '$1 $2').replace(/(\d)/g, ' $1').replace(/\s+/g, ' ').trim(); }
   const dest = (p) => (p.arr ? (de() ? ` nach ${p.arr}` : ` to ${p.arr}`) : '');
+  // Verlauf des Fremdflugzeugs relativ zu uns: gleiche Richtung, entgegen, kreuzend
+  const course = (s, p) => { if (p.hdg == null || (p.gs || 0) < 30) return ''; const d = Math.abs(((p.hdg - s.hdg + 540) % 360) - 180); return d < 30 ? (de() ? 'ähnlicher Kurs' : 'same direction') : d > 150 ? (de() ? 'entgegenkommend' : 'opposite direction') : (de() ? 'kreuzend' : 'crossing'); };
+  const fl = (a) => (a >= 5000 ? 'FL' + String(Math.round(a / 100)).padStart(3, '0') : Math.round(a / 100) * 100 + ' ft');
   async function trafficTick() {
     const s = sim(); if (!on('traffic') || !s.connected || !isFinite(s.lat)) return;
     loadVats();
-    if (!ready() || !quiet(30000) || Date.now() - trafficAt < 75000 || !vats.length) return;
+    if (!ready() || crewBusy() || !quiet(30000) || Date.now() - trafficAt < 75000 || !vats.length) return;
     const myCs = me(), nowT = Date.now();
     const fresh = (p) => !seenTraffic[p.cs] || nowT - seenTraffic[p.cs] > 10 * 60000;
     if (s.onGround && (s.gs || 0) < 45) { // am Boden: Flugzeug vor uns, auf gleicher Höhe, wenige hundert Meter
       const c = vats.filter((p) => p.cs !== myCs && fresh(p) && Math.abs(p.alt - s.alt) < 150).map((p) => ({ p, r: rel(s, p) }))
         .filter((x) => x.r.d < 600 && x.r.d > 25 && Math.abs(((x.r.b - s.hdg + 540) % 360) - 180) < 70).sort((a, b) => a.r.d - b.r.d)[0];
-      if (c && Math.random() < 0.6) { seenTraffic[c.p.cs] = nowT; trafficAt = nowT; return talk(de() ? `Vor uns steht ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}${dest(c.p)}.` : `Ahead of us, ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}${dest(c.p)}.`); }
+      if (c && Math.random() < 0.6) { seenTraffic[c.p.cs] = nowT; trafficAt = nowT; const dm = Math.round(c.r.d / 10) * 10, mv = (c.p.gs || 0) > 3 ? (de() ? `, rollt mit ${Math.round(c.p.gs)} Knoten` : `, taxiing at ${Math.round(c.p.gs)} knots`) : (de() ? ', steht' : ', holding');
+        return talk(de() ? `Vor uns, ${dm} Meter: ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}${dest(c.p)}${mv}.` : `Ahead of us, ${dm} meters: ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}${dest(c.p)}${mv}.`); }
     } else if (!s.onGround) { // in der Luft: Verkehr in der Nähe
       const c = vats.filter((p) => p.cs !== myCs && fresh(p) && Math.abs(p.alt - s.alt) < 1200).map((p) => ({ p, r: rel(s, p) })).filter((x) => x.r.d < 11000 && x.r.d > 500).sort((a, b) => a.r.d - b.r.d)[0];
       if (c && Math.random() < 0.5) {
         seenTraffic[c.p.cs] = nowT; trafficAt = nowT;
         const oc = Math.round((((c.r.b - s.hdg + 360) % 360)) / 30) % 12 || 12, dh = c.p.alt - s.alt, vh = Math.abs(dh) < 300 ? (de() ? 'gleiche Höhe' : 'same altitude') : dh > 0 ? (de() ? `${Math.round(dh / 100) * 100} Fuß höher` : `${Math.round(dh / 100) * 100} feet above`) : (de() ? `${Math.round(-dh / 100) * 100} Fuß tiefer` : `${Math.round(-dh / 100) * 100} feet below`);
-        return talk(de() ? `Verkehr, ${oc} Uhr, ${(c.r.d / 1852).toFixed(0)} Meilen, ${vh}. ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}.` : `Traffic, ${oc} o'clock, ${(c.r.d / 1852).toFixed(0)} miles, ${vh}. ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}.`);
+        const cr = course(s, c.p), nm = Math.max(1, Math.round(c.r.d / 1852));
+        return talk(de() ? `Verkehr, ${oc} Uhr, ${nm} Meilen, ${vh}${cr ? ', ' + cr : ''}. ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}${dest(c.p)}, ${fl(c.p.alt)}.` : `Traffic, ${oc} o'clock, ${nm} miles, ${vh}${cr ? ', ' + cr : ''}. ${csSay(c.p.cs)}${c.p.type ? ', ' + c.p.type : ''}${dest(c.p)}, ${fl(c.p.alt)}.`);
       }
     }
   }

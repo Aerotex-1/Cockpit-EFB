@@ -75,19 +75,20 @@ const Settings = (() => {
   }
 
   // ---------- Tabs ----------
-  function visibleTabs() { return data ? data.tabs.order.filter((t) => !data.tabs.hidden.includes(t)) : Object.keys(TAB_LABELS); }
+  const inEd = (t) => !window.EDITION || window.EDITION.has(t); // gehört der Tab zur gewählten Ausgabe?
+  function visibleTabs() { return (data ? data.tabs.order.filter((t) => !data.tabs.hidden.includes(t)) : Object.keys(TAB_LABELS)).filter(inEd); }
   function applyTabs() {
     const { order, hidden } = data.tabs;
     $$('#rail .pb').forEach((b) => {
       const i = order.indexOf(b.dataset.tab);
-      b.hidden = hidden.includes(b.dataset.tab);
+      b.hidden = hidden.includes(b.dataset.tab) || !inEd(b.dataset.tab);
       b.style.order = String((i < 0 ? 99 : i) * 10);
     });
     // Abstandhalter vor die ersten „unteren“ Tabs setzen
     const lower = ['logbook', 'music'].filter((t) => !hidden.includes(t)).map((t) => order.indexOf(t));
     const gap = $('#rail .rail-gap');
     if (gap) gap.style.order = String((lower.length ? Math.min(...lower) : order.indexOf('setup')) * 10 - 5);
-    if (hidden.includes(app.tab)) showTab(visibleTabs()[0] || 'setup');
+    if (hidden.includes(app.tab) || !inEd(app.tab)) showTab(visibleTabs()[0] || 'setup');
   }
 
   // ---------- Airline-Schalter in der Statusleiste ----------

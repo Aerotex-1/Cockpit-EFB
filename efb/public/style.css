@@ -871,12 +871,24 @@ input[type=range] { accent-color: var(--cyan); }
 .wp-wind th, .wp-wind td { padding: 4px 8px; text-align: left; }
 .wp-wind tr.hit td { background: #e040fb33; font-weight: 700; }
 
-.maxw { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 14px; margin: 0 0 10px; border-radius: 10px; background: rgba(56,200,245,.12); border: 1px solid rgba(56,200,245,.35); }
-.maxw small { flex-basis: 100%; opacity: .75; }
-.maxw b { font-size: 28px; font-variant-numeric: tabular-nums; }
-.maxw span { opacity: .8; }
-.maxw.bad { background: rgba(255,80,70,.14); border-color: rgba(255,80,70,.5); }
-.tlr-h { margin: 14px 0 4px; }
-.tlr-t { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-.tlr-t td { padding: 4px 8px; border-top: 1px solid rgba(128,128,128,.25); }
-.tlr-t tr.hit td { font-weight: 700; }
+.deice-label { background: #7fd4ff !important; color: #00212f; border: 0 !important; border-radius: 2px; padding: 0 4px; font-family: var(--mono); font-size: 10px; font-weight: 700; width: auto !important; height: auto !important; white-space: nowrap; margin: -7px 0 0 -8px; }
+/* Copilot: Seitenumschalter und Seite „Nachrichten“; Mikrofon-Knopf in der Kopfleiste */
+.strip-mute + .strip-mute { margin-left: 6px; }
+.strip-mute.dim { opacity: .55; }
+#cpMute { margin-left: 6px; }
+.cp-seg { display: flex; gap: 6px; margin-bottom: 10px; }
+.cp-seg button { flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, #ffffff22); background: rgba(var(--ink-rgb), .06); color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.cp-seg button.on { background: var(--accent, #2a7); border-color: transparent; color: #04140c; }
+.cpv-main { display: flex; flex-direction: column; gap: 10px; }
+.cpm-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.cpm { border: 1px solid var(--line, #ffffff22); border-left-width: 5px; border-radius: 10px; padding: 8px 12px; background: var(--surface-2, #ffffff0d); }
+.cpm.cp { border-left-color: #2fbf71; } .cpm.gr { border-left-color: #e5a100; } .cpm.me { border-left-color: #34c6f4; } .cpm.sys { border-left-color: #8a96a3; opacity: .85; }
+.cpm.miss { background: rgba(229, 161, 0, .14); }
+.cpm-h { display: flex; gap: 10px; align-items: baseline; font-size: 12px; opacity: .9; }
+.cpm-who { font-weight: 700; font-size: 13px; }
+.cpm-x { margin-left: auto; font-weight: 700; color: #e5a100; }
+.cpm-b { font-size: 17px; line-height: 1.35; margin-top: 2px; word-break: break-word; }
+
+/* Ausgaben: Tabs, die nicht zur gewählten Ausgabe gehören */
+.pb[hidden] { display: none !important; }
+.tab[data-off] { display: none !important; }

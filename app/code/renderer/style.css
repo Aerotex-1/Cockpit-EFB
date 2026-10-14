@@ -35,3 +35,13 @@ pre.notes { margin:6px 0; white-space:pre-wrap; font:inherit; color:var(--dim); 
 .v { display:grid; grid-template-columns:1fr auto; gap:2px 12px; align-items:center; padding:8px 10px; background:#0f1a28; border:1px solid var(--ln); border-radius:8px; }
 .v b { font-weight:600; } .v .sub { grid-column:1; } .v button { grid-row:1 / span 2; grid-column:2; }
 .v.on { border-color:var(--ok); }
+
+/* Version (Ausgaben) */
+.ed { display:grid; gap:6px; padding:10px 12px; background:#0f1a28; border:1px solid var(--ln); border-radius:8px; }
+.ed.on { border-color:var(--ok); }
+.ed .top { display:flex; gap:10px; align-items:center; justify-content:space-between; }
+.ed .chips { display:flex; flex-wrap:wrap; gap:5px; }
+.ed .chips span, .edtabs label span { font-size:12px; padding:2px 8px; border-radius:999px; background:#1c2e44; color:var(--dim); }
+.edtabs { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px 14px; }
+.edtabs label.chk { font-size:13.5px; }
+#edBadge { color:var(--warn); }

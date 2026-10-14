@@ -13,7 +13,7 @@ const path = require('path');
 // Welcher Menütext gehört zu welchem Dienst. "path" ist die Folge von Menüeinträgen,
 // die nacheinander gewählt werden (für Untermenüs wie die Zusatzdienste).
 const has = (re, not) => (t) => re.test(t) && !(not && not.test(t));
-const ADD = has(/additional|extra|other service|more service/i);
+const ADD = has(/additional\s*serv|extra\s*serv|more\s*serv|zusatz/i, /waiting for|to complete|requested|no longer|not available/i); // nicht auf „…waiting for other services to complete“ anspringen
 const SERVICES = {
   deboarding: { label: 'Deboarding', path: [has(/deboard/i)] },
   catering: { label: 'Catering', path: [has(/cater/i)] },

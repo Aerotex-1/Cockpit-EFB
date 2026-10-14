@@ -12,6 +12,7 @@ const voiceLib = require('./lib/voices');
 const whisperLib = require('./lib/whisper');
 const kokoroLib = require('./lib/kokoro');
 const communityLib = require('./lib/community');
+const editionLib = require('./lib/editions');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -142,8 +143,9 @@ function communitySync(force) {
 
 function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startWithWindows }); } catch { /* nicht unterstützt */ } }
 
+const editionState = () => { try { return editionLib.status(EFB_DIR, BUNDLE); } catch (e) { return { supported: false, current: { id: 'full', name: 'Voll', tabs: [] }, editions: [], tabs: [], error: e.message }; } };
 function state() {
-  return { status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '' }, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
+  return { edition: editionState(), status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '' }, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
 }
 
 // Eigene Sounds des Bodenpersonals: Ordner „sounds“ in der EFB, Dateiname = Ereignis (z. B. pushback.ack.S1.mp3)
@@ -166,10 +168,10 @@ app.whenReady().then(() => {
   const ses = require('electron').session.defaultSession;
   ses.setPermissionRequestHandler((wc, perm, cb, det) => cb(perm === 'media' && okOrigin(det && det.requestingUrl)));
   ses.setPermissionCheckHandler((wc, perm, origin) => perm === 'media' && okOrigin(origin + '/'));
-  proc.on('status', (st) => { send('status', st); if (st === 'running' && S.openBrowserOnStart && !proc._opened) { proc._opened = true; openEfb(); } if (st === 'running' && S.copilotOnStart && !proc._cpOpened) { proc._cpOpened = true; openCopilot(); } });
+  proc.on('status', (st) => { send('status', st); if (st === 'running' && S.openBrowserOnStart && !proc._opened) { proc._opened = true; openEfb(); } if (st === 'running' && S.copilotOnStart && !proc._cpOpened && (() => { const t = editionState().current.tabs; return !t.length || t.includes('copilot'); })()) { proc._cpOpened = true; openCopilot(); } });
   proc.on('log', (l) => {
     // Vom iPad aus „Copilot starten“ gedrückt, aber am PC läuft kein Copilot-Fenster: öffnen
-    if (String(l).includes('@@EFB:COPILOT_OPEN@@')) { try { if (proc.status === 'running' && releases.cmp(efbVersion(), '1.2.0') >= 0) openCopilot(); } catch { /* egal */ } return; }
+    if (String(l).includes('@@EFB:COPILOT_OPEN@@')) { try { const t = editionState().current.tabs; if (proc.status === 'running' && releases.cmp(efbVersion(), '1.2.0') >= 0 && (!t.length || t.includes('copilot'))) openCopilot(); } catch { /* egal */ } return; }
     send('log', l);
   });
 
@@ -189,7 +191,15 @@ app.whenReady().then(() => {
     }
     return state();
   });
-  ipcMain.handle('copilot:open', () => { if (proc.status !== 'running') throw new Error('Der Server läuft nicht.'); if (releases.cmp(efbVersion(), '1.2.0') < 0) throw new Error('Das Copilot-Fenster braucht EFB 1.2.0 oder neuer. Bitte unter „Updates“ zuerst die EFB aktualisieren.'); openCopilot(); });
+  ipcMain.handle('copilot:open', () => { if (proc.status !== 'running') throw new Error('Der Server läuft nicht.'); { const t = editionState().current.tabs; if (t.length && !t.includes('copilot')) throw new Error('Die gewählte Version hat keinen Copilot. Wechsle unter „Version“.'); } if (releases.cmp(efbVersion(), '1.2.0') < 0) throw new Error('Das Copilot-Fenster braucht EFB 1.2.0 oder neuer. Bitte unter „Updates“ zuerst die EFB aktualisieren.'); openCopilot(); });
+  ipcMain.handle('edition:get', () => editionState());
+  ipcMain.handle('edition:set', (_e, sel) => {
+    const r = editionLib.set(EFB_DIR, BUNDLE, sel);
+    S = { ...S, editionChosen: true }; settingsStore.save(SETTINGS_FILE, S, safe);
+    if (r.current && r.current.tabs.includes('copilot')) { try { communitySync(); } catch { /* egal */ } } // Sim-Modul (enthält die Copilot-Einstellungen im Sim-EFB) auf dem neuesten Stand
+    else if (cpWin && !cpWin.isDestroyed()) cpWin.close();
+    return r;
+  });
   ipcMain.handle('sounds:list', () => soundList());
   ipcMain.handle('sounds:folder', () => { fs.mkdirSync(SOUNDS_DIR(), { recursive: true }); return shell.openPath(SOUNDS_DIR()); });
   ipcMain.handle('sounds:set', async (_e, key) => {

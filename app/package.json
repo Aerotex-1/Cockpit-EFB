@@ -1,7 +1,7 @@
 {
   "name": "cockpit-efb-app",
   "productName": "Cockpit EFB",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Cockpit EFB – Windows-App zum Starten, Einstellen und Aktualisieren",
   "main": "boot.js",
   "author": "Cockpit EFB",
@@ -10,7 +10,7 @@
     "prepare-bundle": "node tools/prepare-bundle.js",
     "start": "node tools/prepare-bundle.js && electron .",
     "dist": "node tools/prepare-bundle.js && node tools/fetch-voices.js && electron-builder --win --publish never",
-    "test": "node tools/test-voices.js && node tools/test-boot.js",
+    "test": "node tools/test-voices.js && node tools/test-boot.js && node tools/test-editions.js",
     "fetch-voices": "node tools/fetch-voices.js"
   },
   "dependencies": {

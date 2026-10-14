@@ -172,8 +172,9 @@ const MapExtras = (() => {
       <label>Piste<input id="txRwy" value="${esc(e.rwy)}" placeholder="26R" autocapitalize="characters"></label></div>
       <datalist id="txStands">${listStands().map((s) => `<option value="${esc(s)}">`).join('')}</datalist>
       <label>Rollweg ${cur.mode === 'arr' ? '(von der Piste zum Stand)' : '(vom Stand zur Piste)'}<input id="txRoute" value="${esc(e.route)}" placeholder="z. B. B A N5 oder B (A) für Halt vor A" autocapitalize="characters"></label>
+      ${cur.mode === 'arr' ? '' : `<label class="chk"><input type="checkbox" id="txLineup"${e.lineup ? ' checked' : ''}> Line up (Halt vor der Piste entfällt)</label>`}
       <div class="tx-btns"><button class="btn-s" id="txShow">Anzeigen</button><button class="btn-s" id="txFly">Zum Flughafen</button><button class="btn-s" id="txStandGo">Stand zeigen</button><button class="btn-s" id="txClear">Löschen</button><button class="btn-s" id="txClearAll">Alle löschen</button></div>
-      <p class="wx-help">Die Rollwege werden nur bis zur jeweiligen Kreuzung markiert. Fehlt eine Verbindung, wird die kürzeste eingefügt (gestrichelt). Ein Rollweg in Klammern, z. B. B (A), bedeutet: Halt vor A, mit rotem Strich. Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.</p>`;
+      <p class="wx-help">Die Rollwege werden nur bis zur jeweiligen Kreuzung markiert. Fehlt eine Verbindung, wird die kürzeste eingefügt (gestrichelt). Ein Rollweg in Klammern, z. B. B (A) D, bedeutet: Halt vor A mit rotem Strich. Folgt danach noch ein Rollweg, wird A trotzdem befahren; steht die Klammer am Ende, endet der Weg am Halt. Am Pistenende hält die Route automatisch vor der Piste (roter Strich); mit „Line up“ entfällt dieser Halt. Die Eingabe bleibt gespeichert, auch für den Ankunftsflughafen.</p>`;
   }
   function openTaxi(v) {
     taxiOpen = v; const b = q('btnTaxi'); if (b) b.classList.toggle('on', v);
@@ -185,7 +186,7 @@ const MapExtras = (() => {
   function save() {
     if (!cur.icao && q('txAptT')) cur.icao = (q('txAptT').value || '').toUpperCase();
     const all = store_(), k = keyOf(cur.icao, cur.mode);
-    all[k] = { stand: (q('txStand').value || '').trim().toUpperCase(), rwy: (q('txRwy').value || '').trim().toUpperCase(), route: (q('txRoute').value || '').trim().toUpperCase() };
+    all[k] = { stand: (q('txStand').value || '').trim().toUpperCase(), rwy: (q('txRwy').value || '').trim().toUpperCase(), route: (q('txRoute').value || '').trim().toUpperCase(), lineup: !!(q('txLineup') && q('txLineup').checked) };
     store.set('taxi', all); highlight(); bar();
   }
 
@@ -238,7 +239,7 @@ const MapExtras = (() => {
   document.addEventListener('change', (e) => {
     if (e.target.id === 'txApt') { cur.icao = e.target.value; openTaxi(true); highlight(); bar(); fly(cur.icao); }
     if (e.target.id === 'txAptT') { cur.icao = e.target.value.toUpperCase(); openTaxi(true); fly(cur.icao); }
-    if (['txStand', 'txRwy', 'txRoute'].includes(e.target.id)) save();
+    if (['txStand', 'txRwy', 'txRoute', 'txLineup'].includes(e.target.id)) save();
   });
   document.addEventListener('ground:drawn', () => { hlSig = ''; highlight(); const dl = q('txStands'); if (dl) dl.innerHTML = listStands().map((s) => `<option value="${esc(s)}">`).join(''); });
   document.addEventListener('ground:clear', () => { hlSig = ''; if (hlLayer) hlLayer.clearLayers(); });

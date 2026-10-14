@@ -41,8 +41,23 @@ const MapLayers = (() => {
     if (!m || !L_.labels) return;
     if (!(m.getZoom() >= 15 && on.ground)) { L_.labels.clearLayers(); return; }
     if (!m.hasLayer(L_.labels)) L_.labels.addTo(m);
-    const b = m.getBounds().pad(0.35);
-    for (const mk of lbAll) { const inb = b.contains(mk.getLatLng()), has = L_.labels.hasLayer(mk); if (inb && !has) L_.labels.addLayer(mk); else if (!inb && has) L_.labels.removeLayer(mk); }
+    const b = m.getBounds().pad(0.1), cand = [];
+    for (const mk of lbAll) if (b.contains(mk.getLatLng())) cand.push(mk);
+    cand.sort((x, y) => (x._p || 2) - (y._p || 2)); // farbige Rollwege zuerst, dann Rollwege, dann Stände
+    // Beschriftungen, die sich überdecken würden oder denselben Rollweg-Namen zu dicht wiederholen, ausblenden
+    const grid = new Map(), keep = new Set(), sameAt = new Map();
+    const hit = (x0, y0, w, h) => { for (let gx = Math.floor(x0 / 40); gx <= Math.floor((x0 + w) / 40); gx++) for (let gy = Math.floor(y0 / 40); gy <= Math.floor((y0 + h) / 40); gy++) { const l = grid.get(gx + ',' + gy); if (l) for (const r of l) if (x0 < r[0] + r[2] && x0 + w > r[0] && y0 < r[1] + r[3] && y0 + h > r[1]) return true; } return false; };
+    for (const mk of cand) {
+      const p = m.latLngToContainerPoint(mk.getLatLng()), w = (mk._t || '').length * 6.2 + 9, h = 14, x0 = p.x - 8, y0 = p.y - 7;
+      if (mk._p !== 2) { const l = sameAt.get(mk._t); if (l && l.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < 170)) continue; }
+      if (hit(x0, y0, w, h)) continue;
+      const r = [x0, y0, w, h];
+      for (let gx = Math.floor(x0 / 40); gx <= Math.floor((x0 + w) / 40); gx++) for (let gy = Math.floor(y0 / 40); gy <= Math.floor((y0 + h) / 40); gy++) { const k = gx + ',' + gy; (grid.get(k) || grid.set(k, []).get(k)).push(r); }
+      if (mk._p !== 2) (sameAt.get(mk._t) || sameAt.set(mk._t, []).get(mk._t)).push(p);
+      keep.add(mk);
+    }
+    for (const mk of L_.labels.getLayers()) if (!keep.has(mk)) L_.labels.removeLayer(mk);
+    for (const mk of keep) if (!L_.labels.hasLayer(mk)) L_.labels.addLayer(mk);
   }
 
   function enable(k) {
@@ -65,7 +80,7 @@ const MapLayers = (() => {
   function info(html) { const el = $('#mapInfo'); el.hidden = !html; el.innerHTML = html || ''; }
 
   // ---------- Bodenkarte aus OpenStreetMap (Overpass) ----------
-  function resetGround() { drawGen++; lbAll.length = 0; L_.ground.clearLayers(); L_.labels.clearLayers(); groundCache = new Map(); seen.clear(); for (const x of [twy, stands]) for (const q in x) delete x[q]; document.dispatchEvent(new Event('ground:clear')); }
+  function resetGround() { drawGen++; lbAll.length = 0; L_.ground.clearLayers(); L_.labels.clearLayers(); groundCache = new Map(); seen.clear(); deice.length = 0; for (const x of [twy, stands]) for (const q in x) delete x[q]; document.dispatchEvent(new Event('ground:clear')); }
   let groundFails = 0;
   async function loadGround() {
     if (!m || m.getZoom() < 13 || groundBusy) return;
@@ -93,17 +108,40 @@ const MapLayers = (() => {
   }
   // Rollwege, die nach Farben benannt sind (Blue, Orange …), erscheinen in dieser Farbe
   const COLORS = [[/\b(blue|blau|bleu)\b/i, '#3a8dff', '#fff'], [/\b(orange)\b/i, '#ff8a1f', '#000'], [/\b(green|grün|gruen|vert)\b/i, '#3fe27a', '#000'], [/\b(red|rot|rouge)\b/i, '#ff4d4d', '#fff'], [/\b(yellow|gelb|jaune)\b/i, '#ffe14a', '#000'], [/\b(pink|rosa)\b/i, '#ff7ac8', '#000'], [/\b(purple|violet|lila)\b/i, '#b36bff', '#fff'], [/\b(brown|braun)\b/i, '#a0713d', '#fff'], [/\b(white|weiss|weiß|blanc)\b/i, '#f2f2f2', '#000'], [/\b(grey|gray|grau)\b/i, '#9aa3ad', '#000'], [/\b(black|schwarz)\b/i, '#6b7480', '#fff'], [/\b(gold)\b/i, '#e8b923', '#000']];
+  // Enteisungsflächen (De-icing pads): je nach Eintragung in OpenStreetMap als Fläche (apron=deicing), eigener aeroway-Wert oder nur am Namen erkennbar
+  const isDeice = (t) => /de-?ic|enteis/i.test([t.aeroway, t.apron, t.name, t.ref, t.description, t.service, t.alt_name].filter(Boolean).join(' '));
+  const deice = []; // { pts:[[lat,lon]…], c:[lat,lon], name }
+  const inPoly = (la, lo, pts) => { let r = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [ya, xa] = pts[i], [yb, xb] = pts[j]; if ((ya > la) !== (yb > la) && lo < ((xb - xa) * (la - ya)) / (yb - ya) + xa) r = !r; } return r; };
+  // Steht der Punkt auf einer bekannten Enteisungsfläche? null = keine bekannt
+  function onDeice(lat, lon) {
+    if (!deice.length) return null;
+    return deice.some((d) => (d.pts.length > 3 ? inPoly(lat, lon, d.pts) : false) || Math.hypot((lat - d.c[0]) * 110540, (lon - d.c[1]) * 111320 * Math.cos(lat * Math.PI / 180)) < (d.r || 60));
+  }
+  const colorTxt = (t) => [t.ref, t.name, t.alt_name, t.loc_name, t.int_name, t['name:en'], t['name:de'], t.official_name, t.description, t.colour, t.color, t['taxiway:colour'], t['ref:colour']].filter(Boolean).join(' ');
   const colorOf = (txt) => { const h = COLORS.find(([re]) => re.test(txt)); return h ? { c: h[1], fg: h[2] } : null; };
   async function drawGround(els) {
     const gen = ++drawGen, g = L_.ground, lb = lbS, R = { pane: 'groundPane', renderer: cv, interactive: false };
     const order = { apron: 0, terminal: 1, taxilane: 2, taxiway: 3, runway: 4, parking_position: 5, gate: 6, holding_position: 7 };
     els = els.filter((el) => { const k = el.type + el.id; if (seen.has(k)) return false; seen.add(k); return true; }); // jedes OSM-Objekt nur einmal zeichnen
     els.sort((a, b) => (order[a.tags && a.tags.aeroway] || 0) - (order[b.tags && b.tags.aeroway] || 0));
-    const tag = (cls, text, at) => L.marker(at, { pane: 'labelPane', icon: L.divIcon({ className: cls, html: esc(text) }), interactive: false, keyboard: false });
+    const tag = (cls, text, at) => { const mk = L.marker(at, { pane: 'labelPane', icon: L.divIcon({ className: cls, html: esc(text) }), interactive: false, keyboard: false }); mk._t = String(text); mk._p = cls === 'twy-tag' ? 1 : 2; return mk; };
     let tStart = performance.now();
     for (const el of els) {
       if (performance.now() - tStart > 10) { await new Promise((r) => setTimeout(r, 0)); if (gen !== drawGen) return; tStart = performance.now(); } // in Häppchen zeichnen, damit die Karte bedienbar bleibt
       const t = el.tags || {}, type = t.aeroway, ref = t.ref || t.name || '';
+      if (isDeice(t) && type !== 'taxiway' && type !== 'taxilane' && type !== 'runway' && type !== 'parking_position' && type !== 'gate') { // Enteisungsfläche
+        const nm = String(t.name || t.ref || '').replace(/de-?icing\s*pad/i, 'Pad').trim();
+        let pts = el.type === 'way' && el.geometry ? el.geometry.map((p) => [p.lat, p.lon]) : el.type === 'node' ? [[el.lat, el.lon]] : null;
+        if (pts && pts.length) {
+          if (pts.length > 2) L.polygon(pts, { ...R, color: '#7fd4ff', weight: 1.5, dashArray: '6 5', fillColor: '#7fd4ff', fillOpacity: 0.22 }).addTo(g);
+          else L.circleMarker(pts[0], { ...R, radius: 9, color: '#7fd4ff', weight: 1.5, fillColor: '#7fd4ff', fillOpacity: 0.25 }).addTo(g);
+          const c = pts.reduce((a, q) => [a[0] + q[0] / pts.length, a[1] + q[1] / pts.length], [0, 0]);
+          let r = 0; pts.forEach((q) => { r = Math.max(r, Math.hypot((q[0] - c[0]) * 110540, (q[1] - c[1]) * 111320 * Math.cos(c[0] * Math.PI / 180))); });
+          deice.push({ pts, c, r: Math.max(25, r), name: nm });
+          const mk = L.marker(c, { pane: 'labelPane', icon: L.divIcon({ className: 'deice-label', html: 'DE-ICE' + (nm ? ' ' + esc(nm) : '') }), interactive: false, keyboard: false }); mk._t = 'DE-ICE' + (nm ? ' ' + nm : ''); mk._p = 0; mk.addTo(lbS);
+        }
+        continue;
+      }
       if (el.type === 'way' && el.geometry) {
         const pts = el.geometry.map((p) => [p.lat, p.lon]);
         if (type === 'apron') L.polygon(pts, { ...R, color: '#2a3540', weight: 1, fillColor: '#1b242d', fillOpacity: 0.9 }).addTo(g);
@@ -117,17 +155,18 @@ const MapLayers = (() => {
             if (parts[1]) tag('rwy-label', parts[1], b).addTo(g);
           }
         } else if (type === 'taxiway' || type === 'taxilane') {
-          const cw = colorOf(`${t.ref || ''} ${t.name || ''}`);
+          const cw = colorOf(colorTxt(t));
           const line = L.polyline(pts, { ...R, color: cw ? cw.c : type === 'taxiway' ? '#c9a227' : '#7d6a2a', weight: type === 'taxiway' ? (cw ? 3 : 2.5) : 1.5 }).addTo(g);
           (twy[ref] = twy[ref] || []).push(line);
           if (ref && type === 'taxiway') {
-            if (cw) L.marker(pts[Math.floor(pts.length / 2)], { pane: 'labelPane', icon: L.divIcon({ className: 'twy-tag2', html: `<span style="background:${cw.c};color:${cw.fg}">${esc(ref)}</span>` }), interactive: false, keyboard: false }).addTo(lbS);
+            if (cw) { const mk = L.marker(pts[Math.floor(pts.length / 2)], { pane: 'labelPane', icon: L.divIcon({ className: 'twy-tag2', html: `<span style="background:${cw.c};color:${cw.fg}">${esc(ref)}</span>` }), interactive: false, keyboard: false }); mk._t = String(ref); mk._p = 0; mk.addTo(lbS); }
             else tag('twy-tag', ref, pts[Math.floor(pts.length / 2)]).addTo(lbS);
           }
         } else if (type === 'parking_position' && ref) {
           L.polyline(pts, { ...R, color: '#34c6f4', weight: 1, opacity: 0.6 }).addTo(g);
-          stands[ref] = pts[0];
-          tag('gate-label', ref, pts[0]).addTo(lbS);
+          const stop = pts[pts.length - 1]; // OSM: die Linie läuft vom Einrollen bis zur Halteposition des Bugrads
+          stands[ref] = stop;
+          tag('gate-label', ref, stop).addTo(lbS);
         }
       } else if (el.type === 'node') {
         if ((type === 'parking_position' || type === 'gate') && ref) {
@@ -208,6 +247,6 @@ const MapLayers = (() => {
     if (t) toggle(t.dataset.layer);
   });
   hooks.tab.push((n) => { if (n === 'map:init') init(map); if (n === 'map' && m && on.chart) loadChartOverlay(); });
-  return { toggle, twy, stands, map: () => m, isOn: (k) => !!on[k], ensure: (k) => { if (!on[k]) toggle(k); else if (k === 'ground') loadGround(); },
+  return { toggle, twy, stands, onDeice, deicePads: () => deice, map: () => m, isOn: (k) => !!on[k], ensure: (k) => { if (!on[k]) toggle(k); else if (k === 'ground') loadGround(); },
     reload: () => { if (on.ground) { groundCache = new Map(); loadGround(); } } };
 })();

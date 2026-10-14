@@ -13,6 +13,7 @@
   let hostActive = false; // läuft irgendwo ein Copilot-Fenster am PC?
   let isLocal = false; // Gerät ist der PC selbst (nicht das iPad)? Nur der PC darf sprechen und zuhören
   const remote = () => !HOST && (hostActive || !isLocal);
+  let micMuted = false; // nur das Mikrofon aus: Copilot und Ground sprechen weiter
   let muted = false; // stumm: weder sprechen noch zuhören (gilt für alle Geräte)
   const post = (u, b) => (window.efbPost ? window.efbPost(u, b) : Promise.resolve());
   const S = { on: false, mode: 'idle', list: -1, item: -1, listening: false, speaking: false, log: [], askT: 0 };
@@ -213,7 +214,11 @@
   function parts(text, lang) {
     if (lang === 'de') text = autoMark(text);
     const out = [];
-    String(text).split(/\{\{(.*?)\}\}/).forEach((t, i) => { t = spellOut(t.trim()); if (t) out.push({ text: t, lang: i % 2 ? 'en' : lang }); });
+    String(text).split(/\{\{(.*?)\}\}/).forEach((t, i) => {
+      t = spellOut(t.trim()); if (!t) return;
+      if (!/[\p{L}\p{N}]/u.test(t)) { if (out.length) out[out.length - 1].text += t; return; } // nur Satzzeichen („{{Sierra Seven}}.“) nicht als eigenes Stück sprechen – das klang wie ein abgebrochenes Wort
+      out.push({ text: t, lang: i % 2 ? 'en' : lang });
+    });
     return out;
   }
   const capFirst = (x) => x.charAt(0).toUpperCase() + x.slice(1);
@@ -223,14 +228,31 @@
     t.split(/(?<=[.!?])\s+/).forEach((x) => { x = x.trim(); if (x) o.push(capFirst(x)); });
     return o;
   }
+  // ---- Natürlicher sprechen: gelegentlich ein Zögern („Um, let's do …“, „Let's, let's …“, „… do the, um, Before Start …“).
+  // Die Füllwörter stehen im selben Satz (keine eigenen Stücke, keine gedehnten Laute), damit die Stimme flüssig bleibt. Zahlen und Inhalte bleiben unangetastet.
+  const HUMAN_P = { off: 0, low: 0.08, mid: 0.18 };
+  const FILL = { en: ['Um', 'Uh', 'Well', 'Alright', 'Okay', 'So'], de: ['Äh', 'Ähm', 'Also', 'Okay', 'Na dann'] };
+  function humanText(text, lang) {
+    const pr = HUMAN_P[pref.human || 'low'] || 0; if (!pr || Math.random() >= pr) return text;
+    const L = lang === 'de' ? 'de' : 'en', t = String(text), r = Math.random();
+    const m = t.match(/^(\s*)(\{\{[^}]*\}\}|[\p{L}'’]+)([\s\S]*)$/u); if (!m) return t;
+    const word = m[2], rest = m[3], plain = !word.startsWith('{{') && word.length > 1 && word !== word.toUpperCase() && !/^I['’]/.test(word);
+    const low = (x) => (plain ? x.charAt(0).toLowerCase() + x.slice(1) : x);
+    if (r < 0.4) return `${vary('hum.pre.' + L, FILL[L])}, ${low(word)}${rest}`;                         // „Um, let's do …“
+    if (r < 0.65 && plain && /^[\p{L}]/u.test(word)) return `${word}, ${low(word)}${rest}`;                                          // „Let's, let's do …“
+    const w = rest.match(/^(\s+[\p{L}'’]+){1,3}/u);                                                    // „… do the, um, Before Start …“
+    if (w && !/^\s*\{\{|^\s*\d/.test(rest.slice(w[0].length))) return `${word}${w[0]}, ${vary('hum.mid.' + L, L === 'de' ? ['äh', 'ähm'] : ['um', 'uh'])},${rest.slice(w[0].length)}`;
+    return `${vary('hum.pre.' + L, FILL[L])}, ${low(word)}${rest}`;
+  }
   async function say(text, lang, opt) {
     lang = lang || pref.lang; opt = opt || {};
     if (!opt.replay) log(opt.who || 'Copilot', String(text).replace(/\{\{|\}\}/g, ''));
     if (S.on && muted && !opt.replay) { (S.missed = S.missed || []).push({ t: text, l: lang, at: Date.now() }); if (S.missed.length > 30) S.missed.shift(); msgBadge(); return; } // stumm: merken und beim Aufheben vorlesen
     if (!S.on || muted) return;
-    const vid = (p) => opt.voiceId || piperFor(p.lang);
     // Kokoro rechnet pro Satz: kurze, oft gleiche Stücke (Anrede, einzelne Sätze) → Zwischenspeicher trifft öfter, erster Satz kommt schneller
-    const ps = parts(text, lang).flatMap((p) => { const id = vid(p); return id && id.startsWith('kokoro-') && !opt.url ? kSplit(p.text).map((x) => ({ text: x, lang: p.lang })) : [p]; });
+    const vid = (p) => opt.voiceId || piperFor(p.lang);
+    const ps0 = parts(!opt.replay && !opt.url ? humanText(text, lang) : text, lang);
+    const ps = ps0.flatMap((p) => { const id = vid(p); return id && id.startsWith('kokoro-') && !opt.url ? kSplit(p.text).map((x) => ({ text: x, lang: p.lang })) : [p]; });
     if (!ps.length) return;
     S.speaking = true; ui(); pauseRec();
     if (!opt.url) ps.slice(1).forEach((p) => { const id = vid(p); if (id) fetch(piperUrl(id, p.text)).catch(() => {}); }); // schon vorrechnen lassen
@@ -288,12 +310,13 @@
     } catch (e) { /* weiter */ }
     return p.slice(0, 640);
   }
-  const sttOpts = () => ({
-    lang: S.mode === 'run' && checklistKey().startsWith('airbus') ? 'en' : 'auto',
+  // Kurze Äußerungen (ein Wort): die automatische Spracherkennung rät dabei oft falsch (z. B. Japanisch → wird verworfen). Dann die Sprache des Copiloten erzwingen.
+  const sttOpts = (short) => ({
+    lang: S.mode === 'run' && checklistKey().startsWith('airbus') ? 'en' : short ? pref.lang : 'auto',
     prompt: sttPrompt(),
   });
   function startRec() {
-    if (!pref.mic || muted) return;
+    if (!pref.mic || muted || micMuted) return;
     if (useW()) {
       wantRec = true;
       window.WhisperMic.start((t) => handle(t, true), sttOpts)
@@ -317,11 +340,11 @@
     try { rec.start(); } catch (e) { rec = null; }
   }
   function pauseRec() { if (useW()) { window.WhisperMic.pause(); return; } if (rec) { try { rec.abort(); } catch (e) {} } }
-  function resumeRec() { if (muted) return; if (useW()) { if (wantRec && S.on) window.WhisperMic.resume(); return; } if (wantRec && S.on && !rec) { clearTimeout(recTimer); recTimer = setTimeout(startRec, 250); } }
+  function resumeRec() { if (muted || micMuted) return; if (useW()) { if (wantRec && S.on) window.WhisperMic.resume(); return; } if (wantRec && S.on && !rec) { clearTimeout(recTimer); recTimer = setTimeout(startRec, 250); } }
   function stopRec() { wantRec = false; clearTimeout(recTimer); if (window.WhisperMic) window.WhisperMic.stop(); if (rec) { try { rec.abort(); } catch (e) {} } S.listening = false; }
 
   // ---------- Zahlen verstehen ----------
-  const DW = { null: 0, zero: 0, eins: 1, ein: 1, eine: 1, one: 1, zwei: 2, zwo: 2, two: 2, drei: 3, three: 3, vier: 4, four: 4, fünf: 5, fuenf: 5, five: 5, sechs: 6, six: 6, sieben: 7, seven: 7, acht: 8, eight: 8, neun: 9, nine: 9, niner: 9, tree: 3, fife: 5, fower: 4, zo: 2, zoo: 2, tu: 2, tew: 2, zwoh: 2, sero: 0, siro: 0 };
+  const DW = { null: 0, zero: 0, eins: 1, ein: 1, eine: 1, one: 1, zwei: 2, zwo: 2, two: 2, drei: 3, three: 3, vier: 4, four: 4, fünf: 5, fuenf: 5, five: 5, sechs: 6, six: 6, sieben: 7, seven: 7, acht: 8, eight: 8, neun: 9, nine: 9, niner: 9, tree: 3, fife: 5, fower: 4, zo: 2, zoo: 2, tu: 2, tew: 2, zwoh: 2, sero: 0, siro: 0, run: 1, wun: 1, trie: 3 };
   const TEEN = { zehn: 10, elf: 11, zwölf: 12, zwoelf: 12, dreizehn: 13, vierzehn: 14, fünfzehn: 15, fuenfzehn: 15, sechzehn: 16, siebzehn: 17, achtzehn: 18, neunzehn: 19 };
   const TENS = { zwanzig: 20, dreißig: 30, dreissig: 30, vierzig: 40, fünfzig: 50, fuenfzig: 50, sechzig: 60, siebzig: 70, achtzig: 80, neunzig: 90 };
   function wordNum(w) { // "einhundertvierzig", "dreiundvierzig", "hundert" …
@@ -342,7 +365,7 @@
   // „1.0.2.1.“, „1 0 2 1“ → „1021“
   const collapseDigits = (t) => String(t).replace(/(?<![\d.,])(\d)(?:[\s.,-]+\d){2,}(?!\d)/g, (m) => m.replace(/\D/g, '')).replace(/(\d)\.(?=\s|$)/g, '$1');
   function nums(text) {
-    text = collapseDigits(String(text).replace(/(\p{L})(\d)/gu, '$1 $2')); // „QNH1014“ → „QNH 1014“
+    text = collapseDigits(String(text).replace(/(\p{L})(\d)/gu, '$1 $2').replace(/(\d)(\p{L})/gu, '$1 $2').replace(/(\p{L})\.(?=\s|$)/gu, '$1 ')); // „QNH1014“ → „QNH 1014“
     const toks = String(text).toLowerCase().replace(/(\d),(\d)/g, '$1.$2').replace(/\bkomma\b|\bpoint\b/g, '.').replace(/[^\p{L}\p{N}.+\s]/gu, ' ').split(/\s+/).filter(Boolean);
     const out = [];
     let run = '';
@@ -465,7 +488,10 @@
       const N = nums(String(said).toLowerCase().replace(/[a-zäöüß]+/g, (w) => (TEEN[w] ? ' ' + TEEN[w] + ' ' : w))); // „ten fourteen“ → 10 14
       let n = N.find((x) => x > 20);
       if (n === undefined && N.length >= 2 && (N[0] === 10 || N[0] === 9) && N[1] < 100) n = N[0] * 100 + N[1];  // „ten fourteen“ → 1014
+      if (n !== undefined && !Number.isInteger(n) && n >= 94 && n <= 107.5) n = Math.round(n * 10);                                   // „101.3“ → 1013
       if (n === undefined) { const f = N.find((x) => x > 0.9 && x < 1.1); if (f !== undefined) n = Math.round(f * 1000); }       // „1,014“ → 1014
+      if (n === undefined) { const f = N.find((x) => !Number.isInteger(x) && x >= 9.4 && x <= 10.75); if (f !== undefined) n = Math.round(f * 100); } // „10.13“ → 1013
+      if (n !== undefined && Number.isInteger(n) && n >= 94 && n <= 107) { const k = N[N.indexOf(n) + 1]; if (k !== undefined && Number.isInteger(k) && k >= 0 && k <= 9) n = n * 10 + k; } // „103 zero“ → 1030
       if (n === undefined) return { ok: false, msg: vary('needQnh', T().needQnh), retry: true };
       if (n >= 2800 && n <= 3100) n /= 100;
       else if (n >= 28 && n <= 31) { const k = N[N.indexOf(n) + 1]; if (k !== undefined && k < 100 && Number.isInteger(k)) n += k / 100; }
@@ -493,17 +519,26 @@
   const SKIP = /\b(weiter|überspringen|skip|next|nächster|nächste)\b/i;
   const REP = /\b(wiederholen|nochmal|noch mal|repeat|again|wie bitte|say again)\b/i;
 
-  function log(who, text, noRelay) {
-    S.log.push({ who, text }); if (S.log.length > 40) S.log.shift(); ui();
-    if (HOST && !noRelay) post('/api/cp/event', { type: 'log', who, text, from: window.EFB_ID });
+  function log(who, text, noRelay, extra) {
+    const m = { who, text, at: (extra && extra.at) || Date.now(), miss: extra ? !!extra.miss : !!(muted && S.on && who !== 'Du' && who !== 'System') };
+    S.log.push(m); if (S.log.length > 100) S.log.shift(); ui(); msgBadge();
+    if (HOST && !noRelay) post('/api/cp/event', { type: 'log', who, text, at: m.at, miss: m.miss, from: window.EFB_ID });
   }
   const itemLang = () => (checklistKey().startsWith('airbus') ? 'en' : pref.lang);
 
   async function handle(text, spoken) {
     text = String(text || '').trim(); if (!text || !S.on) return;
+    if (spoken && (muted || micMuted)) return; // Mikrofon ist aus: nichts verarbeiten, auch wenn noch eine Erkennung unterwegs war
     log('Du', text);
     text = fuzzyFix(text); // ähnlich Erkanntes gilt als verstanden
-    { const gk = gsxCmd(text); if (gk) { clearTimeout(S.askT); if (S.mode === 'gsxMenu') S.mode = S.afterGsx === 'run' ? 'run' : 'idle'; else if (S.mode !== 'run') S.mode = 'idle'; return groundDo(gk, text, dirOf(text)); } }
+    { const gk = gsxCmd(text);
+      if (gk === 'pushback' && S.pb && ['req', 'dir', 'brake', 'push'].includes(S.pb.stage) && S.pushAt && !S.pushOver && Date.now() - S.pushAt < 25 * 60000) { // Pushback läuft schon: „… pushback approved, facing east“ ist die Antwort, keine neue Anforderung
+        const lm = livePush();
+        if (lm && S.mode !== 'run') { S.gsxItems = lm.items; S.gsxTitle = lm.title; S.mode = 'gsxMenu'; armAsk(45000); return groundPick(text); }
+        if (S.pb.stage === 'req' || S.pb.stage === 'dir') S.pushWant = { text, at: Date.now() };
+        return;
+      }
+      if (gk) { clearTimeout(S.askT); if (S.mode === 'gsxMenu') S.mode = S.afterGsx === 'run' ? 'run' : 'idle'; else if (S.mode !== 'run') S.mode = 'idle'; return groundDo(gk, text, dirOf(text)); } }
     if (S.mode !== 'run' && S.mode !== 'gsxMenu' && S.pb) { // Pushback-Ablauf: Antworten ohne „Cockpit to ground“
       if ((S.pb.stage === 'brake' || S.pb.stage === 'push') && BRK_REL(text)) return pbBrakeReleased(text);
       if (S.pb.stage === 'eng' && ENG_OK.test(text)) return pbEnginesOk();
@@ -511,7 +546,7 @@
     if (S.mode === 'gsxMenu') return groundPick(text);
     { const lm = livePush(); if (lm && S.mode !== 'run' && (addressed(text) || pushSem(text, lm.items))) { S.gsxItems = lm.items; S.gsxTitle = lm.title; S.mode = 'gsxMenu'; armAsk(45000); return groundPick(text); } }
     if (FREQ_CMD.test(text) && (freqOf(text) || (SWAP_CMD.test(text) && /\b(frequenc\w*|frequenz\w*|stand\s?-?by)\b/i.test(text))) && !/\b(speeds?|checklist|checkliste)\b/i.test(text)) return radioCmd(text);
-    if ((S.mode !== 'run' || /\b(wait|warte\w*|moment|hold|pause)\b/i.test(text)) && await snoozeCmd(text)) return;
+    if ((S.mode !== 'run' || /\b(wait|warte\w*|moment|hold|pause)\b/i.test(text)) && await snoozeCmd(text, String(S.mode).startsWith('ask'))) return;
     if (S.mode !== 'run') {
       const li = intentList(text);
       if (li >= 0) { clearTimeout(S.askT); return begin(li); }
@@ -531,7 +566,7 @@
     if (S.mode === 'run') {
       if (STOP.test(text)) { S.mode = 'idle'; return say(T().stop); }
       if (REP.test(text)) return challenge();
-      if (SKIP.test(text)) { await say(T().skip); return advance(false); }
+      if (SKIP.test(text)) { if (S.skipSet && S.skipSetList === S.list) S.skipSet.add(S.item); await say(T().skip); return advance(false); }
       const l = lists()[S.list]; if (!l) { S.mode = 'idle'; return; }
       const it = l.items[S.item];
       const v = verify(it, text);
@@ -561,8 +596,8 @@
     return [Math.min(a, b), Math.max(a, b)];
   }
   const SNOOZE_CUE = /\b(in|again|nochmal|wieder|später|remind|erinner\w*|frag\w*|ask|wait|warte\w*|moment|hold|pause|give me|gib mir|gebe mir)\b/i;
-  async function snoozeCmd(text) {
-    const d = parseDelay(text); if (!d || !SNOOZE_CUE.test(text)) return false;
+  async function snoozeCmd(text, inAsk) { // auf eine Frage genügt „5 Minuten“ allein
+    const d = parseDelay(text); if (!d || (!SNOOZE_CUE.test(text) && !inAsk)) return false;
     const ls = lists(); if (!ls.length) return false;
     let i = -1; const tt = tokz(text);
     ls.forEach((l, k) => { const nt = tokz(l.name).filter((w) => !STOPW.has(w)); if (nt.length && nt.every((w) => tt.some((x) => wordEq(x, w))) && (i < 0 || nt.length > tokz(ls[i].name).filter((w) => !STOPW.has(w)).length)) i = k; });
@@ -711,11 +746,15 @@
 
   // NATO-Alphabet und Zahlwörter: „Sierra One“ → S1 (für Pushback-Profile wie S1, A12 …)
   const NATO = { alfa: 'A', alpha: 'A', bravo: 'B', charlie: 'C', delta: 'D', echo: 'E', foxtrot: 'F', golf: 'G', hotel: 'H', india: 'I', juliet: 'J', juliett: 'J', kilo: 'K', lima: 'L', mike: 'M', november: 'N', oscar: 'O', papa: 'P', quebec: 'Q', romeo: 'R', sierra: 'S', tango: 'T', uniform: 'U', victor: 'V', whiskey: 'W', whisky: 'W', xray: 'X', yankee: 'Y', zulu: 'Z' };
+  // Whisper verhört „Whiskey two“ gern als „Viscatou“ o. Ä. – vor dem Auswerten zurückführen
+  const natoFix = (s) => String(s)
+    .replace(/\b(?:vis?c?k?atou|vis?c?k?atu|vis?c?k?atoo|wh?is?c?k?atou|wh?is?c?k?atu|wh?is?c?k?atoo|wh?is?k(?:e|ey|y|ee|ie|i)?\s*-?\s*(?:too|tou|tu))\b/gi, ' whiskey two ')
+    .replace(/\b(?:wh?is?k(?:ey|y|ee|ie|i)|visk(?:ey|y|ee|i)|wh?isc?(?:ey|ky|kee))\b/gi, ' whiskey ');
   const NATO_SAY = Object.fromEntries(Object.entries({ A: 'Alpha', B: 'Bravo', C: 'Charlie', D: 'Delta', E: 'Echo', F: 'Foxtrot', G: 'Golf', H: 'Hotel', I: 'India', J: 'Juliett', K: 'Kilo', L: 'Lima', M: 'Mike', N: 'November', O: 'Oscar', P: 'Papa', Q: 'Quebec', R: 'Romeo', S: 'Sierra', T: 'Tango', U: 'Uniform', V: 'Victor', W: 'Whiskey', X: 'X-ray', Y: 'Yankee', Z: 'Zulu' }));
   const DIGW = { zero: 0, null: 0, one: 1, eins: 1, ein: 1, two: 2, zwei: 2, zwo: 2, three: 3, tree: 3, drei: 3, four: 4, fower: 4, vier: 4, five: 5, fife: 5, fünf: 5, fuenf: 5, six: 6, sechs: 6, seven: 7, sieben: 7, eight: 8, acht: 8, nine: 9, niner: 9, neun: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, zehn: 10, elf: 11, zwölf: 12 };
   // liefert die Codes (z. B. ['S1']) aus einem Satz
   function codesOf(text) {
-    const toks = String(text).replace(/\b([A-Za-z])-(\d{1,3})\b/g, (m, l, d) => l.toUpperCase() + d).split(/[\s,.;:!?]+/).filter(Boolean);
+    const toks = natoFix(text).replace(/\b([A-Za-z])-(\d{1,3})\b/g, (m, l, d) => l.toUpperCase() + d).split(/[\s,.;:!?]+/).filter(Boolean);
     const out = []; let cur = '';
     const flush = () => { if (cur) out.push(cur); cur = ''; };
     for (const t of toks) {
@@ -739,7 +778,7 @@
   const GENERIC = new Set(['RELEASE', 'POINT', 'PUSHBACK', 'PUSH', 'BACK', 'TO', 'FACING', 'TAXIWAY', 'MANUAL', 'STOP', 'MAX', 'M', 'AT', 'THE', 'POSITION', 'NORTH', 'SOUTH', 'EAST', 'WEST', 'NORD', 'NORDEN', 'OST', 'OSTEN', 'SÜD', 'SÜDEN', 'SUED']);
   const COMMON = new Set([...GENERIC, 'COCKPIT', 'GROUND', 'APPROVED', 'APPROVE', 'REQUEST', 'CLEARED', 'CLEAR', 'PLEASE', 'GSX', 'BODENPERSONAL', 'ANFORDERN', 'DIRECTION', 'RICHTUNG', 'AND', 'FOR', 'UND', 'BITTE', 'FREIGEGEBEN', 'GENEHMIGT', 'THANKS', 'THANK', 'YOU', 'ON', 'GATE', 'STAND', 'WE', 'NEED', 'WOULD', 'LIKE', 'CAN', 'COULD', 'ME', 'US', 'NOW', 'READY', 'WANT', 'BUSHBACK', 'PUSHPACK', 'PUSCH', 'WIR', 'BRAUCHEN', 'UNS', 'MÖCHTEN', 'MOECHTEN', 'EIN', 'EINEN', 'EINE', 'JETZT', 'ICH', 'HELLO', 'HALLO', 'HI']);
   function utTokens(text) {
-    const raw = String(text).toUpperCase().replace(/[^A-Z0-9ÄÖÜ]+/g, ' ').trim().split(' ').filter(Boolean);
+    const raw = natoFix(text).toUpperCase().replace(/[^A-Z0-9ÄÖÜ]+/g, ' ').trim().split(' ').filter(Boolean);
     const out = [];
     for (let k = 0; k < raw.length; k++) {
       const w = raw[k], low = w.toLowerCase();
@@ -787,7 +826,7 @@
   // Ortsname im Menüeintrag („Facing South - W2“ → „w2“, „Facing North - Center 2“ → „center2“) und gesprochene Form vereinheitlichen
   const SPDIG = { zero: 0, one: 1, two: 2, to: 2, too: 2, three: 3, four: 4, for: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
   const squashSpeech = (text) => {
-    let t = ' ' + String(text).toLowerCase().replace(/[^a-z0-9äöüß\s]/g, ' ') + ' ';
+    let t = ' ' + natoFix(String(text).toLowerCase()).replace(/[^a-z0-9äöüß\s]/g, ' ') + ' ';
     t = t.replace(/\b(alfa|alpha|bravo|charlie|delta|echo|foxtrot|golf|hotel|india|juliett?|kilo|lima|mike|november|oscar|papa|quebec|romeo|sierra|tango|uniform|victor|whiskey|whisky|xray|x-ray|yankee|zulu)\b/g, (w) => ({ alfa: 'a', alpha: 'a', bravo: 'b', charlie: 'c', delta: 'd', echo: 'e', foxtrot: 'f', golf: 'g', hotel: 'h', india: 'i', juliet: 'j', juliett: 'j', kilo: 'k', lima: 'l', mike: 'm', november: 'n', oscar: 'o', papa: 'p', quebec: 'q', romeo: 'r', sierra: 's', tango: 't', uniform: 'u', victor: 'v', whiskey: 'w', whisky: 'w', xray: 'x', 'x-ray': 'x', yankee: 'y', zulu: 'z' }[w]));
     t = t.replace(/\b(west|east)\s*(\d|zero|one|two|to|too|three|four|five|six|seven|eight|nine)\b/g, (m, d, n) => ' ' + d[0] + (SPDIG[n] !== undefined ? SPDIG[n] : n) + ' ');
     t = t.replace(/\bdouble\s*(you|u)\b/g, ' w ').replace(/\bcentre\b/g, 'center');
@@ -800,7 +839,7 @@
   function pushSem(text, items) {
     if (!isPushMenu(items)) return null;
     const info = items.map(pushItem);
-    let t = ' ' + String(text).toLowerCase().replace(/[^a-zäöüß\s]/g, ' ') + ' ';
+    let t = ' ' + natoFix(String(text).toLowerCase()).replace(/[^a-zäöüß\s]/g, ' ') + ' ';
     t = t.replace(/[a-zäöüß]{4,}/g, (w) => { if (PUSH_HOMO[w]) return PUSH_HOMO[w]; if (w.length >= 6) for (const k of ['straight', 'northeast', 'northwest', 'southeast', 'southwest']) if (lev(w, k, 1) <= 1) return k; return w; });
     t = t.replace(/\b(no|nos|nows|nose's|knows|know|nurse)\s+(?=(straight|left|right)\b)/g, ' nose ').replace(/\b(north|south)\s+(east|west)\b/g, '$1$2');
     const side = (w) => { const m = t.match(new RegExp('\\b' + w + '\\s+(left|right)\\b')); return m ? m[1] : null; };
@@ -1008,7 +1047,12 @@
     if (key === 'unknown') return groundLine(misc('again'), ['again']);
     if (key === 'gpu' || key === 'chocks' || key === 'enginestart' || key === 'disconnect') return localDo(key, text);
     const r = await fetch('/api/gsx/service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service: key }) }).then((x) => x.json()).catch(() => ({ ok: false, error: 'PC-Brücke nicht erreichbar.' }));
-    if (!r.ok) { log('System', r.error || 'GSX-Fehler'); return groundLine('Negative. ' + GS_LABEL[key] + ' is not available right now.', [key + '.negative', 'negative']); }
+    if (!r.ok) {
+      log('System', r.error || 'GSX-Fehler');
+      let hint = '';
+      if (key === 'deice') { const s = app.sim || {}; const on = window.MapLayers && MapLayers.onDeice && Number.isFinite(s.lat) ? MapLayers.onDeice(s.lat, s.lon) : null; if (on === false) hint = ' You are not on a de-icing pad. Taxi to the pad first.'; }
+      return groundLine('Negative. ' + GS_LABEL[key] + ' is not available right now.' + hint, [key + '.negative', 'negative']);
+    }
     gsxAsked.add(key);
     if (key === 'pushback') { S.pushAt = Date.now(); S.pushOver = false; S.pushWant = { text, at: Date.now() }; S.pb = { stage: 'req', at: Date.now() }; }
     if (r.menu) log('System', 'GSX-Menü: ' + r.menu.title + ' | ' + (r.menu.items || []).join(' | '));
@@ -1120,13 +1164,15 @@
   const PB_ENGWAIT = ['Wait for your confirmation for a good engine start.', 'Report when both engines are started and stable, then I can disconnect the tug.', 'I need your confirmation for a good engine start before the tug can disconnect.', 'Call me when the engines are started well, so the tug can disconnect.'];
   const PB_GO = ['Roger, pushing back.', 'Copy, pushback is starting.', 'Roger, here we go.', 'Brakes released, starting the push.'];
   const PB_ROG = ['Roger.', 'Copy, good start.', 'Roger, thank you.', 'Copy that.'];
+  const PB_DISC = ['Tug is disconnected.', 'The tug is clear.', 'All disconnected.', 'We are clear on the ground side.'];
+  const PB_WISH = ['Have a good flight, and see you next time!', 'Have a safe flight, goodbye!', 'Enjoy the flight!', 'Have a good one and a safe flight!'];
   const PB_BYE = ['Tug is disconnected. Have a good flight, and see you next time!', 'The tug is clear. Thanks, have a great flight!', 'All disconnected. Have a safe flight, goodbye!', 'We are clear on the ground side. Enjoy the flight!', 'That is it from the ground crew. Have a good one and a safe flight!'];
   const BRK_REL = (t) => /\b(releas\w*|gelöst|geloest|lösen|off)\b/i.test(t) && (/brak|brems/i.test(t) || String(t).trim().split(/\s+/).length <= 3);
   const ENG_OK = /\b(engines?|triebwerke?)\b[\s\S]*\b(start\w*|running|stable|good|well|normal|ok\w*|läuft|laufen|gestartet|up)\b|\b(start\w*|stable|running)\b[\s\S]*\bengines?\b|\b(good|normal|stable|clean)\s+start\b|\bboth (engines )?(running|started|stable)\b/i;
   const pbOn = () => !!(S.pb && S.pb.stage && S.pb.stage !== 'idle');
   function pbEngInfo() { const k = pref.pushEng && PB_ENG[pref.pushEng] ? pref.pushEng : vary('pbEngK', ['clear', 'call', 'wait']); if (S.pb) S.pb.engK = k; return vary('pbEng.' + k, PB_ENG[k]); }
   async function askBrake() {
-    if (!S.pb) return; S.pb.stage = 'brake'; S.pb.at = Date.now();
+    if (!S.pb || S.pb.brakeAsked) return; S.pb.brakeAsked = true; S.pb.stage = 'brake'; S.pb.at = Date.now();
     await groundLine(vary('pbBrake', PB_BRAKE) + ' ' + pbEngInfo(), ['pushback.brake', 'ack'], { call: true });
   }
   async function pbAfterDir() { if (S.pb && S.pb.menuSeen && (S.pb.stage === 'dir' || S.pb.stage === 'req')) { S.pb.menuSeen = false; await askBrake(); } }
@@ -1156,23 +1202,37 @@
     const bad = /abort|abbrech|cancel|\bno\b|\bnein\b/i;
     let idx = m.items.findIndex((x) => !bad.test(x) && /good engine|engines?.*(start|ok|well)|confirm|bestät/i.test(x));
     if (idx < 0) idx = m.items.findIndex((x) => !bad.test(x) && /engine|triebwerk/i.test(x));
-    if (idx < 0) idx = m.items.findIndex((x) => (loose ? /disconnect|detach|remove|ready|done|finish|confirm|continue|proceed|\bok\b|\byes\b/i : /disconnect|detach/i).test(x) && !bad.test(x));
+    if (idx < 0) idx = m.items.findIndex((x) => (loose && /push|tug|engine|schlepper|disconnect/i.test(m.title || '') ? /disconnect|detach|remove|ready|done|finish|confirm|continue|proceed|\bok\b|\byes\b/i : /disconnect|detach/i).test(x) && !bad.test(x));
     if (idx < 0) { log('System', 'GSX: kein passender Eintrag (Engines/Disconnect) gefunden.'); return; }
     await chooseGsx(idx);
   }
   async function tugGone() {
     if (!S.pb || S.pb.stage === 'idle') return;
     clearTimeout(S.pb.discT); S.pb.stage = 'idle'; S.pushOver = true; S.engCleared = Date.now();
-    await groundLine(vary('pbBye', PB_BYE), ['pushback.bye', 'goodbye', 'ack'], { call: true });
+    const hold = S.pb && (S.pb.engK === 'call' || S.pb.engK === 'wait'); // Triebwerksstart war zurückgehalten: jetzt freigeben
+    if (hold) await groundLine(vary('pbDisc', PB_DISC) + ' ' + vary('pbClr', ['You are clear to start engines.', 'Engine start approved now.', 'You can start the engines now.']) + ' ' + vary('pbWish', PB_WISH), ['pushback.bye', 'ack'], { call: true });
+    else await groundLine(vary('pbBye', PB_BYE), ['pushback.bye', 'goodbye', 'ack'], { call: true });
   }
   // Pushback beendet (GSX meldet „fertig“ oder der Flieger steht wieder) – nur einmal pro Pushback
   async function pushEnded() {
-    const now = Date.now(); if (S.pb && S.pb.stage === 'disc') return tugGone();
-    if (S.pb && S.pb.stage === 'eng') return; // schon gemeldet, wartet auf die Triebwerks-Bestätigung
+    const now = Date.now(); if (S.pb && (S.pb.stage === 'disc' || S.pb.stage === 'eng')) return;
     if (S.pushDone && now - S.pushDone < 30000) return;
     S.pushDone = now; S.pushOver = true;
     await groundLine(misc('pushDone'), ['pushback.done'], { call: true });
-    if (S.pb && ['req', 'dir', 'brake', 'push'].includes(S.pb.stage)) { S.pb.stage = 'eng'; S.pb.at = now; const hold = S.pb.engK === 'call' || S.pb.engK === 'wait'; await groundLine((hold ? vary('pbClr', ['You are clear to start engines.', 'Engine start approved now.', 'You can start the engines now.']) + ' ' : '') + vary('pbEngW', PB_ENGWAIT), ['ack'], { call: true }); }
+    if (S.pb && ['req', 'dir', 'brake', 'push'].includes(S.pb.stage)) { S.pb.stage = 'disc'; S.pb.at = now; pbDiscWatch().catch(() => {}); }
+  }
+  // Nach „Set parking brake“: sobald die Bremse sitzt, GSX abkoppeln lassen (Menüeintrag wählen, falls GSX fragt) und verabschieden
+  async function pbDiscWatch() {
+    const t0 = Date.now();
+    while (S.pb && S.pb.stage === 'disc' && Date.now() - t0 < 90000) {
+      if (!S.speaking && (brk() === true || (brk() === null && Date.now() - t0 > 8000))) break;
+      await wait(500);
+    }
+    if (!S.pb || S.pb.stage !== 'disc') return;
+    await wait(1500);
+    await pbForwardGsx().catch(() => {});
+    await wait(5000);
+    if (S.pb && S.pb.stage === 'disc') tugGone();
   }
   // GSX öffnet das Pushback-Fenster oft erst, wenn der Schlepper da ist: dann sofort nach der Richtung fragen (bzw. die schon genannte nehmen)
   let pushStamp = 0;
@@ -1185,12 +1245,14 @@
     S.pb.menuSeen = false;
     if (want && ci >= 0 && /\b(north|south|east|west|nose|tail|straight|left|right|facing|norden|osten|westen|süden)/i.test(want)) {
       S.pb.stage = 'dir'; S.pb.menuSeen = true; S.pb.asked = false;
+      const tg = S.pb.tugSaid; S.pb.tugSaid = true;
+      if (tg) { await groundLine(vary('rogdir', ['Roger, changing the pushback direction.', 'Copy, I set your pushback direction.']), ['ack'], { call: true }); return chooseGsx(ci); }
       await groundLine(vary('tugchg', ['Tug is connected. Roger, changing the pushback direction.', 'Tug connected, copy, I set your pushback direction.', 'Tug is connected, understood, adjusting the direction.']), ['ack'], { call: true });
       return chooseGsx(ci); // danach erscheint das Richtungsmenü und wird wie gewohnt behandelt
     }
-    S.pb.stage = 'dir';
-    await groundLine(vary('tugok2', ['Tug is connected.', 'Tug is on the aircraft.', 'Tug connected, pushback is ready.']), ['pushback.tug'], { call: true });
-    return askBrake();
+    S.pb.stage = 'dir'; S.pb.menuSeen = true;
+    if (!S.pb.tugSaid) { S.pb.tugSaid = true; await groundLine(vary('tugok2', ['Tug is connected.', 'Tug is on the aircraft.', 'Tug connected, pushback is ready.']), ['pushback.tug'], { call: true }); }
+    if (ci >= 0) return chooseGsx(ci); // öffnet das Richtungsmenü; danach fragt pbMenuAppeared nach der Richtung. Die Bremse kommt erst nach der Richtung
   }
   async function engMenuWatch() { // GSX zeigt am Pushback-Ende „confirm good engine start“: jetzt auf deine Bestätigung warten lassen
     const m = app.sim && app.sim.gsxInfo && app.sim.gsxInfo.menu;
@@ -1198,7 +1260,7 @@
     const stamp = Date.now() - m.age * 1000; if (Math.abs(stamp - engStamp) < 3000) return; engStamp = stamp;
     if (S.speaking) { engStamp = 0; return; }
     log('System', 'GSX-Menü: ' + m.title + ' | ' + m.items.join(' | '));
-    S.pbEngMenu = true; return pushEnded();
+    S.pbEngMenu = true; return pushEnded(); // GSX fragt selbst nach den Triebwerken: wir melden Pushback-Ende, bestätigt wird nach „Parking brake set“ automatisch
   }
   async function pushMenuWatch() {
     const m = app.sim && app.sim.gsxInfo && app.sim.gsxInfo.menu;
@@ -1228,7 +1290,8 @@
     S.pushSig = m.title + '|' + m.items.join('|'); S.pushSigAt = Date.now();
     if (sem && sem.i >= 0) { // Richtung war schon beim Anfordern genannt
       S.pushWant = null; S.gsxItems = m.items; S.gsxTitle = m.title;
-      await groundLine(vary('tugok', ['Tug is connected. Roger, pushback ', 'Tug is connected, copy, pushback ', 'Tug connected, understood, pushback ']) + itemSpoken(m.items[sem.i]) + '.', ['ack'], { call: true });
+      const tg = S.pb.tugSaid; S.pb.tugSaid = true;
+      await groundLine(vary(tg ? 'tugok0' : 'tugok', tg ? ['Roger, pushback ', 'Copy, pushback ', 'Understood, pushback '] : ['Tug is connected. Roger, pushback ', 'Tug is connected, copy, pushback ', 'Tug connected, understood, pushback ']) + itemSpoken(m.items[sem.i]) + '.', ['ack'], { call: true });
       return afterChoose(m.title, sem.i);
     }
     if (sem && sem.ties) return pushTies(m, sem.ties);
@@ -1322,12 +1385,12 @@
     const t = prog[li] || []; t[ii] = true; prog[li] = t; store.set('cl.' + key, prog);
     renderChecklists();
   }
-  function nextOpen(li) { const l = lists()[li]; const t = progOf()[li] || []; return l.items.findIndex((_, k) => !t[k]); }
+  function nextOpen(li) { const l = lists()[li]; const t = progOf()[li] || [], sk = (S.skipSet && S.skipSetList === li) ? S.skipSet : null; return l.items.findIndex((_, k) => !t[k] && !(sk && sk.has(k))); } // übersprungene Punkte kommen in diesem Durchgang nicht noch einmal dran
   async function begin(li) {
     const l = lists()[li]; if (!l) return;
     clIndex = li; renderChecklists();
     if (HOST) post('/api/cp/event', { type: 'show', index: li, from: window.EFB_ID });
-    S.list = li; S.mode = 'run'; S.item = nextOpen(li);
+    S.list = li; S.mode = 'run'; S.skipSet = new Set(); S.skipSetList = li; S.item = nextOpen(li);
     if (S.item < 0) { S.mode = 'idle'; return say(T().done(l.name)); }
     await say(T().go);
     return challenge();
@@ -1352,6 +1415,7 @@
     const nx = nextOpen(S.list);
     if (nx < 0) {
       S.mode = 'idle';
+      if (S.skipSet && S.skipSetList === S.list && S.skipSet.size && !isDone(S.list)) return say(pref.lang === 'de' ? `Die ${l.name} Checkliste ist durch, aber ${S.skipSet.size} Punkt${S.skipSet.size > 1 ? 'e' : ''} übersprungen.` : `The ${l.name} checklist is through, but ${S.skipSet.size} item${S.skipSet.size > 1 ? 's' : ''} skipped.`);
       await say(T().complete(l.name));
       return suggestNext(S.list);
     }
@@ -1416,7 +1480,7 @@
     const gx = s.gsx || {}, busy = ['boarding', 'refueling', 'catering', 'deboarding'].some((v) => { const st = Math.round(gx[v] || 0); return st === 4 || st === 5; });
     if (/before start/i.test(name)) return !busy && !pushBusy() && (prev ? now - prev >= 60000 : now - prep.since >= 180000);
     if (/after start/i.test(name)) { if (!g) return since(20000); return !!g.enginesRunning && now - eng0.at >= 40000 && !g.pushback && !pushBusy() && since(15000); }
-    if (/before taxi|^taxi/i.test(name)) return ph === 'out' && now - ph0.at >= 25000 && since(20000);
+    if (/before taxi|^taxi/i.test(name)) return ph === 'out' && !pushBusy() && !!s.onGround && (s.gs || 0) > 15 && since(20000); // erst, wenn der Flieger am Boden schneller als 15 kt rollt (nicht beim Pushback)
     if (/line-?up|before takeoff/i.test(name)) return ph === 'out' && now - ph0.at >= 60000 && since(45000);
     if (/after takeoff/i.test(name)) return !s.onGround && now - air0.at >= 90000 && (s.vs || 0) > -200 && (s.alt || 0) > 2500;
     if (/descent|approach/i.test(name)) return now - ph0.at >= 10000;
@@ -1455,58 +1519,92 @@
     tg.textContent = remote() ? (on ? (de ? 'Am PC stoppen' : 'Stop on PC') : (de ? 'Am PC starten' : 'Start on PC')) : (on ? (de ? 'Copilot stoppen' : 'Stop Copilot') : (de ? 'Copilot starten' : 'Start Copilot'));
     tg.classList.toggle('on', on);
     const st = panel.querySelector('#cpState');
-    st.textContent = muted ? (de ? '🔇 stumm' : '🔇 muted') : remote() ? (on ? (de ? 'Läuft am PC' : 'Running on the PC') : (de ? 'Am PC nicht aktiv' : 'Not active on the PC')) : !on ? (de ? 'Aus' : 'Off') : S.speaking ? (de ? '🔊 spricht' : '🔊 speaking') : S.listening ? (de ? '🎤 hört zu' : '🎤 listening') : (de ? 'An' : 'On');
+    st.textContent = muted ? (de ? '🔇 alles stumm' : '🔇 all muted') : micMuted && !remote() ? (de ? '🎤✕ Mikrofon aus' : '🎤✕ mic off') : remote() ? (on ? (de ? 'Läuft am PC' : 'Running on the PC') : (de ? 'Am PC nicht aktiv' : 'Not active on the PC')) : !on ? (de ? 'Aus' : 'Off') : S.speaking ? (de ? '🔊 spricht' : '🔊 speaking') : S.listening ? (de ? '🎤 hört zu' : '🎤 listening') : (de ? 'An' : 'On');
     panel.querySelector('#cpLog').innerHTML = S.log.map((m) => `<div class="cp-${m.who === 'Du' ? 'me' : 'cp'}"><b>${esc(m.who)}</b> ${esc(m.text)}</div>`).join('') || `<div class="cp-empty">${de ? 'Noch nichts gesprochen.' : 'Nothing said yet.'}</div>`;
+    renderMsgs();
     panel.classList.toggle('on', on);
     panel.classList.toggle('cp-remote', remote());
     const note = panel.querySelector('#cpNote'); if (note) note.textContent = remote() ? (de ? 'Stimme und Mikrofon laufen am PC. Dieses Gerät zeigt und steuert nur.' : 'Voice and microphone run on the PC. This device only shows and controls.') : '';
     const dev = panel.querySelector('#cpDevHint'); if (dev) dev.hidden = !remote();
   }
-  // ---------- Stumm schalten (Knopf in der Kopfleiste) ----------
+  // ---------- Stumm schalten (zwei Knöpfe in der Kopfleiste) ----------
+  // Lautsprecher-Knopf: alles stumm (Copilot, Ground, Mikrofon). Mikrofon-Knopf: nur dein Mikrofon aus, du hörst Copilot und Ground weiter.
   function muteBtn() {
     let b = document.getElementById('cpMute');
+    if (!b && window.EDITION && !window.EDITION.has('copilot')) return null; // Ausgabe ohne Copilot: keine Stumm-Knöpfe
     if (!b) {
       const strip = document.querySelector('header.strip'), clock = strip && strip.querySelector('.strip-clock'); if (!strip) return null;
       b = document.createElement('button'); b.id = 'cpMute'; b.type = 'button'; b.className = 'strip-mute';
-      b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/><path class="sl" d="M4 4l16 16"/></svg>';
+      b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5zM15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/><path class="sl" d="M4 4l16 16"/></svg>';
       b.onclick = () => { const v = !muted; setMuted(v); cmd('mute', v ? '1' : '0'); };
-      strip.insertBefore(b, clock || null);
+      const mm = document.createElement('button'); mm.id = 'cpMicMute'; mm.type = 'button'; mm.className = 'strip-mute';
+      mm.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/><path class="sl" d="M4 4l16 16"/></svg>';
+      mm.onclick = () => { const v = !micMuted; setMicMuted(v); cmd('micmute', v ? '1' : '0'); };
+      strip.insertBefore(mm, clock || null); strip.insertBefore(b, clock || null);
+      setMuted(muted, true); setMicMuted(micMuted, true);
     }
     return b;
   }
-  // Hinweis in der Kopfleiste: Meldungen warten (Copilot oder Ground), weil der Copilot stumm ist
+  const muteTitles = () => { const de = pref.lang === 'de'; return { all: muted ? (de ? 'Alles stumm – antippen zum Aktivieren' : 'Everything muted – tap to unmute') : (de ? 'Alles stumm schalten (Copilot, Ground und Mikrofon)' : 'Mute everything (copilot, ground and microphone)'), mic: micMuted ? (de ? 'Mikrofon aus – antippen zum Einschalten' : 'Microphone off – tap to turn on') : (de ? 'Nur das Mikrofon stumm schalten (du hörst Copilot und Ground weiter)' : 'Mute only the microphone (you still hear copilot and ground)') }; };
+  function paintMute() {
+    const a = document.getElementById('cpMute'), m = document.getElementById('cpMicMute'), t = muteTitles();
+    if (a) { a.classList.toggle('on', muted); a.title = t.all; a.setAttribute('aria-label', t.all); }
+    if (m) { m.classList.toggle('on', micMuted || muted); m.classList.toggle('dim', muted && !micMuted); m.title = t.mic; m.setAttribute('aria-label', t.mic); }
+  }
+  function setMicMuted(v, quiet) {
+    v = !!v; const changed = v !== micMuted; micMuted = v; S.micMuted = v;
+    if (changed && HOST) { if (v) { stopRec(); } else if (S.on && !muted) startRec(); }
+    paintMute(); ui();
+  }
+  // Hinweis in der Kopfleiste: verpasste Meldungen (Copilot oder Ground sprachen, während alles stumm war). Antippen öffnet die Seite „Nachrichten“.
+  const unread = () => S.log.filter((m) => m.miss && !m.seen).length;
   function msgBadge() {
     const strip = document.querySelector('header.strip'); if (!strip) return;
     let b = document.getElementById('cpMsgs');
     if (!b) {
       const mb = muteBtn(); if (!mb) return;
       b = document.createElement('button'); b.id = 'cpMsgs'; b.type = 'button'; b.className = 'strip-msgs'; b.hidden = true;
-      b.onclick = () => { setMuted(false); cmd('mute', '0'); };
-      strip.insertBefore(b, mb);
+      b.onclick = () => openMsgs();
+      strip.insertBefore(b, strip.querySelector('#cpMicMute') || mb);
       const st = document.createElement('style'); st.textContent = '.strip-msgs{border:0;border-radius:999px;padding:.15rem .6rem;margin-right:.4rem;font:inherit;font-size:.8rem;font-weight:600;background:#e5a100;color:#1a1300;cursor:pointer}.strip-msgs[hidden]{display:none}'; document.head.appendChild(st);
     }
-    const n = (S.missed || []).length, de = pref.lang === 'de';
+    const n = unread(), de = pref.lang === 'de';
     b.hidden = n === 0;
-    b.textContent = (de ? '✉ ' : '✉ ') + n;
-    b.title = de ? `${n} Meldung${n === 1 ? '' : 'en'} warten – antippen hebt Stumm auf und liest sie vor` : `${n} message${n === 1 ? '' : 's'} waiting – tap to unmute and hear ${n === 1 ? 'it' : 'them'}`;
+    b.textContent = '✉ ' + n;
+    b.title = de ? `${n} verpasste Meldung${n === 1 ? '' : 'en'} – antippen öffnet die Nachrichten` : `${n} missed message${n === 1 ? '' : 's'} – tap to open the messages`;
+    const sn = panel && panel.querySelector('#cpSegN'); if (sn) sn.textContent = n ? ' (' + n + ')' : '';
+  }
+  // Seite „Nachrichten“ im Copilot-Tab
+  function setPage(p) {
+    if (!panel) return;
+    panel.querySelectorAll('#cpSeg button').forEach((x) => x.classList.toggle('on', x.dataset.p === p));
+    panel.querySelector('#cpMain').hidden = p !== 'main'; panel.querySelector('#cpMsgPage').hidden = p !== 'msgs';
+    if (p === 'msgs') { S.log.forEach((m) => { if (m.miss) m.seen = true; }); S.pageSeen = true; renderMsgs(); }
+    msgBadge();
+  }
+  function openMsgs() { try { showTab('copilot'); } catch (e) { /* egal */ } setPage('msgs'); }
+  const hm = (t) => { const d = new Date(t || Date.now()); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0'); };
+  function renderMsgs() {
+    const box = panel && panel.querySelector('#cpMsgList'); if (!box) return; const de = pref.lang === 'de';
+    box.innerHTML = S.log.slice().reverse().map((m) => { const k = m.who === 'Du' ? 'me' : /ground|boden/i.test(m.who) ? 'gr' : m.who === 'System' ? 'sys' : 'cp'; return `<div class="cpm ${k}${m.miss ? ' miss' : ''}"><div class="cpm-h"><span class="cpm-who">${esc(m.who)}</span><span class="cpm-t">${hm(m.at)}</span>${m.miss ? `<span class="cpm-x">${de ? 'verpasst' : 'missed'}</span>` : ''}</div><div class="cpm-b">${esc(m.text)}</div></div>`; }).join('') || `<div class="cp-empty">${de ? 'Noch keine Nachrichten.' : 'No messages yet.'}</div>`;
+    const fb = panel.querySelector('#cpFlush'); if (fb) fb.hidden = !(HOST ? (S.missed || []).length && S.on && !muted : S.log.some((m) => m.miss && m.at > Date.now() - 20 * 60000));
   }
   // Während „stumm“ aufgelaufene Ansagen nachholen
   async function flushMissed() {
-    const q0 = (S.missed || []).splice(0); msgBadge();
+    const q0 = (S.missed || []).splice(0); S.log.forEach((m) => { if (m.miss) m.seen = true; }); msgBadge(); renderMsgs();
     const q = q0.filter((m) => Date.now() - m.at < 20 * 60000).slice(-8);
     if (!q.length) return;
     await say(pref.lang === 'de' ? (q.length === 1 ? 'Während du stumm warst, gab es eine Meldung.' : `Während du stumm warst, gab es ${q.length} Meldungen.`) : (q.length === 1 ? 'While you were muted, there was one message.' : `While you were muted, there were ${q.length} messages.`), undefined, { replay: true });
     for (const m of q) { if (muted) break; await say(m.t, m.l, { replay: true }); }
   }
-  function setMuted(v) {
-    v = !!v; if (v === muted) { muteBtn(); return; }
+  function setMuted(v, quiet) {
+    v = !!v; if (v === muted) { if (!quiet) muteBtn(); paintMute(); return; }
     muted = v; S.muted = v;
     if (HOST) {
       if (v) { if (curAudio) { try { curAudio.pause(); } catch (e) {} curAudio = null; } if (TTS) { try { TTS.cancel(); } catch (e) {} } S.speaking = false; stopRec(); }
-      else if (S.on) { startRec(); flushMissed(); }
+      else if (S.on) { if (!micMuted) startRec(); flushMissed(); }
     }
-    const b = muteBtn(); if (b) { b.classList.toggle('on', v); b.title = v ? (pref.lang === 'de' ? 'Copilot ist stumm – antippen zum Aktivieren' : 'Copilot muted – tap to unmute') : (pref.lang === 'de' ? 'Copilot stumm schalten' : 'Mute Copilot'); }
-    ui();
+    paintMute(); ui();
   }
   // Befehl an den PC (nur wenn dieses Gerät nicht selbst spricht)
   const cmd = (action, id) => post('/api/cp/event', { type: 'cmd', action, id: id || '', from: window.EFB_ID });
@@ -1514,7 +1612,12 @@
     const sec = $('#tab-copilot'); if (!sec) return;
     panel = document.createElement('div');
     panel.className = 'cp-panel cpv';
-    panel.innerHTML = `<div class="cpv-card"><h3>Copilot</h3>
+    panel.innerHTML = `<div class="cp-seg" id="cpSeg"><button type="button" data-p="main" class="on">Steuerung</button><button type="button" data-p="msgs">Nachrichten<span id="cpSegN"></span></button></div>
+      <div id="cpMsgPage" hidden>
+        <div class="cpv-card"><div class="cp-row"><h3 style="flex:1">Letzte Nachrichten</h3><button class="btn-s" id="cpFlush" hidden>Verpasste vorlesen</button></div>
+          <small>Neueste oben. „Verpasst“ heißt: Copilot oder Ground haben gesprochen, während alles stumm war.</small></div>
+        <div id="cpMsgList" class="cpm-list"></div></div>
+      <div id="cpMain" class="cpv-main"><div class="cpv-card"><h3>Copilot</h3>
         <div class="cp-row"><button class="btn-s" id="cpToggle">Copilot starten</button><span id="cpState" class="cp-state"></span></div>
         <small id="cpNote"></small></div>
       <div class="cpv-card"><h3>Stimme &amp; Sprache</h3><div class="cp-row">
@@ -1527,6 +1630,7 @@
         <label class="cp-chk"><input type="checkbox" id="cpAuto"> Automatisch starten</label>
         <label class="cp-chk"><input type="checkbox" id="cpPacks"> Start mit Packs AUS (Performance)</label>
         <label class="cp-chk"><input type="checkbox" id="cpGsxKeys"> GSX-Menü per Zifferntaste bedienen (nur wenn die Auswahl, z. B. beim Pushback, sonst nicht ankommt; MSFS muss laufen)</label>
+        <label class="cp-rate">Natürlicher sprechen (gelegentlich „um“/„äh“) <select id="cpHuman"><option value="off">aus</option><option value="low">selten</option><option value="mid">etwas öfter</option></select></label>
         <label class="cp-rate">Triebwerks-Hinweis beim Pushback <select id="cpPushEng"><option value="mix">wechselnd</option><option value="clear">Freigabe zum Start</option><option value="call">warten, bis Ground ruft</option><option value="wait">warten bis Pushback fertig</option></select></label></div></div>
       <div class="cpv-card"><h3>Mehr Leben</h3><small>Der Copilot spricht auch von sich aus. Gilt nur, solange er an und nicht stumm ist.</small><div class="cp-row">
         <label class="cp-chk"><input type="checkbox" id="cpLifeTaxi"> Rollweg-Ansagen (aus der Route in der Karte)</label>
@@ -1537,8 +1641,10 @@
       <div class="cpv-card" id="cpAmb"></div>
       <div class="cpv-card" id="cpDev"><small id="cpDevHint"><b>Audio-Geräte:</b> Mikrofon und Lautsprecher stellst du im Copilot-Fenster am PC ein.</small></div>
       <div class="cpv-card"><h3>Verlauf</h3><div id="cpLog" class="cp-log"></div>
-        <form id="cpForm"><input id="cpText" placeholder="Antwort eintippen …" autocomplete="off"><button class="btn-s">OK</button></form></div>`;
+        <form id="cpForm"><input id="cpText" placeholder="Antwort eintippen …" autocomplete="off"><button class="btn-s">OK</button></form></div></div>`;
     sec.appendChild(panel);
+    panel.querySelector('#cpSeg').onclick = (e) => { const b = e.target.closest('button[data-p]'); if (b) setPage(b.dataset.p); };
+    panel.querySelector('#cpFlush').onclick = () => { if (HOST) flushMissed(); else { cmd('flush'); S.log.forEach((m) => { if (m.miss) m.seen = true; }); renderMsgs(); msgBadge(); } };
     if (window.AudioDev) {
       if (HOST) { window.AudioDev.mount($('#cpDev')); window.AudioDev.onChange((w) => { if (w === 'mic' && window.WhisperMic && S.on && useW()) window.WhisperMic.restart().catch(() => {}); }); }
     }
@@ -1578,6 +1684,7 @@
     [['#cpLifeTaxi', 'taxi'], ['#cpLifeTraffic', 'traffic'], ['#cpLifeCalls', 'calls'], ['#cpLifeGround', 'ground'], ['#cpLifePush', 'groundPush']].forEach(([id, k]) => { $(id).onchange = (e) => { pref.life = Object.assign({ taxi: true, traffic: true, calls: true, ground: true, groundPush: false }, pref.life || {}); pref.life[k] = e.target.checked; save(); }; });
     $('#cpPacks').checked = !!pref.packsOff;
     $('#cpPacks').onchange = (e) => { pref.packsOff = e.target.checked; save(); };
+    $('#cpHuman').value = pref.human || 'low'; $('#cpHuman').onchange = (e) => { pref.human = e.target.value; save(); };
     $('#cpPushEng').value = pref.pushEng || 'mix'; $('#cpPushEng').onchange = (e) => { pref.pushEng = e.target.value; save(); };
     $('#cpGsxKeys').checked = !!pref.gsxKeys; $('#cpGsxKeys').onchange = (e) => { pref.gsxKeys = e.target.checked; save(); };
     $('#cpToggle').onclick = () => { if (remote()) { cmd(hostActive ? 'stop' : 'start'); const st = panel.querySelector('#cpState'); st.textContent = hostActive ? '…' : (pref.lang === 'de' ? 'Starte am PC …' : 'Starting on the PC …'); setTimeout(pollHost, 2500); setTimeout(pollHost, 6000); } else (S.on ? stop() : start()); };
@@ -1623,13 +1730,15 @@
   }).catch(() => {});
   loadSounds(); setInterval(loadSounds, 60000);
   fetch('/api/stt/status').then((r) => r.json()).then((o) => { stt.available = !!o.available; stt.checked = true; }).catch(() => { stt.checked = true; });
-  const pollHost = () => fetch('/api/cp/host').then((r) => r.json()).then((o) => { const was = remote(), wasA = hostActive; setMuted(!!o.mute); isLocal = !!o.local; hostActive = !!o.active && o.id !== window.EFB_ID; if (remote() && S.on) stop(); if (was !== remote() || wasA !== hostActive) { ui(); if (window._cpFillVoices) window._cpFillVoices(); } }).catch(() => {});
-  if (!HOST) { pollHost(); setInterval(pollHost, 5000); } else { fetch('/api/cp/host').then((r) => r.json()).then((o) => setMuted(!!o.mute)).catch(() => {}); setInterval(() => { if (S.on) beat(); }, 5000); }
+  const pollHost = () => fetch('/api/cp/host').then((r) => r.json()).then((o) => { const was = remote(), wasA = hostActive; setMuted(!!o.mute); setMicMuted(!!o.micmute); isLocal = !!o.local; hostActive = !!o.active && o.id !== window.EFB_ID; if (remote() && S.on) stop(); if (was !== remote() || wasA !== hostActive) { ui(); if (window._cpFillVoices) window._cpFillVoices(); } }).catch(() => {});
+  if (!HOST) { pollHost(); setInterval(pollHost, 5000); } else { fetch('/api/cp/host').then((r) => r.json()).then((o) => { setMuted(!!o.mute); setMicMuted(!!o.micmute); }).catch(() => {}); setInterval(() => { if (S.on) beat(); }, 5000); }
   hooks.sim.push(watch);
   setInterval(watch, 4000);
   // Ereignisse vom Server: iPad tippt eine Liste an / tippt eine Antwort / zeigt die Liste des Copiloten
   function onEvent(name, d) {
     if (name === 'cp' && d.type === 'cmd' && d.action === 'mute') { setMuted(d.id === '1'); return; }
+    if (name === 'cp' && d.type === 'cmd' && d.action === 'micmute') { setMicMuted(d.id === '1'); return; }
+    if (name === 'cp' && d.type === 'cmd' && d.action === 'flush' && HOST) { if (S.on && !muted) flushMissed(); return; }
     if (name !== 'cp' || d.from === window.EFB_ID) return;
     if (d.type === 'prefs') { fetch('/api/copilot').then((r) => r.json()).then(applyPref).catch(() => {}); return; }
     if (HOST) {
@@ -1643,7 +1752,7 @@
         else if (['voice', 'voiceEn', 'ground'].includes(d.action) && window._cpPreview) window._cpPreview(d.action);
       }
     } else {
-      if (d.type === 'log') log(d.who, d.text, true);
+      if (d.type === 'log') log(d.who, d.text, true, { at: d.at, miss: d.miss });
       if (d.type === 'show' && remote()) { clIndex = d.index; if (typeof renderChecklists === 'function' && app.tab === 'check') renderChecklists(); }
     }
   }
