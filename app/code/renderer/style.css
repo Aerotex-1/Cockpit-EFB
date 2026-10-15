@@ -48,3 +48,7 @@ pre.notes { margin:6px 0; white-space:pre-wrap; font:inherit; color:var(--dim); 
 
 .grp { margin: 22px 2px 2px; font-size: 13px; font-weight: 600; opacity: .7; letter-spacing: .02em; }
 .page > .grp:first-child { margin-top: 0; }
+.hk { display:flex; flex-direction:column; gap:4px; padding:8px 0; border-top:1px solid var(--ln); }
+.hk:first-of-type { border-top:0; }
+.hkin { flex:1; min-width:0; cursor:pointer; }
+.hkin:focus { outline:2px solid var(--ac, #2bc4e6); }

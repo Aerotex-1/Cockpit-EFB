@@ -1,5 +1,11 @@
 # Änderungen
 
+## 1.3.2
+- **Taxi-Ansage „Continue straight“ bei einem Bogen:** Führt ein Rollweg in einem weiten Bogen in den nächsten (z. B. S1 in B14), hat die Ansage „geradeaus“ gesagt, obwohl rechts bzw. links richtig war. Die Richtungsänderung wird jetzt über bis zu 70 m vor und nach der Kreuzung gemessen. Im Test mit nachgebauten Rollwegen (Bogen rechts, Bogen links, gerade, scharfe Ecke) kommt jetzt jedes Mal das Richtige heraus. Mit den echten EDDM-Daten konnte ich es nicht prüfen.
+- **After-Start-Checkliste:** Der Satz sagte „… am Gate vor dem Abflug“, obwohl man nach dem Pushback gar nicht mehr am Gate steht. Jetzt heißt es „… Triebwerksstart fertig“. Und nach einem Pushback fragt der Copilot erst 20–30 Sekunden, nachdem die Bodencrew „Pushback complete“ gesagt hat.
+- **Mute-Tastenkürzel:** Mikrofon stumm und Alles stumm lassen sich in der Windows-App auf beliebige Tasten legen (App 1.4.2, Seite „Einstellungen“). Die EFB selbst hat dafür nichts Neues; der Befehl läuft über den bestehenden Mute-Weg.
+- Nur im Demo-Modus bzw. im Code getestet.
+
 ## 1.3.1
 - **Copilot-Seite aufgeräumt:** Stimme & Sprache, Verhalten und „Mehr Leben“ sind jetzt klar getrennt: beschriftete Auswahlfelder, Schalter mit kurzer Erklärung statt loser Kontrollkästchen. Alle Funktionen und Einstellungen sind unverändert, auch die gespeicherten Werte. Die neuen Texte sind ins Englische übersetzt (vorher blieben einige Zeilen deutsch).
 - **Schneller laden:** Der Server komprimiert Texte (JS, CSS, HTML) und antwortet beim erneuten Laden mit „unverändert“ (ETag), statt alles neu zu senden. Das EFB-Paket ist beim Laden rund zwei Drittel kleiner (etwa 190 KB statt 617 KB), vor allem übers WLAN am iPad spürbar.

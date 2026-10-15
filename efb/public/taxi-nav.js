@@ -229,7 +229,13 @@ window.TaxiNav = (() => {
     path.legs.forEach((l) => { bar.push({ ref: l.ref, gap: l.gap }); path.holds.filter((h2) => h2.s >= l.s0 - 0.5 && h2.s <= l.s1 + 0.5).forEach((h2) => bar.push({ ref: h2.ref, hold: true })); });
     return { legs: path.legs.map((l) => ({ ref: l.ref, gap: l.gap, pts: ll(path.pts.slice(l.i0, l.i1 + 1)) })), holds: path.holds.map((h2) => ({ ref: h2.ref, end: h2.end, line: ll([h2.a, h2.b]) })), bar, missing: path.missing || [], holdKind: path.holdKind };
   }
-  const turnAt = (ch, s) => { const bin = bearing(at(ch, s - 18), at(ch, s)), bout = bearing(at(ch, s), at(ch, s + 25)), diff = ((bout - bin + 540) % 360) - 180; return { turn: Math.abs(diff) < 22 ? 'straight' : diff > 0 ? 'right' : 'left', sharp: Math.abs(diff) > 110, angle: Math.round(diff) }; };
+  // Abbiegen an der Grenze zweier Abschnitte. Die Richtung wird über längere Stücke davor und danach gemessen
+  // (bis 70 m, aber nicht über die Abschnitte hinaus): sonst wirkt ein weiter Bogen in den nächsten Rollweg wie „geradeaus“.
+  const turnAt = (ch, s, inMax, outMax) => {
+    const li = Math.max(8, Math.min(70, inMax === undefined ? 70 : inMax)), lo = Math.max(8, Math.min(70, outMax === undefined ? 70 : outMax));
+    const bin = bearing(at(ch, s - li), at(ch, s - li * 0.4)), bout = bearing(at(ch, s + lo * 0.4), at(ch, s + lo)), diff = ((bout - bin + 540) % 360) - 180;
+    return { turn: Math.abs(diff) < 22 ? 'straight' : diff > 0 ? 'right' : 'left', sharp: Math.abs(diff) > 110, angle: Math.round(diff) };
+  };
   // Position auf dem berechneten Weg: aktueller Abschnitt, nächste Kreuzung, Abbiegerichtung
   function navigate(plan, pos, path) {
     const d = data[plan.icao], P = proj(d), p = P.xy(pos.lat, pos.lon), ch = path.chain, ll = (arr) => arr.map(P.ll), legs = path.legs;
@@ -251,7 +257,7 @@ window.TaxiNav = (() => {
     out.cur = cur; out.ref = leg.ref; out.next = nx ? nx.ref : null; out.atEnd = !nx;
     out.distToJ = Math.max(0, leg.s1 - s); out.J = P.ll(at(ch, leg.s1));
     out.legCur = ll(slice(ch, s, leg.s1));
-    if (nx) { Object.assign(out, turnAt(ch, leg.s1)); out.legNext = ll(slice(ch, leg.s1, nx.s1)); }
+    if (nx) { Object.assign(out, turnAt(ch, leg.s1, leg.s1 - leg.s0, nx.s1 - leg.s1)); out.legNext = ll(slice(ch, leg.s1, nx.s1)); }
     const ha = path.holds.filter((h2) => h2.s > s - 2).sort((a, b) => a.s - b.s)[0];
     if (ha) { out.holdAhead = { dist: ha.s - s, ref: ha.ref, end: ha.end, rwy: !!ha.rwy }; }
     return out;

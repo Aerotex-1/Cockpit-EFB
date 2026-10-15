@@ -65,6 +65,7 @@ function render(s) {
   const c = s.settings;
   $('#sAutoStart').checked = c.autoStartServer; $('#sBrowser').checked = c.openBrowserOnStart; $('#sLogin').checked = c.startWithWindows; $('#sClose').checked = c.closeStopsServer;
   $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port; $('#cpOnStart').checked = !!c.copilotOnStart;
+  renderHotkeys(c, s.hotkeys || {});
   $('#uRepo').value = c.repo; $('#uToken').value = c.token; $('#uEdition').value = c.edition; $('#uCheck').checked = c.checkOnStart;
   $('#logBox').textContent = s.logs.join('\n');
   renderUpdate(s.update);
@@ -249,3 +250,24 @@ document.addEventListener('click', async (e) => {
 });
 bridge.on('kokoro:progress', ({ what, p }) => { const b = document.getElementById('kkGet'); if (b && b.disabled) b.textContent = what + ' ' + Math.round(p * 100) + ' %'; });
 loadKk();
+
+// ---- Mute-Tastenkürzel (globale Tasten, Electron-Schreibweise wie „Ctrl+Alt+M“)
+const HK_NAMES = { ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', Space: 'Space', Tab: 'Tab', Enter: 'Enter', Backspace: 'Backspace', Insert: 'Insert', Delete: 'Delete', Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown', Minus: '-', Equal: '=', Comma: ',', Period: '.', Semicolon: ';', Slash: '/', Backslash: '\\', NumpadAdd: 'numadd', NumpadSubtract: 'numsub', NumpadMultiply: 'nummult', NumpadDivide: 'numdiv', NumpadDecimal: 'numdec', NumpadEnter: 'Enter' };
+function accelFromEvent(e) {
+  let k = null; const c = e.code || '';
+  if (/^Key[A-Z]$/.test(c)) k = c.slice(3); else if (/^Digit[0-9]$/.test(c)) k = c.slice(5); else if (/^F([1-9]|1\d|2[0-4])$/.test(c)) k = c; else if (/^Numpad[0-9]$/.test(c)) k = 'num' + c.slice(6); else if (HK_NAMES[c]) k = HK_NAMES[c];
+  if (!k) return null;
+  return [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Super'].filter(Boolean).concat(k).join('+');
+}
+const HK = [['mic', 'hotkeyMic', '#hkMic', '#hkMicClr', '#hkMicMsg'], ['mute', 'hotkeyMute', '#hkMute', '#hkMuteClr', '#hkMuteMsg']];
+const HK_TXT = { ok: 'Aktiv.', off: '', belegt: 'Diese Taste ist schon von einem anderen Programm belegt. Nimm eine andere, z. B. mit Strg+Alt.', 'ungültig': 'Diese Taste geht nicht.', doppelt: 'Dieselbe Taste ist schon für „Nur Mikrofon stumm“ belegt.' };
+function renderHotkeys(c, st) {
+  for (const [k, key, inp, , msg] of HK) { if (document.activeElement !== $(inp)) $(inp).value = c[key] || ''; $(msg).textContent = c[key] ? (HK_TXT[st[k]] || '') : ''; }
+}
+for (const [k, key, inp, clr] of HK) {
+  const save = async (v) => { const s = await bridge.invoke('settings:set', { [key]: v }); render(s); };
+  $(inp).onkeydown = (e) => { if (e.key === 'Tab') return; e.preventDefault(); if (e.key === 'Escape') { $(inp).blur(); return; } const a = accelFromEvent(e); if (a) { $(inp).value = a; $(inp).blur(); save(a); } };
+  $(inp).onfocus = () => { $(inp).dataset.old = $(inp).value; $(inp).value = ''; $(inp).placeholder = 'Taste drücken … (Esc bricht ab)'; };
+  $(inp).onblur = () => { if (!$(inp).value) $(inp).value = $(inp).dataset.old || ''; $(inp).placeholder = 'Nicht belegt – hier klicken, dann Taste drücken'; };
+  $(clr).onclick = () => { $(inp).dataset.old = ''; $(inp).value = ''; save(''); };
+}

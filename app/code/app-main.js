@@ -1,6 +1,6 @@
 // Cockpit EFB – Windows-App (Electron): Server starten/stoppen, Copilot, Einstellungen, Updates.
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, Menu, safeStorage, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, safeStorage, dialog, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -13,6 +13,7 @@ const whisperLib = require('./lib/whisper');
 const kokoroLib = require('./lib/kokoro');
 const communityLib = require('./lib/community');
 const editionLib = require('./lib/editions');
+const hotkeys = require('./lib/hotkeys');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -141,11 +142,17 @@ function communitySync(force) {
   try { const r = communityLib.install(EFB_DIR, S.communityDir); if (r.changed) send('log', '[App] Sim-Modul aktualisiert: ' + r.target); return r; } catch (e) { return { ...communityState(), error: e.message }; }
 }
 
+let hotkeyState = { mic: 'off', mute: 'off' };
+function applyHotkeys() {
+  try { hotkeyState = hotkeys.apply(globalShortcut, S, () => proc.port(), () => { try { shell.beep(); } catch { /* egal */ } }); }
+  catch { hotkeyState = { mic: 'ungültig', mute: 'ungültig' }; }
+  return hotkeyState;
+}
 function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startWithWindows }); } catch { /* nicht unterstützt */ } }
 
 const editionState = () => { try { return editionLib.status(EFB_DIR, BUNDLE); } catch (e) { return { supported: false, current: { id: 'full', name: 'Voll', tabs: [] }, editions: [], tabs: [], error: e.message }; } };
 function state() {
-  return { edition: editionState(), status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '' }, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
+  return { edition: editionState(), status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '' }, hotkeys: hotkeyState, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
 }
 
 // Eigene Sounds des Bodenpersonals: Ordner „sounds“ in der EFB, Dateiname = Ereignis (z. B. pushback.ack.S1.mp3)
@@ -185,6 +192,7 @@ app.whenReady().then(() => {
     const portNew = patch.port; delete patch.port;
     if (patch.token === '••••') delete patch.token;
     S = { ...S, ...patch }; settingsStore.save(SETTINGS_FILE, S, safe); applyLogin();
+    if ('hotkeyMic' in patch || 'hotkeyMute' in patch) applyHotkeys();
     if (portNew) {
       const cf = path.join(EFB_DIR, 'config.json'), c = readJson(cf, {});
       if (Number(portNew) >= 1024 && Number(portNew) <= 65535 && c.port !== Number(portNew)) { c.port = Number(portNew); fs.writeFileSync(cf, JSON.stringify(c, null, 2)); if (proc.status === 'running') await proc.restart(); }
@@ -255,9 +263,10 @@ app.whenReady().then(() => {
 
   setTimeout(() => { try { communitySync(); } catch { /* egal */ } }, 1500);
   if (S.autoStartServer) proc.start();
-  applyLogin();
+  applyLogin(); applyHotkeys();
   if (S.checkOnStart && S.repo) setTimeout(doCheck, 3000);
   setInterval(() => { if (S.checkOnStart && S.repo) doCheck(); }, 6 * 3600 * 1000);
 });
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch { /* egal */ } });

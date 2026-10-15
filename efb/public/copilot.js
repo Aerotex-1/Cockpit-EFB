@@ -1471,6 +1471,7 @@
     const ar = !s.onGround && s.connected; if (ar !== air0.on) { air0.on = ar; air0.at = now; }
     const ph = phase(); if (ph !== ph0.ph) { ph0.ph = ph; ph0.at = now; }
   }
+  const asw = { ref: 0, ms: 25000 };
   function ready(i, ph) { // true = jetzt anbieten
     const now = Date.now(), name = lists()[i].name, s = app.sim || {}, g = (s.efb || {}).ground, key = checklistKey();
     if (now - ph0.at < 20000) return false; // Phase muss kurz stabil sein
@@ -1479,7 +1480,13 @@
     const since = (ms) => !prev || now - prev >= ms;
     const gx = s.gsx || {}, busy = ['boarding', 'refueling', 'catering', 'deboarding'].some((v) => { const st = Math.round(gx[v] || 0); return st === 4 || st === 5; });
     if (/before start/i.test(name)) return !busy && !pushBusy() && (prev ? now - prev >= 60000 : now - prep.since >= 180000);
-    if (/after start/i.test(name)) { if (!g) return since(20000); return !!g.enginesRunning && now - eng0.at >= 40000 && !g.pushback && !pushBusy() && since(15000); }
+    if (/after start/i.test(name)) {
+      if (!g) return since(20000);
+      // nach einem Pushback erst 20–30 s nach „Pushback complete“ der Bodencrew fragen
+      const ref = Math.max(S.pushDone || 0, S.engCleared || 0);
+      if (S.pushAt && ref) { if (asw.ref !== ref) { asw.ref = ref; asw.ms = 20000 + Math.random() * 10000; } if (now - ref < asw.ms) return false; }
+      return !!g.enginesRunning && now - eng0.at >= 40000 && !g.pushback && !pushBusy() && since(15000);
+    }
     if (/before taxi|^taxi/i.test(name)) return ph === 'out' && !pushBusy() && !!s.onGround && (s.gs || 0) > 15 && since(20000); // erst, wenn der Flieger am Boden schneller als 15 kt rollt (nicht beim Pushback)
     if (/line-?up|before takeoff/i.test(name)) return ph === 'out' && now - ph0.at >= 60000 && since(45000);
     if (/after takeoff/i.test(name)) return !s.onGround && now - air0.at >= 90000 && (s.vs || 0) > -200 && (s.alt || 0) > 2500;
@@ -1505,7 +1512,7 @@
       if (!ready(i, ph)) continue;                      // noch zu früh → später erneut prüfen
       asked.add(k);
       S.list = i; S.mode = 'ask'; armAsk();
-      say(T().remind(T().ph[ph], ls[i].name));
+      say(T().remind(/after start/i.test(ls[i].name) ? (pref.lang === 'de' ? 'mit dem Triebwerksstart fertig' : 'done with engine start') : T().ph[ph], ls[i].name));
       return;
     }
   }
@@ -1761,7 +1768,7 @@
     if (!HOST || !S.on || S.mode !== 'run' || S.speaking || k !== 'cl.' + checklistKey()) return;
     if ((progOf()[S.list] || [])[S.item]) advance();
   }
-  window.Copilot = { _core: { prefetch, pushSemTest: (t, i) => pushSem(t, i), pushEnded, pbOn: () => pbOn(), nums, verify, misc, say: (t, l, o) => say(t, l, o), groundLine, call, brk, gsxReady, lifeOn, pushBusy, engineClear, disconnectNow, efbAct, S, pref, isMuted: () => muted, spoken, rwySay, rwyTxt, itemLang, post }, freqOf, rwyOf, spellOut, setMuted, plannedRwy, parts, handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
+  window.Copilot = { _core: { ready, eng0, ph0, lists, T, prefetch, pushSemTest: (t, i) => pushSem(t, i), pushEnded, pbOn: () => pbOn(), nums, verify, misc, say: (t, l, o) => say(t, l, o), groundLine, call, brk, gsxReady, lifeOn, pushBusy, engineClear, disconnectNow, efbAct, S, pref, isMuted: () => muted, spoken, rwySay, rwyTxt, itemLang, post }, freqOf, rwyOf, spellOut, setMuted, plannedRwy, parts, handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
   const boot = () => { build(); muteBtn(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

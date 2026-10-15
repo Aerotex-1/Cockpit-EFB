@@ -79,6 +79,13 @@
       <div class="row"><button id="sSave" class="primary">Speichern</button><span id="sMsg" class="note"></span></div></div>
     <div id="grpVoice">
     <h3 class="grp">Sprache und Stimmen</h3>
+    <div class="card"><h2>Mute-Tastenkürzel</h2>
+      <p class="note">Mit diesen Tasten schaltest du auch bei laufendem Simulator um, ohne das Fenster zu wechseln. Du kannst jede Taste oder Tastenkombination verwenden, auch die Tasten deines Cockpits, wenn deren Software (z. B. SPAD.neXt, MobiFlight) sie als Tastendruck sendet. Ein kurzer Signalton bestätigt den Wechsel. Ein Kürzel schaltet um: einmal drücken = stumm, noch einmal = wieder an.</p>
+      <div class="hk"><b>Nur Mikrofon stumm</b><span class="sub">Copilot und Bodencrew sprechen weiter, dich hören sie nicht.</span>
+        <div class="row"><input id="hkMic" class="hkin" readonly placeholder="Nicht belegt – hier klicken, dann Taste drücken"><button id="hkMicClr">Entfernen</button></div><p id="hkMicMsg" class="note"></p></div>
+      <div class="hk"><b>Alles stumm</b><span class="sub">Sprache und Mikrofon aus.</span>
+        <div class="row"><input id="hkMute" class="hkin" readonly placeholder="Nicht belegt – hier klicken, dann Taste drücken"><button id="hkMuteClr">Entfernen</button></div><p id="hkMuteMsg" class="note"></p></div>
+    </div>
     <div class="card"><h2>Spracherkennung (Open Source, offline)</h2>
       <p class="note" id="sttNote">Whisper erkennt deine Sprache direkt auf dem PC, ohne Internet und ohne Cloud. Beim ersten Mal lädt die App das Programm (4 MB) und das Modell nach. Wenn sie dich nicht gut versteht, nimm „Klein (genauer)“.</p>
       <div id="sttList" class="vlist"></div>
