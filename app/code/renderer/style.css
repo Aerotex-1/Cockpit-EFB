@@ -45,3 +45,6 @@ pre.notes { margin:6px 0; white-space:pre-wrap; font:inherit; color:var(--dim); 
 .edtabs { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px 14px; }
 .edtabs label.chk { font-size:13.5px; }
 #edBadge { color:var(--warn); }
+
+.grp { margin: 22px 2px 2px; font-size: 13px; font-weight: 600; opacity: .7; letter-spacing: .02em; }
+.page > .grp:first-child { margin-top: 0; }

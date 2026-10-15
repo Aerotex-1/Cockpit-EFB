@@ -1,7 +1,7 @@
 {
   "name": "cockpit-efb-app",
   "productName": "Cockpit EFB",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Cockpit EFB – Windows-App zum Starten, Einstellen und Aktualisieren",
   "main": "boot.js",
   "author": "Cockpit EFB",

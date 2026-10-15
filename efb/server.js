@@ -130,13 +130,30 @@ function readBody(req) {
   });
 }
 
-function serveFile(res, baseDir, relPath) {
+const zlib = require('zlib');
+const GZ = new Map(); // Datei -> { key, buf }: komprimierte Textdateien werden nur einmal erzeugt
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.svg', '.md', '.txt', '.webmanifest']);
+function serveFile(res, baseDir, relPath, req) {
   const file = path.normalize(path.join(baseDir, relPath));
   if (file !== baseDir && !file.startsWith(baseDir + path.sep)) { res.writeHead(403); return res.end(); }
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); return res.end('Nicht gefunden'); }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-    fs.createReadStream(file).pipe(res);
+    const ext = path.extname(file).toLowerCase();
+    const etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+    const head = { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache', ETag: etag, Vary: 'Accept-Encoding' };
+    if (req && req.headers['if-none-match'] === etag) { res.writeHead(304, head); return res.end(); }
+    const gz = req && COMPRESSIBLE.has(ext) && st.size > 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
+    if (!gz) { res.writeHead(200, head); return fs.createReadStream(file).pipe(res); }
+    const hit = GZ.get(file);
+    const send = (buf) => { res.writeHead(200, Object.assign(head, { 'Content-Encoding': 'gzip', 'Content-Length': buf.length })); res.end(buf); };
+    if (hit && hit.key === etag) return send(hit.buf);
+    fs.readFile(file, (e2, raw) => {
+      if (e2) { res.writeHead(500); return res.end(); }
+      zlib.gzip(raw, { level: 6 }, (e3, buf) => {
+        if (e3) { res.writeHead(200, head); return res.end(raw); }
+        GZ.set(file, { key: etag, buf }); send(buf);
+      });
+    });
   });
 }
 
@@ -368,7 +385,7 @@ const server = http.createServer(async (req, res) => {
       fs.rmSync(path.join(CHARTS, icao, file), { force: true });
       return sendJson(res, 200, { ok: true });
     }
-    if (p.startsWith('/charts/')) return serveFile(res, CHARTS, p.slice('/charts/'.length));
+    if (p.startsWith('/charts/')) return serveFile(res, CHARTS, p.slice('/charts/'.length), req);
     if (p === '/api/sounds') { // eigene Sounds des Bodenpersonals (sounds/<ereignis>.mp3)
       let list = []; try { list = fs.readdirSync(SOUNDS).filter((f) => /^[\w.-]{1,70}\.(mp3|wav|ogg)$/i.test(f)).map((f) => ({ key: f.replace(/\.[^.]+$/, ''), file: f })); } catch { /* kein Ordner */ }
       return sendJson(res, 200, list);
@@ -389,7 +406,7 @@ const server = http.createServer(async (req, res) => {
       try { fs.unlinkSync(path.join(SOUNDS, f)); } catch { /* war nicht da */ }
       return sendJson(res, 200, { ok: true });
     }
-    if (p.startsWith('/sounds/') && /\.(mp3|wav|ogg)$/i.test(p)) return serveFile(res, SOUNDS, p.slice('/sounds/'.length));
+    if (p.startsWith('/sounds/') && /\.(mp3|wav|ogg)$/i.test(p)) return serveFile(res, SOUNDS, p.slice('/sounds/'.length), req);
 
     if (p === '/api/gsx/service' && req.method === 'POST') {
       const { service } = await readBody(req);
@@ -480,7 +497,7 @@ const server = http.createServer(async (req, res) => {
       try { return sendJson(res, 200, { file: settings.saveBg(url.searchParams.get('name') || 'bg', Buffer.concat(chunks)) }); }
       catch (e) { return sendJson(res, 400, { error: e.message }); }
     }
-    if (p.startsWith('/bg/')) return serveFile(res, BG_DIR, p.slice(4));
+    if (p.startsWith('/bg/')) return serveFile(res, BG_DIR, p.slice(4), req);
     if (p === '/api/logbook' && req.method === 'GET') return sendJson(res, 200, { entries: logbook.list(), active: logbook.active(), size: logbook.size() });
     if (p === '/api/logbook.csv') { res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="logbuch.csv"' }); return res.end(logbook.csv()); }
     if (p === '/api/logbook/add' && req.method === 'POST') return sendJson(res, 200, { entry: logbook.add(await readBody(req)) });
@@ -492,7 +509,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/atc' && req.method === 'POST') return sendJson(res, 200, process.argv.includes('--demo') ? atc.demo(await readBody(req)) : await atc.query(await readBody(req)));
 
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'Unbekannt' });
-    return serveFile(res, PUBLIC, p === '/' ? 'index.html' : p);
+    return serveFile(res, PUBLIC, p === '/' ? 'index.html' : p, req);
   } catch (e) {
     console.error('[HTTP]', e);
     return sendJson(res, 500, { error: e.message });

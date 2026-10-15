@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.3.1
+- **Copilot-Seite aufgeräumt:** Stimme & Sprache, Verhalten und „Mehr Leben“ sind jetzt klar getrennt: beschriftete Auswahlfelder, Schalter mit kurzer Erklärung statt loser Kontrollkästchen. Alle Funktionen und Einstellungen sind unverändert, auch die gespeicherten Werte. Die neuen Texte sind ins Englische übersetzt (vorher blieben einige Zeilen deutsch).
+- **Schneller laden:** Der Server komprimiert Texte (JS, CSS, HTML) und antwortet beim erneuten Laden mit „unverändert“ (ETag), statt alles neu zu senden. Das EFB-Paket ist beim Laden rund zwei Drittel kleiner (etwa 190 KB statt 617 KB), vor allem übers WLAN am iPad spürbar.
+- Nur im Demo-Modus getestet; die Ladezeit am echten iPad habe ich nicht gemessen.
+
 ## 1.3.0
 - **Versionen (Lite, Medium, Voll, Copilot & Ground):** Die EFB kennt jetzt Ausgaben, die unterschiedlich viele Tabs zeigen. **Lite:** Flug, EFB, OFP, Performance, Checklisten. **Medium:** zusätzlich Finder, Karte, Charts, Wetter, Logbuch. **Voll:** alles. **Copilot & Ground:** nur Copilot, Checklisten und GSX. Dazu eine eigene Auswahl. Gewählt wird die Version in der Windows-App (Seite „Version“); die EFB blendet die übrigen Tabs aus, auch in den Tab-Einstellungen. Ohne Auswahl bleibt alles wie bisher („Voll“). Die Wahl bleibt bei EFB-Updates erhalten (edition.json).
 - **Copilot & Ground im Sim-EFB:** Das Sim-Modul „Cockpit EFB Link“ (0.8.0) hat jetzt eine Einstellungsseite für den Copiloten direkt im EFB des Simulators: Copilot starten/stoppen, alles stumm, nur Mikrofon stumm, Sprache, Stimmen für Copilot und Bodencrew, Tempo, natürlicher sprechen, „Mehr Leben“. Die Stimmen selbst laufen weiter am PC.

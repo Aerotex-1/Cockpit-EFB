@@ -834,6 +834,14 @@ input[type=range] { accent-color: var(--cyan); }
 .cp-state { font-size: 14px; opacity: .9; }
 #cpToggle.on { background: var(--accent, #2a7); color: #fff; }
 .cp-rate, .cp-chk { display: flex; gap: 6px; align-items: center; }
+.cpv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 14px; }
+.cpf { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cpf-l { font-size: 12px; opacity: .7; }
+.cpf select { width: 100%; }
+.cpf:has(> select[hidden]) { display: none; }
+.cpf input[type=range] { width: 100%; margin: 6px 0; }
+.cpv .sw-row { padding: 6px 0; border-top: 1px solid var(--line, #ffffff14); }
+.cpv .sw-row:first-of-type { border-top: 0; }
 .cp-rate input { width: 120px; }
 #cpForm { display: flex; gap: 6px; }
 #cpText { flex: 1; min-width: 0; }
@@ -842,7 +850,7 @@ input[type=range] { accent-color: var(--cyan); }
 .cp-log b { margin-right: 6px; font-weight: 600; }
 .cp-empty { opacity: .6; }
 #tab-check .check-layout { flex: 1; height: auto; min-height: 0; }
-.cp-panel select { width: auto; max-width: 100%; } .cp-panel input[type=range] { padding: 0; }
+.cp-panel select { width: auto; max-width: 100%; } .cp-panel .cpf select { width: 100%; } .cp-panel input[type=range] { padding: 0; }
 #tab-copilot { overflow: auto; }
 .upd { margin-top: 14px; display: grid; gap: 8px; }
 

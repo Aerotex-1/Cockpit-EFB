@@ -43,19 +43,6 @@
     <div class="card"><h2>Copilot am PC</h2>
       <p class="note">Das Copilot-Fenster spricht über die Kopfhörer des PCs und hört per Mikrofon zu. Auf dem iPad siehst du nur die Checkliste: Haken, die du per Sprache setzt, erscheinen dort sofort, und du kannst dort auch Listen antippen. Sag zum Beispiel „Let's do the Cockpit Preparation checklist“.</p>
       <div class="row"><button id="cpOpen" class="primary">Copilot-Fenster öffnen</button></div>
-      <label class="chk"><input type="checkbox" id="cpOnStart"> Copilot-Fenster automatisch öffnen, wenn der Server startet</label>
-    </div>
-    <div class="card"><h2>Spracherkennung (Open Source, offline)</h2>
-      <p class="note" id="sttNote">Whisper erkennt deine Sprache direkt auf dem PC, ohne Internet und ohne Cloud. Beim ersten Mal lädt die App das Programm (4 MB) und das Modell nach. Wenn sie dich nicht gut versteht, nimm „Klein (genauer)“.</p>
-      <div id="sttList" class="vlist"></div>
-      <p id="sttMsg" class="note"></p>
-    </div>
-    <div class="card"><h2>Sim-Modul (Community-Ordner)</h2>
-      <p class="note">Das kleine Modul „cockpit-efb-link“ verbindet den Simulator mit dem EFB. Die App sucht den Community-Ordner von MSFS 2024 selbst (Store und Steam) und hält das Modul dort aktuell. Findet sie ihn nicht, wählst du ihn selbst.</p>
-      <p id="comState" class="note"></p>
-      <label class="chk"><input type="checkbox" id="comAuto"> Modul beim Start und nach EFB-Updates automatisch installieren bzw. erneuern</label>
-      <div class="row"><button id="comInstall">Jetzt installieren / erneuern</button><button id="comPick">Ordner selbst wählen …</button><button id="comReset">Wieder automatisch suchen</button></div>
-      <p id="comMsg" class="note"></p>
     </div>
     <div class="card"><h2>Eigene Sounds für das Bodenpersonal (MP3)</h2>
       <p class="note">Statt der Computerstimme kann das Bodenpersonal eigene Aufnahmen abspielen (MP3, WAV oder OGG). Ohne Datei spricht die eingebaute Stimme. Die Dateien liegen im EFB-Ordner unter „sounds“ und bleiben bei Updates erhalten.</p>
@@ -78,6 +65,25 @@
       <label class="chk"><input type="checkbox" id="cMic"> Mikrofon benutzen</label>
       <label class="chk"><input type="checkbox" id="cAuto"> Copilot im Browser automatisch einschalten (nach dem ersten Klick)</label>
     </div>
+  </section>
+
+  <section id="p-settings" class="page">
+    <div class="card"><h2>Allgemein</h2>
+      <label class="chk"><input type="checkbox" id="sAutoStart"> Server beim Start der App starten</label>
+      <label class="chk"><input type="checkbox" id="sBrowser"> Browser mit der EFB beim Serverstart öffnen</label>
+      <label class="chk"><input type="checkbox" id="cpOnStart"> Copilot-Fenster automatisch öffnen, wenn der Server startet</label>
+      <label class="chk"><input type="checkbox" id="sLogin"> App mit Windows starten</label>
+      <label class="chk"><input type="checkbox" id="sClose"> Server beenden, wenn ich das Fenster schließe</label>
+      <label>„EFB öffnen“ standardmäßig<select id="sOpenIn"><option value="browser">im Browser</option><option value="window">im App-Fenster</option></select></label>
+      <label>Port des Servers<input type="number" id="sPort" min="1024" max="65535"></label>
+      <div class="row"><button id="sSave" class="primary">Speichern</button><span id="sMsg" class="note"></span></div></div>
+    <div id="grpVoice">
+    <h3 class="grp">Sprache und Stimmen</h3>
+    <div class="card"><h2>Spracherkennung (Open Source, offline)</h2>
+      <p class="note" id="sttNote">Whisper erkennt deine Sprache direkt auf dem PC, ohne Internet und ohne Cloud. Beim ersten Mal lädt die App das Programm (4 MB) und das Modell nach. Wenn sie dich nicht gut versteht, nimm „Klein (genauer)“.</p>
+      <div id="sttList" class="vlist"></div>
+      <p id="sttMsg" class="note"></p>
+    </div>
     <div class="card"><h2>Natürliche Stimmen (Kokoro, Englisch)</h2>
       <p class="note">Deutlich menschlichere englische Stimmen für die Bodencrew und den englischen Copiloten, offline und kostenlos (Kokoro-82M, Apache-2.0). Einmalig ca. 130 MB. Deutsch bleibt bei den Stimmen unten. Neue Sätze brauchen je nach PC ein bis drei Sekunden zum Erzeugen, häufige Meldungen werden vorab berechnet.</p>
       <div id="kkBox" class="vlist"></div>
@@ -88,17 +94,15 @@
       <div id="vList" class="vlist"></div>
       <p id="vMsg" class="note"></p>
     </div>
-  </section>
-
-  <section id="p-settings" class="page">
-    <div class="card"><h2>Allgemein</h2>
-      <label class="chk"><input type="checkbox" id="sAutoStart"> Server beim Start der App starten</label>
-      <label class="chk"><input type="checkbox" id="sBrowser"> Browser mit der EFB beim Serverstart öffnen</label>
-      <label class="chk"><input type="checkbox" id="sLogin"> App mit Windows starten</label>
-      <label class="chk"><input type="checkbox" id="sClose"> Server beenden, wenn ich das Fenster schließe</label>
-      <label>„EFB öffnen“ standardmäßig<select id="sOpenIn"><option value="browser">im Browser</option><option value="window">im App-Fenster</option></select></label>
-      <label>Port des Servers<input type="number" id="sPort" min="1024" max="65535"></label>
-      <div class="row"><button id="sSave" class="primary">Speichern</button><span id="sMsg" class="note"></span></div></div>
+    </div>
+    <h3 class="grp">Simulator</h3>
+    <div class="card"><h2>Sim-Modul (Community-Ordner)</h2>
+      <p class="note">Das kleine Modul „cockpit-efb-link“ verbindet den Simulator mit dem EFB. Die App sucht den Community-Ordner von MSFS 2024 selbst (Store und Steam) und hält das Modul dort aktuell. Findet sie ihn nicht, wählst du ihn selbst.</p>
+      <p id="comState" class="note"></p>
+      <label class="chk"><input type="checkbox" id="comAuto"> Modul beim Start und nach EFB-Updates automatisch installieren bzw. erneuern</label>
+      <div class="row"><button id="comInstall">Jetzt installieren / erneuern</button><button id="comPick">Ordner selbst wählen …</button><button id="comReset">Wieder automatisch suchen</button></div>
+      <p id="comMsg" class="note"></p>
+    </div>
   </section>
 
   <section id="p-updates" class="page">

@@ -35,6 +35,7 @@ function renderEdition(s) {
   (e.tabs || []).forEach((t) => { TABN[t.id] = t.label; });
   const cur = e.current || {}, tabs = cur.tabs || [];
   $('#navCopilot').hidden = !!tabs.length && !tabs.includes('copilot'); // ohne Copilot in der gewählten Version keine Copilot-Seite
+  $('#grpVoice').hidden = $('#navCopilot').hidden; // Sprachpakete nur mit Copilot
   $('#edHome').textContent = e.supported ? `Aktiv: ${cur.name}${cur.id === 'custom' ? '' : ''} (${tabs.length} Tabs). ${cur.id === 'voice' ? 'Die Einstellungen steuerst du auch im Sim-EFB unter „Cockpit EFB Link“.' : ''}` : 'Die installierte EFB kennt noch keine Versionen (Updates → EFB aktualisieren).';
   const chosen = !!(s.settings && s.settings.editionChosen);
   $('#edBadge').hidden = chosen || !e.supported; $('#edFirst').hidden = chosen;

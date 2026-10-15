@@ -1620,24 +1620,25 @@
       <div id="cpMain" class="cpv-main"><div class="cpv-card"><h3>Copilot</h3>
         <div class="cp-row"><button class="btn-s" id="cpToggle">Copilot starten</button><span id="cpState" class="cp-state"></span></div>
         <small id="cpNote"></small></div>
-      <div class="cpv-card"><h3>Stimme &amp; Sprache</h3><div class="cp-row">
-        <select id="cpLang"><option value="de">Deutsch</option><option value="en">English</option></select>
-        <select id="cpVoice" title="Stimme"></select>
-        <select id="cpVoiceEn" title="Stimme für englische Wörter"></select>
-        <select id="cpVoiceGr" title="Stimme des Bodenpersonals (GSX)"></select>
-        <label class="cp-rate">Tempo <input type="range" id="cpRate" min="0.8" max="1.4" step="0.05"></label>
-        <label class="cp-chk"><input type="checkbox" id="cpMic"> Mikrofon</label>
-        <label class="cp-chk"><input type="checkbox" id="cpAuto"> Automatisch starten</label>
-        <label class="cp-chk"><input type="checkbox" id="cpPacks"> Start mit Packs AUS (Performance)</label>
-        <label class="cp-chk"><input type="checkbox" id="cpGsxKeys"> GSX-Menü per Zifferntaste bedienen (nur wenn die Auswahl, z. B. beim Pushback, sonst nicht ankommt; MSFS muss laufen)</label>
-        <label class="cp-rate">Natürlicher sprechen (gelegentlich „um“/„äh“) <select id="cpHuman"><option value="off">aus</option><option value="low">selten</option><option value="mid">etwas öfter</option></select></label>
-        <label class="cp-rate">Triebwerks-Hinweis beim Pushback <select id="cpPushEng"><option value="mix">wechselnd</option><option value="clear">Freigabe zum Start</option><option value="call">warten, bis Ground ruft</option><option value="wait">warten bis Pushback fertig</option></select></label></div></div>
-      <div class="cpv-card"><h3>Mehr Leben</h3><small>Der Copilot spricht auch von sich aus. Gilt nur, solange er an und nicht stumm ist.</small><div class="cp-row">
-        <label class="cp-chk"><input type="checkbox" id="cpLifeTaxi"> Rollweg-Ansagen (aus der Route in der Karte)</label>
-        <label class="cp-chk"><input type="checkbox" id="cpLifeTraffic"> Verkehrshinweise (VATSIM)</label>
-        <label class="cp-chk"><input type="checkbox" id="cpLifeCalls"> Callouts (80 Knoten, V1, Rotate, 10.000 ft)</label>
-        <label class="cp-chk"><input type="checkbox" id="cpLifeGround"> Bodencrew meldet sich selbst (Triebwerksstart frei, Abkoppeln, Ankunft)</label>
-        <label class="cp-chk"><input type="checkbox" id="cpLifePush"> Bodencrew spricht auch während des Pushbacks (sonst übernimmt GSX)</label></div></div>
+      <div class="cpv-card"><h3>Stimme &amp; Sprache</h3><div class="cpv-grid">
+        <label class="cpf"><span class="cpf-l">Sprache</span><select id="cpLang"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+        <label class="cpf"><span class="cpf-l">Stimme</span><select id="cpVoice" title="Stimme"></select></label>
+        <label class="cpf"><span class="cpf-l">Englische Wörter</span><select id="cpVoiceEn" title="Stimme für englische Wörter"></select></label>
+        <label class="cpf"><span class="cpf-l">Bodencrew (GSX)</span><select id="cpVoiceGr" title="Stimme des Bodenpersonals (GSX)"></select></label>
+        <label class="cpf"><span class="cpf-l">Tempo</span><input type="range" id="cpRate" min="0.8" max="1.4" step="0.05"></label>
+        <label class="cpf"><span class="cpf-l">Natürlicher sprechen</span><select id="cpHuman"><option value="off">aus</option><option value="low">selten</option><option value="mid">etwas öfter</option></select></label></div></div>
+      <div class="cpv-card"><h3>Verhalten</h3>
+        <label class="sw-row"><span>Mikrofon benutzen<small>Der Copilot hört auf deine Antworten.</small></span><span class="sw"><input type="checkbox" id="cpMic"><i></i></span></label>
+        <label class="sw-row"><span>Automatisch starten<small>Der Copilot schaltet sich beim Öffnen der EFB selbst ein.</small></span><span class="sw"><input type="checkbox" id="cpAuto"><i></i></span></label>
+        <label class="sw-row"><span>Start mit Packs AUS (Performance)<small>Klimaanlagen beim Start abgeschaltet.</small></span><span class="sw"><input type="checkbox" id="cpPacks"><i></i></span></label>
+        <label class="sw-row"><span>GSX-Menü per Zifferntaste bedienen<small>Nur nötig, wenn die Auswahl, z. B. beim Pushback, sonst nicht ankommt. MSFS muss laufen.</small></span><span class="sw"><input type="checkbox" id="cpGsxKeys"><i></i></span></label>
+        <div class="cpv-grid"><label class="cpf"><span class="cpf-l">Triebwerks-Hinweis beim Pushback</span><select id="cpPushEng"><option value="mix">wechselnd</option><option value="clear">Freigabe zum Start</option><option value="call">warten, bis Ground ruft</option><option value="wait">warten bis Pushback fertig</option></select></label></div></div>
+      <div class="cpv-card"><h3>Mehr Leben</h3><small>Der Copilot spricht auch von sich aus. Gilt nur, solange er an und nicht stumm ist.</small>
+        <label class="sw-row"><span>Rollweg-Ansagen<small>Aus der Route in der Karte.</small></span><span class="sw"><input type="checkbox" id="cpLifeTaxi"><i></i></span></label>
+        <label class="sw-row"><span>Verkehrshinweise (VATSIM)</span><span class="sw"><input type="checkbox" id="cpLifeTraffic"><i></i></span></label>
+        <label class="sw-row"><span>Callouts<small>80 Knoten, V1, Rotate, 10.000 ft.</small></span><span class="sw"><input type="checkbox" id="cpLifeCalls"><i></i></span></label>
+        <label class="sw-row"><span>Bodencrew meldet sich selbst<small>Triebwerksstart frei, Abkoppeln, Ankunft.</small></span><span class="sw"><input type="checkbox" id="cpLifeGround"><i></i></span></label>
+        <label class="sw-row"><span>Bodencrew spricht auch während des Pushbacks<small>Sonst übernimmt GSX.</small></span><span class="sw"><input type="checkbox" id="cpLifePush"><i></i></span></label></div>
       <div class="cpv-card" id="cpAmb"></div>
       <div class="cpv-card" id="cpDev"><small id="cpDevHint"><b>Audio-Geräte:</b> Mikrofon und Lautsprecher stellst du im Copilot-Fenster am PC ein.</small></div>
       <div class="cpv-card"><h3>Verlauf</h3><div id="cpLog" class="cp-log"></div>
