@@ -55,7 +55,7 @@ const RemoteEfb = (() => {
           ${tile('jetway', 'Fluggastbrücke')}${tile('stairs', 'Treppe')}${tile('catering', 'Catering-Truck')}${tile('baggage', 'Gepäckwagen')}
           ${tile('fuelTruck', 'Tankwagen', 'gFuel')}${tile('gpu', 'GPU', 'gGpu')}${s.ground.asu !== null ? tile('asu', 'Klimawagen (ASU)', 'gAsu') : ''}
         </div>
-        ${s.std ? '<p class="note" id="doorRaw"></p><p class="note">Die Zuordnung der Türen wird beim ersten Antippen gelernt (die Tür, die sich im Sim bewegt, gehört danach zur Kachel). Bei diesem Flieger gehen die Standard-Bodendienste des Sims (Türen, Fluggastbrücke, Wagen). Bei Add-ons mit eigenem System, etwa PMDG, nutzt du Türen und Bodenstrom besser im Cockpit oder über GSX.</p>' : `<h3>Bodenausrüstung</h3><div class="tiles">${tile('chocks', 'Bremsklötze', 'gChocks')}${tile('cones', 'Kegel', 'gCones')}</div>
+        ${s.std ? '<p class="note"><button class="btn-s" id="moreDoors">Weitere Türen (7–12) anzeigen</button> Frachttüren und Zusatztüren melden sich bei manchen Fliegern unter höheren Nummern.</p><p class="note" id="doorRaw"></p><p class="note">Die Zuordnung der Türen wird beim ersten Antippen gelernt (die Tür, die sich im Sim bewegt, gehört danach zur Kachel). Bei diesem Flieger gehen die Standard-Bodendienste des Sims (Türen, Fluggastbrücke, Wagen). Bei Add-ons mit eigenem System, etwa PMDG, nutzt du Türen und Bodenstrom besser im Cockpit oder über GSX.</p>' : `<h3>Bodenausrüstung</h3><div class="tiles">${tile('chocks', 'Bremsklötze', 'gChocks')}${tile('cones', 'Kegel', 'gCones')}</div>
         <p class="note">Klötze und Kegel erscheinen, wenn der Flieger steht und die Triebwerke aus sind. Die Einstellung gilt bis zum nächsten Laden des Fliegers.</p>`}`;
     } else if (rtab === 'fuel') {
       html = `<div class="big-row">
@@ -155,7 +155,7 @@ const RemoteEfb = (() => {
     if (!d || !s.kind) return;
     if (rtab === 'ground') {
       const g = s.ground;
-      g.doors.forEach((x) => setTile($(`[data-door="${x.i}"]`), x.open > 0.9, x.open > 0.9 ? 'Offen' : x.open > 0.05 ? 'Bewegt sich' : 'Zu', x.open > 0.05 && x.open <= 0.9 ? 'st-4' : null));
+      $$('[data-door]').forEach((el) => { const i = Number(el.dataset.door), x = g.doors[i], open = x ? x.open : (((g.doorRaw || [])[i]) || 0) / 100; setTile(el, open > 0.9, open > 0.9 ? 'Offen' : open > 0.05 ? 'Bewegt sich' : 'Zu', open > 0.05 && open <= 0.9 ? 'st-4' : null); });
       setTile($('#gFuel'), g.fuelTruck > 0.5, g.fuelTruck > 0.5 ? 'Angeschlossen' : 'Antippen');
       setTile($('#gGpu'), g.gpu, g.gpu ? 'Strom verfügbar' : 'Antippen');
       setTile($('#gAsu'), g.asu, g.asu ? 'An' : 'Aus');
@@ -235,6 +235,7 @@ const RemoteEfb = (() => {
     if (!t || !t.closest('#tab-efb')) return;
     const s = st();
     if (t.dataset.rtab) { rtab = t.dataset.rtab; store.set('rtab', rtab); skeleton(); return; }
+    if (t.id === 'moreDoors') { const box = $('#gDoors'); if (box) { for (let i = 6; i < 12; i++) if (!box.querySelector(`[data-door="${i}"]`)) box.insertAdjacentHTML('beforeend', `<button class="tile" data-door="${i}"><span class="t-name">Tür ${i + 1}</span><span class="t-state" data-door-st="${i}"></span></button>`); t.hidden = true; update(); } return; }
     if (t.dataset.door !== undefined) act('door', Number(t.dataset.door));
     if (t.dataset.ract) act(t.dataset.ract);
     if (t.id === 'fSet') { const v = Number($('#fIn').value); if (v >= 0) act('fuelTarget', v).then((r) => r.ok && flash(`Ziel ${fmt(v)} kg gesetzt.`)); }

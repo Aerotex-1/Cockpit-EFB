@@ -900,3 +900,4 @@ input[type=range] { accent-color: var(--cyan); }
 /* Ausgaben: Tabs, die nicht zur gewählten Ausgabe gehören */
 .pb[hidden] { display: none !important; }
 .tab[data-off] { display: none !important; }
+.cp-log .cp-pend { opacity: .6; font-style: italic; }

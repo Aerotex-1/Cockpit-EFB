@@ -20,6 +20,9 @@
     for (let i = 0; i < n; i++) { const a = Math.floor(i * r), e = Math.min(f.length, Math.floor((i + 1) * r)); let s = 0; for (let k = a; k < e; k++) s += f[k]; o[i] = s / Math.max(1, e - a); }
     return o;
   }
+  // Anzahl der Aufnahmen, die noch erkannt werden: der Verlauf zeigt „…“, damit man sieht, dass etwas ankam
+  let pend = 0;
+  const pd = (d) => { pend = Math.max(0, pend + d); const C = window.Copilot; if (C && C.sttPending) C.sttPending(pend); };
   function reset() { pre = []; buf = []; voiced = 0; silent = 0; speaking = false; sumRms = 0; nRms = 0; }
   function flush() {
     const parts = buf; const v = voiced; reset();
@@ -31,9 +34,9 @@
     if (pk > 0.005) { const g = Math.min(10, 0.8 / pk); if (g > 1.1) for (let i = lead; i < lead + n; i++) all[i] *= g; } // leises Mikrofon anheben
     const o2 = opts ? opts(short) : {};
     const url = '/api/stt?lang=' + encodeURIComponent(o2.lang || 'auto') + '&prompt=' + encodeURIComponent(o2.prompt || '');
-    const my = ++tok, body = wav(all), t0 = performance.now(), ep = epoch;
-    busy = busy.then(() => { if (ep !== epoch || (my !== tok && tok - my >= 2) || performance.now() - t0 > 8000) return; // zu alt: verwerfen, damit die Wartezeit nicht wächst
-       return fetch(url, { method: 'POST', body }).then((r) => r.json()).then((j) => { window.WhisperMic.last = { ms: Math.round(performance.now() - t0), srv: j && j.ms, via: j && j.via }; if (ep !== epoch) return; if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}); });
+    const my = ++tok, body = wav(all), t0 = performance.now(), ep = epoch; pd(1);
+    busy = busy.then(() => { if (ep !== epoch || (my !== tok && tok - my >= 2) || performance.now() - t0 > 8000) { pd(-1); return; } // zu alt: verwerfen, damit die Wartezeit nicht wächst
+       return fetch(url, { method: 'POST', body }).then((r) => r.json()).then((j) => { window.WhisperMic.last = { ms: Math.round(performance.now() - t0), srv: j && j.ms, via: j && j.via }; if (ep !== epoch) return; const ms = Math.round(performance.now() - t0); if (ms > 12000 && window.Copilot && window.Copilot.sttSlow) window.Copilot.sttSlow(ms); if (j && j.skipped) return; if (j && j.text && on && !paused) cb(j.text); else if (j && j.text === '' && window.Copilot && window.Copilot.sttEmpty) window.Copilot.sttEmpty(); else if (j && j.error && window.Copilot && window.Copilot.sttError) window.Copilot.sttError(j.error); }).catch(() => {}).then(() => pd(-1)); });
   }
   function onAudio(ev) {
     if (!on) return;

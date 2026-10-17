@@ -4,7 +4,13 @@
 const http = require('http');
 
 const KEY = /^(?:(?:Ctrl|Alt|Shift|Super)\+)*(?:[A-Z0-9]|F(?:[1-9]|1\d|2[0-4])|num(?:[0-9]|add|sub|mult|div|dec)|Up|Down|Left|Right|Space|Tab|Enter|Backspace|Insert|Delete|Home|End|PageUp|PageDown|Plus|-|=|,|\.|;|\/|\\)$/;
-const valid = (a) => typeof a === 'string' && a.length <= 40 && KEY.test(a) && !/^(Ctrl|Alt|Shift|Super)\+?$/.test(a);
+// Tasten, die man ohne Strg/Alt gar nicht belegen darf: sonst wären sie im ganzen System blockiert (z. B. Enter, Leertaste, Buchstaben).
+const FREE = /^(F(?:[1-9]|1\d|2[0-4])|num(?:[0-9]|add|sub|mult|div|dec)|Insert|Home|End|PageUp|PageDown)$/;
+const valid = (a) => {
+  if (typeof a !== 'string' || a.length > 40 || !KEY.test(a) || /^(Ctrl|Alt|Shift|Super)\+?$/.test(a)) return false;
+  const parts = a.split('+'), key = parts[parts.length - 1];
+  return FREE.test(key) || parts.slice(0, -1).some((m) => m === 'Ctrl' || m === 'Alt' || m === 'Super');
+};
 
 function req(port, method, path, body) {
   return new Promise((resolve, reject) => {

@@ -1,5 +1,15 @@
 # Änderungen
 
+## 1.3.4
+- **Weitere Türen:** Bei Fliegern ohne eigene Schnittstelle (z. B. iniBuilds A330) überwacht die EFB jetzt bis zu 16 Ausgänge des Sims statt 8, und im Reiter „Bodendienste“ gibt es „Weitere Türen (7–12) anzeigen“. Damit lassen sich Frachttüren steuern, wenn der Flieger sie als zusätzliche Tür meldet. Die Zeile „Sim-Türwerte (Diagnose)“ zeigt alle 16 Werte. **Nicht getestet im echten Sim:** Ob die Frachttüren des A330 überhaupt als Tür-Nummern gemeldet werden (und nicht nur über die eigene Türen-Seite des Fliegers), weiß ich nicht.
+- Die Mute-Tastenkürzel der Windows-App (App 1.4.4) nehmen keine reinen Schreibtasten mehr an: „Enter“ als Kürzel blockierte die Enter-Taste im ganzen System. Gespeicherte unzulässige Tasten werden beim Start entfernt.
+
+## 1.3.3
+- **Weniger Last neben dem Simulator:** Spracherkennung (Whisper) und Sprachausgabe (Kokoro/Piper) benutzen jetzt höchstens ein Drittel der Rechenkerne (vorher bis zur Hälfte bzw. fast alle) und laufen mit niedrigerer Priorität als der Simulator. Das Vorberechnen häufiger Ground-Sätze läuft nur noch im Stand, nicht mehr beim Rollen.
+- **Lange Wartezeiten bei der Spracherkennung:** Brauchte eine Aufnahme zu lange, wurde der schnelle Whisper-Server nach drei Zeitüberschreitungen dauerhaft abgeschaltet; danach lud jede Aufnahme das Modell neu und wurde nach 25 s abgebrochen („whisper beendet mit null“). Jetzt bleibt der Server in Betrieb (Zeitlimit 45 s), nach einem echten Fehler wird er nach zwei Minuten neu versucht, und beim Einzelprogramm gilt ein Zeitlimit von 60 s mit klarer Meldung („zu langsam, abgebrochen“). Es wartet höchstens eine weitere Aufnahme; ältere werden verworfen, statt dass sich die Wartezeit aufbaut.
+- **Verlauf:** Sobald du etwas gesagt hast, erscheint sofort „Du … wird erkannt“. Dauert die Erkennung länger als 12 s, steht (höchstens alle 2 Minuten) ein Hinweis im Verlauf.
+- Nur im Code und mit einer Attrappe getestet; die Last neben MSFS/Fenix habe ich nicht messen können.
+
 ## 1.3.2
 - **Taxi-Ansage „Continue straight“ bei einem Bogen:** Führt ein Rollweg in einem weiten Bogen in den nächsten (z. B. S1 in B14), hat die Ansage „geradeaus“ gesagt, obwohl rechts bzw. links richtig war. Die Richtungsänderung wird jetzt über bis zu 70 m vor und nach der Kreuzung gemessen. Im Test mit nachgebauten Rollwegen (Bogen rechts, Bogen links, gerade, scharfe Ecke) kommt jetzt jedes Mal das Richtige heraus. Mit den echten EDDM-Daten konnte ich es nicht prüfen.
 - **After-Start-Checkliste:** Der Satz sagte „… am Gate vor dem Abflug“, obwohl man nach dem Pushback gar nicht mehr am Gate steht. Jetzt heißt es „… Triebwerksstart fertig“. Und nach einem Pushback fragt der Copilot erst 20–30 Sekunden, nachdem die Bodencrew „Pushback complete“ gesagt hat.

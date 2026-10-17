@@ -65,7 +65,7 @@ class Efb {
   _doorIdx(i) { return this._doorMap()[i] || (i + 1); }
   _doorToggle(i) {
     const s = this.sim, v = () => s.state.vars || {};
-    const snap = Array.from({ length: 8 }, (_, n) => Number(v()[`EXIT OPEN:${n + 1}`]) || 0);
+    const snap = Array.from({ length: 16 }, (_, n) => Number(v()[`EXIT OPEN:${n + 1}`]) || 0);
     const ok = s.sendEvent('TOGGLE_AIRCRAFT_EXIT', i + 1);
     const check = (final) => {
       let best = 0, at = 0;
@@ -104,7 +104,7 @@ class Efb {
     add('FUEL WEIGHT PER GALLON', 'kilograms');
     if (d.std) {
       Object.values(TANKS).forEach((t) => { add(t, 'gallons'); add(t.replace('QUANTITY', 'CAPACITY'), 'gallons'); });
-      for (let i = 1; i <= 8; i++) add(`EXIT OPEN:${i}`, 'percent over 100');
+      for (let i = 1; i <= 16; i++) add(`EXIT OPEN:${i}`, 'percent over 100');
       add('PAYLOAD STATION COUNT'); add('MAX GROSS WEIGHT', 'kilograms'); add('EMPTY WEIGHT', 'kilograms'); add('TOTAL WEIGHT', 'kilograms');
       for (let i = 1; i <= 24; i++) add(`PAYLOAD STATION WEIGHT:${i}`, 'kilograms');
       add('PUSHBACK ATTACHED', 'bool'); add('EXTERNAL POWER AVAILABLE:1', 'bool'); add('EXTERNAL POWER ON:1', 'bool');
@@ -215,7 +215,7 @@ class Efb {
     const cur = tanks.reduce((a, t) => a + t.cur, 0), max = tanks.reduce((a, t) => a + t.max, 0);
     const ground = {
       doors: d.doors.map((door, i) => ({ i, name: door.name, open: g(`EXIT OPEN:${this._doorIdx(i)}`) })),
-      doorRaw: Array.from({ length: 8 }, (_, i) => Math.round(g(`EXIT OPEN:${i + 1}`) * 100)),
+      doorRaw: Array.from({ length: 16 }, (_, i) => Math.round(g(`EXIT OPEN:${i + 1}`) * 100)),
       doorMsg: this.doorMsg && Date.now() < this.doorMsg.until ? this.doorMsg.text : '',
       fuelTruck: null, gpu: g('EXTERNAL POWER AVAILABLE:1') > 0 || g('EXTERNAL POWER ON:1') > 0, asu: null, chocks: null, cones: null, eqpVisible: null,
       pushback: g('PUSHBACK ATTACHED') > 0,

@@ -237,7 +237,7 @@ const server = http.createServer(async (req, res) => {
       if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' });
       const chunks = []; let size = 0;
       for await (const c of req) { size += c.length; if (size > 8e6) return sendJson(res, 413, { error: 'Audio zu lang.' }); chunks.push(c); }
-      try { const text = await stt.transcribe(Buffer.concat(chunks), { lang: url.searchParams.get('lang') || 'auto', prompt: url.searchParams.get('prompt') || '' }); return sendJson(res, 200, Object.assign({ text }, stt.info())); } catch (e) { return sendJson(res, 500, { error: e.message }); }
+      try { const text = await stt.transcribe(Buffer.concat(chunks), { lang: url.searchParams.get('lang') || 'auto', prompt: url.searchParams.get('prompt') || '' }); return sendJson(res, 200, text === null ? { text: '', skipped: true } : Object.assign({ text }, stt.info())); } catch (e) { return sendJson(res, 500, { error: e.message }); }
     }
     if (p === '/api/cl') {
       if (req.method === 'GET') return sendJson(res, 200, clState);

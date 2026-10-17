@@ -257,6 +257,8 @@ function accelFromEvent(e) {
   let k = null; const c = e.code || '';
   if (/^Key[A-Z]$/.test(c)) k = c.slice(3); else if (/^Digit[0-9]$/.test(c)) k = c.slice(5); else if (/^F([1-9]|1\d|2[0-4])$/.test(c)) k = c; else if (/^Numpad[0-9]$/.test(c)) k = 'num' + c.slice(6); else if (HK_NAMES[c]) k = HK_NAMES[c];
   if (!k) return null;
+  const mod = e.ctrlKey || e.altKey || e.metaKey;
+  if (!mod && !/^(F([1-9]|1\d|2[0-4])|num.*|Insert|Home|End|PageUp|PageDown)$/.test(k)) return 'nomod'; // Schreibtasten nur mit Strg/Alt: sonst sind sie überall im System blockiert
   return [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Super'].filter(Boolean).concat(k).join('+');
 }
 const HK = [['mic', 'hotkeyMic', '#hkMic', '#hkMicClr', '#hkMicMsg'], ['mute', 'hotkeyMute', '#hkMute', '#hkMuteClr', '#hkMuteMsg']];
@@ -264,9 +266,10 @@ const HK_TXT = { ok: 'Aktiv.', off: '', belegt: 'Diese Taste ist schon von einem
 function renderHotkeys(c, st) {
   for (const [k, key, inp, , msg] of HK) { if (document.activeElement !== $(inp)) $(inp).value = c[key] || ''; $(msg).textContent = c[key] ? (HK_TXT[st[k]] || '') : ''; }
 }
+const msgOf = (inp) => HK.find((h) => h[2] === inp)[4];
 for (const [k, key, inp, clr] of HK) {
   const save = async (v) => { const s = await bridge.invoke('settings:set', { [key]: v }); render(s); };
-  $(inp).onkeydown = (e) => { if (e.key === 'Tab') return; e.preventDefault(); if (e.key === 'Escape') { $(inp).blur(); return; } const a = accelFromEvent(e); if (a) { $(inp).value = a; $(inp).blur(); save(a); } };
+  $(inp).onkeydown = (e) => { if (e.key === 'Tab') return; e.preventDefault(); if (e.key === 'Escape') { $(inp).blur(); return; } const a = accelFromEvent(e); if (a === 'nomod') { $(inp).blur(); $(msgOf(inp)).textContent = 'Diese Taste ist zum Schreiben nötig (z. B. Enter). Kombiniere sie mit Strg oder Alt, oder nimm eine F-Taste oder eine Zehnertastatur-Taste.'; return; } if (a) { $(inp).value = a; $(inp).blur(); save(a); } };
   $(inp).onfocus = () => { $(inp).dataset.old = $(inp).value; $(inp).value = ''; $(inp).placeholder = 'Taste drücken … (Esc bricht ab)'; };
   $(inp).onblur = () => { if (!$(inp).value) $(inp).value = $(inp).dataset.old || ''; $(inp).placeholder = 'Nicht belegt – hier klicken, dann Taste drücken'; };
   $(clr).onclick = () => { $(inp).dataset.old = ''; $(inp).value = ''; save(''); };

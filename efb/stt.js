@@ -18,10 +18,18 @@ function clean(t) {
 }
 
 let busy = false; const queue = [];
-const slot = () => new Promise((res) => { if (!busy) { busy = true; res(); } else queue.push(res); });
-const release = () => { const n = queue.shift(); if (n) n(); else busy = false; };
+// Läuft gerade eine Erkennung, wartet höchstens eine weitere: eine noch ältere wird verworfen (sie wäre ohnehin veraltet,
+// und die Wartezeit würde sonst bei langsamem PC immer weiter wachsen).
+const slot = () => new Promise((res, rej) => {
+  if (!busy) { busy = true; return res(); }
+  while (queue.length >= 1) queue.shift().rej(Object.assign(new Error('übersprungen'), { skipped: true }));
+  queue.push({ res, rej });
+});
+const release = () => { const n = queue.shift(); if (n) n.res(); else busy = false; };
 
-const threads = () => String(Math.max(2, Math.min(6, os.cpus().length - 1)));
+// Rechenlast schonen: Spracherkennung läuft neben dem Simulator. Wenige Kerne und niedrige Priorität (Windows: „Niedriger als normal“).
+const lowPrio = (proc) => { try { if (proc && proc.pid) os.setPriority(proc.pid, os.constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* nicht überall erlaubt */ } };
+const threads = () => { const e = parseInt(process.env.EFB_WHISPER_THREADS, 10); return String(e > 0 ? e : Math.max(2, Math.min(4, Math.floor(os.cpus().length / 3)))); };
 
 // --- Schneller Weg: whisper-server bleibt mit geladenem Modell im Speicher (kein Neuladen pro Satz) ---
 const serverBin = () => {
@@ -30,18 +38,20 @@ const serverBin = () => {
   const p = path.join(path.dirname(b), 'whisper-server.exe'); return fs.existsSync(p) ? p : null;
 };
 let srv = null; // { proc, port, ready:Promise<boolean>, model }
-let srvFailed = 0;
+let srvFailed = 0, srvFailedAt = 0;
 function freePort() {
   return new Promise((res, rej) => { const s = require('net').createServer(); s.on('error', rej); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)); }); });
 }
 function stopServer() { if (srv) { try { srv.proc.kill(); } catch { /* weg */ } srv = null; } }
 async function startServer() {
   const sb = serverBin(), m = model();
+  if (srvFailed >= 3 && Date.now() - srvFailedAt > 120000) srvFailed = 0; // nach zwei Minuten neu versuchen
   if (!sb || !m || srvFailed >= 3) return null;
   if (srv && srv.model === m) return srv;
   stopServer();
   const port = await freePort();
   const proc = spawn(sb, ['-m', m, '--host', '127.0.0.1', '--port', String(port), '-t', threads(), '-bs', '1', '-bo', '1', '-nf', '-sns'], { cwd: path.dirname(sb), windowsHide: true });
+  lowPrio(proc);
   const me = { proc, port, model: m, ready: null };
   let dead = false;
   proc.on('error', () => { dead = true; }); proc.on('close', () => { dead = true; if (srv === me) srv = null; });
@@ -53,7 +63,7 @@ async function startServer() {
     return false;
   })();
   srv = me;
-  me.ready.then((ok) => { if (!ok) { srvFailed++; if (srv === me) stopServer(); } });
+  me.ready.then((ok) => { if (!ok) { srvFailed++; srvFailedAt = Date.now(); if (srv === me) stopServer(); } });
   return me;
 }
 async function viaServer(wav, lang, prompt) {
@@ -63,7 +73,7 @@ async function viaServer(wav, lang, prompt) {
   fd.append('file', new Blob([wav], { type: 'audio/wav' }), 'a.wav');
   fd.append('response_format', 'json'); fd.append('temperature', '0.0'); fd.append('language', lang);
   if (prompt) fd.append('prompt', prompt);
-  const r = await fetch(`http://127.0.0.1:${s.port}/inference`, { method: 'POST', body: fd, signal: AbortSignal.timeout(20000) });
+  const r = await fetch(`http://127.0.0.1:${s.port}/inference`, { method: 'POST', body: fd, signal: AbortSignal.timeout(45000) });
   if (!r.ok) throw new Error('whisper-server ' + r.status);
   const j = await r.json(); if (j && j.error) throw new Error(String(j.error));
   return (j && j.text) || '';
@@ -75,11 +85,12 @@ function viaCli(wav, lang, prompt) {
   if (prompt) args.push('--prompt', prompt);
   return new Promise((res, rej) => {
     const c = spawn(bin(), args, { cwd: path.dirname(bin()), windowsHide: true });
-    let o = '', e = '';
-    const to = setTimeout(() => { try { c.kill(); } catch { /* weg */ } }, 25000);
+    lowPrio(c);
+    let o = '', e = '', timedOut = false;
+    const to = setTimeout(() => { timedOut = true; try { c.kill(); } catch { /* weg */ } }, 60000);
     c.stdout.on('data', (d) => { o += d; }); c.stderr.on('data', (d) => { e += d; });
     c.on('error', (er) => { clearTimeout(to); rej(er); });
-    c.on('close', (code) => { clearTimeout(to); code === 0 ? res(o) : rej(new Error('whisper beendet mit ' + code + ': ' + e.slice(-200))); });
+    c.on('close', (code) => { clearTimeout(to); code === 0 ? res(o) : rej(Object.assign(new Error(timedOut ? 'zu langsam, abgebrochen (PC ausgelastet; ein kleineres Modell hilft)' : 'whisper beendet mit ' + code + ': ' + e.slice(-200)), { slow: timedOut })); });
   }).finally(() => { try { fs.unlinkSync(f); } catch { /* weg */ } });
 }
 
@@ -90,11 +101,15 @@ async function transcribe(wav, { lang = 'auto', prompt = '' } = {}) {
   if (!Buffer.isBuffer(wav) || wav.length < 1000 || wav.length > 8e6) throw new Error('Audio ungültig.');
   lang = /^(auto|de|en)$/.test(lang) ? lang : 'auto';
   prompt = String(prompt || '').slice(0, 700);
-  await slot();
+  try { await slot(); } catch (er) { if (er && er.skipped) return null; throw er; }
   const t0 = Date.now();
   try {
     let out = null;
-    try { out = await viaServer(wav, lang, prompt); lastVia = 'server'; } catch { out = null; stopServer(); srvFailed++; }
+    try { out = await viaServer(wav, lang, prompt); lastVia = 'server'; if (out !== null) srvFailed = 0; }
+    catch (er) {
+      if (er && (er.name === 'TimeoutError' || er.name === 'AbortError')) throw Object.assign(new Error('zu langsam, abgebrochen (PC ausgelastet; ein kleineres Modell hilft)'), { slow: true }); // Server bleibt, kein Umweg über das langsame Einzelprogramm
+      out = null; stopServer(); srvFailed++; srvFailedAt = Date.now();
+    }
     if (out === null) { out = await viaCli(wav, lang, prompt); lastVia = 'cli'; }
     lastMs = Date.now() - t0;
     const txt = clean(out);

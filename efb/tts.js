@@ -67,9 +67,10 @@ async function synth(text, voiceId, rate) {
       await new Promise((res, rej) => {
         const kd = v.kokoro ? kDir() : null;
         const args = v.kokoro
-          ? [`--kokoro-model=${path.join(kd, 'model.int8.onnx')}`, `--kokoro-voices=${path.join(kd, 'voices.bin')}`, `--kokoro-tokens=${path.join(kd, 'tokens.txt')}`, `--kokoro-data-dir=${path.join(kd, 'espeak-ng-data')}`, `--num-threads=${Math.max(2, Math.min(6, Math.floor(os.cpus().length / 2)))}`, `--sid=${v.kokoro}`, `--kokoro-length-scale=${+(1 / r).toFixed(3)}`, `--output-filename=${tmp}`, text.replace(/^-+/, '')]
+          ? [`--kokoro-model=${path.join(kd, 'model.int8.onnx')}`, `--kokoro-voices=${path.join(kd, 'voices.bin')}`, `--kokoro-tokens=${path.join(kd, 'tokens.txt')}`, `--kokoro-data-dir=${path.join(kd, 'espeak-ng-data')}`, `--num-threads=${Math.max(2, Math.min(4, Math.floor(os.cpus().length / 3)))}`, `--sid=${v.kokoro}`, `--kokoro-length-scale=${+(1 / r).toFixed(3)}`, `--output-filename=${tmp}`, text.replace(/^-+/, '')]
           : null;
         const c = args ? spawn(bin, args, { cwd: path.dirname(bin), windowsHide: true }) : spawn(bin, ['--model', v.file, '--output_file', tmp, '--length_scale', String(+(1 / r).toFixed(3)), '--sentence_silence', '0.22', '--noise_scale', '0.85', '--noise_w', '1.0'], { cwd: path.dirname(bin), windowsHide: true });
+        try { if (c.pid) os.setPriority(c.pid, os.constants.priority.PRIORITY_BELOW_NORMAL); } catch { /* nicht überall erlaubt */ } // neben dem Simulator: niedrige Priorität
         c.stdout.on('data', () => {}); let err = ''; c.stderr.on('data', (d) => { err += d; if (err.length > 4000) err = err.slice(-2000); });
         c.on('error', rej);
         c.on('close', (code) => (code === 0 && fs.existsSync(tmp) ? res() : rej(new Error('Piper-Fehler: ' + err.split(/\r?\n/).filter(Boolean).pop()))));

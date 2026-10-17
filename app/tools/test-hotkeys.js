@@ -2,8 +2,8 @@
 'use strict';
 const assert = require('assert'), http = require('http');
 const hk = require('../code/lib/hotkeys');
-for (const a of ['F9', 'Ctrl+Alt+M', 'numadd', 'Shift+F12', 'Ctrl+Space', 'Alt+num5']) assert(hk.valid(a), a);
-for (const a of ['', 'Ctrl', 'Ctrl+', 'm', 'Ctrl+Alt+Mm', 'F25', 'Foo+M', null]) assert(!hk.valid(a), String(a));
+for (const a of ['F9', 'Ctrl+Alt+M', 'numadd', 'Shift+F12', 'Ctrl+Space', 'Alt+num5', 'Ctrl+Enter', 'Insert']) assert(hk.valid(a), a);
+for (const a of ['', 'Ctrl', 'Ctrl+', 'm', 'Ctrl+Alt+Mm', 'F25', 'Foo+M', null, 'Enter', 'Space', 'Tab', 'Backspace', 'M', 'Shift+M', 'Shift+Enter', 'Up']) assert(!hk.valid(a), String(a));
 
 let mute = false, micmute = false; const events = [];
 const srv = http.createServer((q, r) => {

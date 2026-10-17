@@ -53,7 +53,7 @@ Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.4.2, enthält EFB 1.3.2)
+## Stand dieser Version (App 1.4.4, enthält EFB 1.3.4)
 
 - **Versionen der EFB (1.4.0):** Neue App-Seite „Version“ (beim ersten Start automatisch). Lite, Medium, Voll, Copilot & Ground und eigene Auswahl; alle stecken in derselben EFB, die App schreibt nur `edition.json` in den EFB-Ordner, die EFB blendet die übrigen Tabs aus (`editions.js` in der EFB definiert die Tabs je Version – dort ändern, wenn sich die Aufteilung ändern soll). Ohne `edition.json` gilt „Voll“. Die Copilot-Seite der App und das Copilot-Fenster entfallen in Versionen ohne Copilot. Test: `node app/tools/test-editions.js`.
 - **Aufgeräumt (1.4.1):** Die Seite „Einstellungen“ enthält jetzt alles Grundsätzliche: Allgemein (inkl. Copilot-Fenster beim Start), Sprachpakete (Spracherkennung, Kokoro, eingebaute Stimmen) und das Sim-Modul. Die Seite „Copilot“ zeigt nur noch Fenster, Stimme/Tempo und Sounds. Die Element-IDs sind gleich geblieben, nur die Karten sind verschoben (`renderer/index.html`).

@@ -146,6 +146,10 @@ let hotkeyState = { mic: 'off', mute: 'off' };
 function applyHotkeys() {
   try { hotkeyState = hotkeys.apply(globalShortcut, S, () => proc.port(), () => { try { shell.beep(); } catch { /* egal */ } }); }
   catch { hotkeyState = { mic: 'ungültig', mute: 'ungültig' }; }
+  // Unzulässige gespeicherte Tasten (z. B. „Enter“ aus einer älteren Version) werden entfernt, damit sie nichts im System blockieren
+  let fixed = false;
+  for (const [k, key] of [['mic', 'hotkeyMic'], ['mute', 'hotkeyMute']]) if (hotkeyState[k] === 'ungültig' && S[key]) { S[key] = ''; fixed = true; }
+  if (fixed) { try { settingsStore.save(SETTINGS_FILE, S, safe); } catch { /* egal */ } }
   return hotkeyState;
 }
 function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startWithWindows }); } catch { /* nicht unterstützt */ } }

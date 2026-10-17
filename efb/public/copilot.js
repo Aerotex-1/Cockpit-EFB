@@ -931,12 +931,12 @@
   // Häufige Ground-Sätze mit Kokoro vorab berechnen (im Hintergrund, nur am Boden), damit sie ohne Wartezeit kommen
   const WARM = ['Ground to Cockpit,', 'Ground, hello,', 'Go ahead.', 'Roger.', 'Say again, which service do you need?', 'Which direction do you want?', 'Confirm doors closed and bridge retracted.', 'Tug is on its way.', 'Release the parking brake when ready.', 'Brakes released, starting pushback.', 'Pushback complete, set parking brake.', 'Cleared to start engines, call me when both engines are stable.', 'Roger, disconnecting. Standing by for hand signals on your left.', 'Disconnect complete, you are clear on the left. Have a good flight!', 'Ground power connected, external power available.', 'Ground power disconnected.', 'Chocks are in place.', 'Chocks removed.', 'Boarding complete, doors are being closed.', 'Refueling complete, fuel truck is leaving.', 'Welcome. Chocks are in place, ground power is available on request.', 'Boarding requested.', 'Catering requested.', 'Refueling requested.', 'Negative, set parking brake first.'];
   try { for (const arr of [...Object.values(PH_ACK), ...Object.values(PH_PROG), ...Object.values(PH_DONE), ...Object.values(PH_MISC)]) for (const t of arr) if (!WARM.includes(t) && t.length < 90) WARM.push(t); } catch (e) { /* weiter */ }
-  let warmKey = '';
+  let warmKey = ''; // Vorberechnen nur im Stand (nicht beim Rollen), damit der Sim nicht ruckelt
   async function prewarm() {
     if (!HOST) return; const id = groundVoice(); if (!id || !id.startsWith('kokoro-')) return;
     const key = id + '|' + pref.rate; if (warmKey === key) return; warmKey = key;
     for (const t of WARM) {
-      for (let i = 0; i < 400; i++) { const sm = app.sim || {}; if (!S.speaking && !(sm.connected && !sm.onGround) && warmKey === key) break; await wait(1500); }
+      for (let i = 0; i < 400; i++) { const sm = app.sim || {}; if (!S.speaking && !(sm.connected && !sm.onGround) && (sm.gs || 0) < 3 && warmKey === key) break; await wait(1500); }
       if (warmKey !== key) return;
       await fetch(piperUrl(id, t)).then((r) => r.arrayBuffer()).catch(() => {});
       await wait(400);
@@ -1518,7 +1518,7 @@
   }
 
   // ---------- Oberfläche ----------
-  let panel;
+  let panel, sttPend = 0, sttSlowAt = 0;
   function ui() {
     if (!panel) return;
     const on = remote() ? hostActive : S.on, de = pref.lang === 'de';
@@ -1527,7 +1527,7 @@
     tg.classList.toggle('on', on);
     const st = panel.querySelector('#cpState');
     st.textContent = muted ? (de ? '🔇 alles stumm' : '🔇 all muted') : micMuted && !remote() ? (de ? '🎤✕ Mikrofon aus' : '🎤✕ mic off') : remote() ? (on ? (de ? 'Läuft am PC' : 'Running on the PC') : (de ? 'Am PC nicht aktiv' : 'Not active on the PC')) : !on ? (de ? 'Aus' : 'Off') : S.speaking ? (de ? '🔊 spricht' : '🔊 speaking') : S.listening ? (de ? '🎤 hört zu' : '🎤 listening') : (de ? 'An' : 'On');
-    panel.querySelector('#cpLog').innerHTML = S.log.map((m) => `<div class="cp-${m.who === 'Du' ? 'me' : 'cp'}"><b>${esc(m.who)}</b> ${esc(m.text)}</div>`).join('') || `<div class="cp-empty">${de ? 'Noch nichts gesprochen.' : 'Nothing said yet.'}</div>`;
+    panel.querySelector('#cpLog').innerHTML = S.log.map((m) => `<div class="cp-${m.who === 'Du' ? 'me' : 'cp'}"><b>${esc(m.who)}</b> ${esc(m.text)}</div>`).join('') + (sttPend > 0 ? `<div class="cp-me cp-pend"><b>Du</b> … ${de ? 'wird erkannt' : 'recognising'}</div>` : '') || `<div class="cp-empty">${de ? 'Noch nichts gesprochen.' : 'Nothing said yet.'}</div>`;
     renderMsgs();
     panel.classList.toggle('on', on);
     panel.classList.toggle('cp-remote', remote());
@@ -1768,7 +1768,7 @@
     if (!HOST || !S.on || S.mode !== 'run' || S.speaking || k !== 'cl.' + checklistKey()) return;
     if ((progOf()[S.list] || [])[S.item]) advance();
   }
-  window.Copilot = { _core: { ready, eng0, ph0, lists, T, prefetch, pushSemTest: (t, i) => pushSem(t, i), pushEnded, pbOn: () => pbOn(), nums, verify, misc, say: (t, l, o) => say(t, l, o), groundLine, call, brk, gsxReady, lifeOn, pushBusy, engineClear, disconnectNow, efbAct, S, pref, isMuted: () => muted, spoken, rwySay, rwyTxt, itemLang, post }, freqOf, rwyOf, spellOut, setMuted, plannedRwy, parts, handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
+  window.Copilot = { _core: { ready, eng0, ph0, lists, T, prefetch, pushSemTest: (t, i) => pushSem(t, i), pushEnded, pbOn: () => pbOn(), nums, verify, misc, say: (t, l, o) => say(t, l, o), groundLine, call, brk, gsxReady, lifeOn, pushBusy, engineClear, disconnectNow, efbAct, S, pref, isMuted: () => muted, spoken, rwySay, rwyTxt, itemLang, post }, freqOf, rwyOf, spellOut, setMuted, plannedRwy, parts, handle, state: S, nums, verify, phase, start, stop, _pref: pref, onEvent, onRemoteTick, intentList, gsxCmd, codesOf, dirOf, pickIdx, utTokens, hasSpecific, sttError: (m) => log('System', 'Spracherkennung: ' + m), sttPending: (n) => { sttPend = n; ui(); }, sttSlow: (ms) => { if (Date.now() - sttSlowAt < 120000) return; sttSlowAt = Date.now(); log('System', pref.lang === 'de' ? `Spracherkennung braucht gerade ${Math.round(ms / 1000)} s (PC ausgelastet). Ein kleineres Modell in der App hilft.` : `Speech recognition is taking ${Math.round(ms / 1000)} s right now (PC busy). A smaller model in the app helps.`); }, sttEmpty: () => log('System', pref.lang === 'de' ? '(gehört, aber nichts verstanden)' : '(heard something, could not understand)') };
   const boot = () => { build(); muteBtn(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
