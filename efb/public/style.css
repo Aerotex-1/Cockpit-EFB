@@ -54,7 +54,9 @@ button, input, select { font: inherit; color: inherit; }
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border: 1px solid var(--line); border-radius: 18px;
 }
-.strip-ac { display: flex; align-items: center; gap: 12px; }
+.strip-ac { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 0 1 auto; }
+.strip > * { min-width: 0; }
+.strip-live { flex: none; white-space: nowrap; }
 .lamp { width: 10px; height: 10px; border-radius: 50%; background: #5a3a12; }
 .lamp.ok { background: var(--green); box-shadow: 0 0 0 4px rgba(var(--green-rgb),.16); }
 .lamp.warn { background: var(--amber); box-shadow: 0 0 0 4px rgba(var(--amber-rgb),.16); }
@@ -66,7 +68,7 @@ button, input, select { font: inherit; color: inherit; }
 .strip-flight b { color: var(--green); font-weight: 400; }
 .strip-live { margin-left: auto; display: flex; gap: 22px; font-family: var(--mono); font-size: 16px; }
 .strip-live span small { color: var(--grey); margin-right: 6px; font-family: var(--font); font-size: 12px; }
-.strip-clock { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--white); }
+.strip-clock { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--white); flex: none; white-space: nowrap; }
 .strip-clock small { font-size: 11px; color: var(--grey); margin-left: 5px; font-family: var(--font); font-weight: 400; }
 
 /* ---------- Navigation ---------- */
@@ -312,8 +314,14 @@ input:not([type=range]):focus { border-color: var(--cyan); outline: none; box-sh
 
 @media (max-width: 900px) {
   :root { --rail: 78px; }
-  .strip { gap: 14px; }
-  #acSelect { min-width: 0; }
+  .strip { gap: 12px; padding: 0 14px 0 12px; }
+  #acSelect { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+  .strip-live { gap: 14px; font-size: 15px; }
+  .strip-live span small { margin-right: 4px; }
+  .strip-clock { font-size: 21px; }
+  .strip-clock small { margin-left: 3px; }
+  .strip-atc { padding-left: 10px; padding-right: 10px; }
+  .strip-atc small { display: none; }
   .flight-grid, .perf-grid, .gsx-grid, .setup { grid-template-columns: 1fr; }
   .charts-layout, .check-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .strip-flight { display: none; }
@@ -901,3 +909,10 @@ input[type=range] { accent-color: var(--cyan); }
 .pb[hidden] { display: none !important; }
 .tab[data-off] { display: none !important; }
 .cp-log .cp-pend { opacity: .6; font-style: italic; }
+
+/* Schmale Fenster (iPad hochkant): zuerst weniger wichtige Teile ausblenden, damit die Uhr immer ganz sichtbar bleibt */
+@media (max-width: 800px) { .strip-live span:nth-child(3), .strip-airline { display: none; } .strip-atc span { display: none; } }
+@media (max-width: 700px) { .strip-live span:nth-child(2) { display: none; } .strip-clock small { display: none; } }
+/* ATC-Pille darf schrumpfen statt andere Anzeigen zu überlappen */
+.strip-atc { min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; }
+.strip-atc b { overflow: hidden; text-overflow: ellipsis; }

@@ -144,7 +144,7 @@ function communitySync(force) {
 
 let hotkeyState = { mic: 'off', mute: 'off' };
 function applyHotkeys() {
-  try { hotkeyState = hotkeys.apply(globalShortcut, S, () => proc.port(), () => { try { shell.beep(); } catch { /* egal */ } }); }
+  try { hotkeyState = hotkeys.apply(globalShortcut, S, () => proc.port(), () => { if (S.hotkeyBeep) { try { shell.beep(); } catch { /* egal */ } } }); }
   catch { hotkeyState = { mic: 'ungültig', mute: 'ungültig' }; }
   // Unzulässige gespeicherte Tasten (z. B. „Enter“ aus einer älteren Version) werden entfernt, damit sie nichts im System blockieren
   let fixed = false;

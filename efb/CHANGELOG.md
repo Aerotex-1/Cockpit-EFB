@@ -1,5 +1,9 @@
 # Änderungen
 
+## 1.3.5
+- **Türen beim A330 (und anderen Fliegern ohne eigene Schnittstelle):** „Tür 6“ ließ „Tür 5“ auf „öffnen“ springen, weil die Zuordnung Knopf → Sim-Ausgang nicht stimmte. Die EFB lernt die Zuordnung jetzt beim ersten Antippen aus der echten Reaktion des Sims, und zwar nur, wenn genau ein Ausgang eindeutig reagiert; sonst kommt die Meldung „keine eindeutige Reaktion im Sim“ und nichts wird falsch gespeichert. Doppelt belegte Kacheln zeigen „Antippen“ statt eines falschen Zustands. Neu: Knopf „Türzuordnung zurücksetzen“ im Reiter „Bodendienste“. **Nur mit einem nachgebauten Sim getestet**, nicht mit dem echten A330.
+- **Obere Leiste auf dem iPad:** Die Uhr bleibt immer ganz sichtbar. Flug-/Flugzeugname und ATC-Pille schrumpfen mit „…“, bei schmalen Fenstern verschwinden zuerst HDG, dann ALT und der „UTC“-Zusatz. In Chromium bei iPad-Größen (694–1180 px) mit Testinhalt geprüft; auf dem echten iPad nicht.
+
 ## 1.3.4
 - **Weitere Türen:** Bei Fliegern ohne eigene Schnittstelle (z. B. iniBuilds A330) überwacht die EFB jetzt bis zu 16 Ausgänge des Sims statt 8, und im Reiter „Bodendienste“ gibt es „Weitere Türen (7–12) anzeigen“. Damit lassen sich Frachttüren steuern, wenn der Flieger sie als zusätzliche Tür meldet. Die Zeile „Sim-Türwerte (Diagnose)“ zeigt alle 16 Werte. **Nicht getestet im echten Sim:** Ob die Frachttüren des A330 überhaupt als Tür-Nummern gemeldet werden (und nicht nur über die eigene Türen-Seite des Fliegers), weiß ich nicht.
 - Die Mute-Tastenkürzel der Windows-App (App 1.4.4) nehmen keine reinen Schreibtasten mehr an: „Enter“ als Kürzel blockierte die Enter-Taste im ganzen System. Gespeicherte unzulässige Tasten werden beim Start entfernt.

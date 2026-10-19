@@ -1070,6 +1070,8 @@ window.EN_DICT = {
   });
   Object.assign(window.EN_DICT, {
     'Weitere Türen (7–12) anzeigen': 'Show more doors (7–12)',
+    'Türzuordnung zurücksetzen': 'Reset door mapping',
+    'Türzuordnung zurückgesetzt. Tippe die Türen neu an, dann lernt die EFB sie wieder.': 'Door mapping reset. Tap the doors again and the EFB will relearn them.',
     'Frachttüren und Zusatztüren melden sich bei manchen Fliegern unter höheren Nummern.': 'On some aircraft cargo and extra doors report under higher numbers.',
   });
   window.EN_SUBS = [["\\bGegenwind\\b", "Headwind"], ["\\bSeitenwind\\b", "Crosswind"], ["\\bRückenwind\\b", "Tailwind"], ["\\bvon rechts\\b", "from the right"], ["\\bvon links\\b", "from the left"], ["\\bReserve\\b", "reserve"], ["\\bKurs\\b", "Course"], ["\\bPiste\\b", "Runway"], ["\\bDemo-Daten\\b", "demo data"], ["\\bFlughäfen\\b", "airports"], ["\\bTitel\\b", "tracks"]].map(([re, r]) => [new RegExp(re, 'g'), r]);

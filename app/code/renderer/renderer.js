@@ -264,6 +264,7 @@ function accelFromEvent(e) {
 const HK = [['mic', 'hotkeyMic', '#hkMic', '#hkMicClr', '#hkMicMsg'], ['mute', 'hotkeyMute', '#hkMute', '#hkMuteClr', '#hkMuteMsg']];
 const HK_TXT = { ok: 'Aktiv.', off: '', belegt: 'Diese Taste ist schon von einem anderen Programm belegt. Nimm eine andere, z. B. mit Strg+Alt.', 'ungültig': 'Diese Taste geht nicht.', doppelt: 'Dieselbe Taste ist schon für „Nur Mikrofon stumm“ belegt.' };
 function renderHotkeys(c, st) {
+  $('#hkBeep').checked = !!c.hotkeyBeep;
   for (const [k, key, inp, , msg] of HK) { if (document.activeElement !== $(inp)) $(inp).value = c[key] || ''; $(msg).textContent = c[key] ? (HK_TXT[st[k]] || '') : ''; }
 }
 const msgOf = (inp) => HK.find((h) => h[2] === inp)[4];
@@ -274,3 +275,4 @@ for (const [k, key, inp, clr] of HK) {
   $(inp).onblur = () => { if (!$(inp).value) $(inp).value = $(inp).dataset.old || ''; $(inp).placeholder = 'Nicht belegt – hier klicken, dann Taste drücken'; };
   $(clr).onclick = () => { $(inp).dataset.old = ''; $(inp).value = ''; save(''); };
 }
+$('#hkBeep').onchange = () => bridge.invoke('settings:set', { hotkeyBeep: $('#hkBeep').checked });

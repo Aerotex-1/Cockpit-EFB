@@ -68,14 +68,15 @@ class Efb {
     const snap = Array.from({ length: 16 }, (_, n) => Number(v()[`EXIT OPEN:${n + 1}`]) || 0);
     const ok = s.sendEvent('TOGGLE_AIRCRAFT_EXIT', i + 1);
     const check = (final) => {
-      let best = 0, at = 0;
-      snap.forEach((b, n) => { const dlt = Math.abs((Number(v()[`EXIT OPEN:${n + 1}`]) || 0) - b); if (dlt > best) { best = dlt; at = n + 1; } });
-      if (best > 0.02) {
+      const ds = snap.map((b, n) => ({ n: n + 1, d: Math.abs((Number(v()[`EXIT OPEN:${n + 1}`]) || 0) - b) })).sort((a, b) => b.d - a.d);
+      const best = ds[0].d, at = ds[0].n;
+      // eindeutig = eine Tür hat sich bewegt, keine andere ähnlich stark (sonst läuft z. B. gerade GSX oder eine frühere Tür noch)
+      if (best > 0.02 && ds[1].d < best * 0.5) {
         const m = { ...this._doorMap() }; m[i] = at; this.doorMaps[this._doorKey()] = m;
         try { fs.mkdirSync(path.dirname(this.doorFile), { recursive: true }); fs.writeFileSync(this.doorFile, JSON.stringify(this.doorMaps)); } catch { /* egal */ }
         return true;
       }
-      if (final) this.doorMsg = { text: `Tür ${i + 1}: keine Reaktion im Sim. Manche Add-ons steuern Türen nur im Cockpit oder per GSX.`, until: Date.now() + 9000 };
+      if (final) this.doorMsg = { text: `Tür ${i + 1}: keine eindeutige Reaktion im Sim. Manche Add-ons steuern Türen nur im Cockpit oder per GSX.`, until: Date.now() + 9000 };
       return false;
     };
     setTimeout(() => { if (!check(false)) setTimeout(() => check(true), 2500); }, 1200);
@@ -214,7 +215,10 @@ class Efb {
       .filter((t) => t.max > 1);
     const cur = tanks.reduce((a, t) => a + t.cur, 0), max = tanks.reduce((a, t) => a + t.max, 0);
     const ground = {
-      doors: d.doors.map((door, i) => ({ i, name: door.name, open: g(`EXIT OPEN:${this._doorIdx(i)}`) })),
+      doors: (() => { // gelernte Zuordnung; eine nicht gelernte Tür zeigt nichts an, wenn ihre Standard-Nummer schon einer anderen Tür gehört (sonst erscheinen zwei Kacheln gleich)
+        const m = this._doorMap(), claimed = {}; Object.keys(m).forEach((j) => { claimed[m[j]] = Number(j); });
+        return d.doors.map((door, i) => { const e = m[i] || (i + 1), dup = !m[i] && claimed[e] !== undefined && claimed[e] !== i; return { i, name: door.name, open: dup ? -1 : g(`EXIT OPEN:${e}`) }; });
+      })(),
       doorRaw: Array.from({ length: 16 }, (_, i) => Math.round(g(`EXIT OPEN:${i + 1}`) * 100)),
       doorMsg: this.doorMsg && Date.now() < this.doorMsg.until ? this.doorMsg.text : '',
       fuelTruck: null, gpu: g('EXTERNAL POWER AVAILABLE:1') > 0 || g('EXTERNAL POWER ON:1') > 0, asu: null, chocks: null, cones: null, eqpVisible: null,
@@ -290,6 +294,7 @@ class Efb {
     if (d.std) {
       if (name === 'fuelTarget') return { ok: this._setFuelStd(Number(value)) };
       if (name === 'door') return { ok: this._doorToggle(Number(value)) };
+      if (name === 'doorReset') { delete this.doorMaps[this._doorKey()]; try { fs.writeFileSync(this.doorFile, JSON.stringify(this.doorMaps)); } catch { /* egal */ } return { ok: true }; }
       if (name === 'gpu') return { ok: s.sendEvent('REQUEST_POWER_SUPPLY', 1) };
       if (name === 'payloadStd') return this._setPayloadStd(value);
       if (!['door', 'jetway', 'stairs', 'catering', 'baggage', 'fuelTruck', 'simFailure'].includes(name)) return { ok: false, error: 'Das geht bei diesem Flieger nur direkt im Cockpit.' };
