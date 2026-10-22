@@ -207,7 +207,7 @@ async function serveTile(res, z, x, y) {
       if (!tileQueue.has(key)) {
         tileQueue.set(key, (async () => {
           const u = tileTemplate(id).replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{key}', encodeURIComponent(config.tileKey || ''));
-          const r = await fetch(u, { headers: { 'User-Agent': `CockpitEFB/${VERSION} (+https://github.com/benbadelt-dot/Cockpit-EFB)` }, signal: AbortSignal.timeout(8000) });
+          const r = await fetch(u, { headers: { 'User-Agent': `CockpitEFB/${VERSION} (+https://github.com/Aerotex-1/Cockpit-EFB)` }, signal: AbortSignal.timeout(8000) });
           if (!r.ok) throw new Error(`Kartenserver ${r.status}`);
           fs.mkdirSync(path.dirname(f), { recursive: true });
           fs.writeFileSync(f, Buffer.from(await r.arrayBuffer()));

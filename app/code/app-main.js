@@ -29,6 +29,8 @@ const VOICES_USER = path.join(DATA, 'voices');
 const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices') : path.join(BOOT.shellDir, 'voices-bundle');
 const PIPER_EXE = [path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(BOOT.shellDir, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || '';
 const safe = { available: () => safeStorage.isEncryptionAvailable(), encrypt: (t) => safeStorage.encryptString(t), decrypt: (b) => safeStorage.decryptString(b) };
+// Sprache für Fenstertitel und Dateidialoge: Einstellung der App, sonst die von Windows
+const en = () => ((S && S.lang) || (app.getLocale() || 'de').slice(0, 2)) === 'en';
 let S = null, win = null, efbWin = null, cpWin = null, proc = null, updateInfo = { efb: null, code: null, shell: null, error: null, checkedAt: 0 };
 
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
@@ -216,7 +218,7 @@ app.whenReady().then(() => {
   ipcMain.handle('sounds:folder', () => { fs.mkdirSync(SOUNDS_DIR(), { recursive: true }); return shell.openPath(SOUNDS_DIR()); });
   ipcMain.handle('sounds:set', async (_e, key) => {
     if (!SND_RE.test(String(key))) throw new Error('Ungültiger Name.');
-    const r = await dialog.showOpenDialog(win, { title: 'Sound auswählen', properties: ['openFile'], filters: [{ name: 'Audio (MP3, WAV, OGG)', extensions: ['mp3', 'wav', 'ogg'] }] });
+    const r = await dialog.showOpenDialog(win, { title: en() ? 'Choose sound' : 'Sound auswählen', properties: ['openFile'], filters: [{ name: 'Audio (MP3, WAV, OGG)', extensions: ['mp3', 'wav', 'ogg'] }] });
     if (r.canceled || !r.filePaths[0]) return soundList();
     const src = r.filePaths[0];
     if (fs.statSync(src).size > 15e6) throw new Error('Die Datei ist größer als 15 MB.');
@@ -229,7 +231,7 @@ app.whenReady().then(() => {
   ipcMain.handle('community:status', () => communityState());
   ipcMain.handle('community:install', () => communitySync(true));
   ipcMain.handle('community:pick', async () => {
-    const r = await dialog.showOpenDialog(win, { title: 'Community-Ordner von MSFS 2024 wählen', properties: ['openDirectory'] });
+    const r = await dialog.showOpenDialog(win, { title: en() ? 'Choose the MSFS 2024 Community folder' : 'Community-Ordner von MSFS 2024 wählen', properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths[0]) return communityState();
     if (!communityLib.normalizeManual(r.filePaths[0])) throw new Error('Das ist kein Community-Ordner. Er heißt „Community“ oder enthält einen Ordner dieses Namens.');
     S = { ...S, communityDir: r.filePaths[0] }; settingsStore.save(SETTINGS_FILE, S, safe);

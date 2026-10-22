@@ -1,43 +1,48 @@
 # Cockpit EFB
 
-Ein iPad-Cockpit-Begleiter für den Microsoft Flight Simulator 2024: Checklisten, SimBrief-Flugplan, Leistungsrechner, Karte mit Rollweg-Anzeige, GSX-Steuerung, VATSIM-Hilfen, Logbuch und ein Sprach-Copilot (Beta). Eine kleine Brücke auf dem PC verbindet den Simulator mit einer Webseite, die du am iPad (oder jedem Browser im Heimnetz) öffnest.
+An iPad cockpit companion for **Microsoft Flight Simulator 2024**: checklists, SimBrief flight plan, performance calculator, moving map with taxi guidance, GSX control, VATSIM helpers, logbook and a voice copilot (beta). A small bridge on your PC connects the simulator to a web page that you open on your iPad (or any browser on your home network).
 
-> **Nur für die Flugsimulation.** Alle Daten und Rechner sind Näherungen und nicht für echte Navigation gedacht. Keine Gewähr. Cockpit EFB steht in keiner Verbindung zu Microsoft, Asobo, FSDreamTeam, VATSIM oder den Herstellern der Flugzeug-Add-ons.
+🇩🇪 [Deutsche Version](README.de.md)
+
+> **For flight simulation only.** All data and calculators are approximations and must not be used for real-world navigation. No warranty. Cockpit EFB is not affiliated with Microsoft, Asobo, FSDreamTeam, VATSIM or any aircraft add-on developer.
 
 ## Download
 
-Alles gibt es kostenlos unter **[Releases](../../releases/latest)**, ohne Konto und ohne Token:
+Everything is free, no account and no token needed, under **[Releases](../../releases/latest)**:
 
-| Datei | Wofür |
+| File | What it is |
 |---|---|
-| `Cockpit-EFB-Setup-x.y.z.exe` | **Windows-App (empfohlen):** Installer mit Oberfläche, Updates, Sprach-Copilot-Werkzeugen. Enthält alles Nötige. |
-| `Cockpit-EFB-x.y.z.zip` | Nur die EFB (Node.js nötig), `start.bat` doppelklicken. Für Selbstbauer. |
+| `Cockpit-EFB-Setup-x.y.z.exe` | **Windows app (recommended):** installer with a control window, automatic update check and the voice copilot tools. Contains the app and the speech engine. The natural voices (about 130 MB) are downloaded with one click on the app’s Copilot page. |
+| `Cockpit-EFB-x.y.z.zip` | The EFB only (needs Node.js), double-click `start.bat`. For tinkerers. |
 
-Die App sucht beim Start selbst nach neuen Versionen und installiert sie auf Knopfdruck.
+The app checks for new versions on start and installs them with one click.
 
-## Schnellstart
+> The installer is not code-signed. Windows SmartScreen may show a warning ("More info" → "Run anyway").
 
-1. Installer ausführen, App öffnen, „Server starten“.
-2. Am iPad in Safari die in der App angezeigte Adresse öffnen (z. B. `http://192.168.1.20:8090`) und eine eigene PIN festlegen.
-3. Im EFB unter **Setup → Dienste und Karte** den SimBrief-Namen eintragen.
-4. Sim-Modul (freiwillig): installiert die App in den Community-Ordner, wenn du es in den Einstellungen erlaubst.
+## Quick start
 
-Die EFB funktioniert nur im eigenen Netzwerk. Nicht ins Internet weiterleiten.
+1. Run the installer, open the app, click "Start server".
+2. On your iPad open the address shown in the app in Safari (for example `http://192.168.1.20:8090`) and choose your own PIN.
+3. In the EFB go to **Setup → Services and map** and enter your SimBrief name.
+4. Sim module (optional): the app installs it into your Community folder if you allow it in the settings.
+
+The EFB only works inside your own network. Do not forward its port to the internet.
 
 ## Status
 
-- Der **Sprach-Copilot ist Beta**: Sprachsteuerung, Bodencrew und Taxi-Ansagen sind noch nicht überall erprobt.
-- Getestet wurde vor allem mit Airbus-A320-Familie (FlyByWire, Fenix) in MSFS 2024. Boeing-Add-ons und andere Flugzeuge sind nicht mit den echten Add-ons geprüft.
-- Fehler und Wünsche gern als [Issue](../../issues) melden. Bitte die Versionsnummer aus der App und das Protokoll (App → Protokoll) beilegen.
+- The **voice copilot is beta**: voice control, ground crew and taxi callouts are new and not yet tested everywhere.
+- Mostly tested with the Airbus A320 family (FlyByWire, Fenix) in MSFS 2024. Boeing and other add-ons are not verified with the real aircraft.
+- The interface is available in German and English (the app and the EFB follow your system language and can be switched in the settings).
+- Bugs and wishes are welcome as [issues](../../issues). Please include the version number from the app and the log (App → Log).
 
-## Datenschutz
+## Privacy
 
-Es gibt keinen Server des Entwicklers, keine Konten, keine Telemetrie. Alles läuft auf deinem PC. Details: [PRIVACY.md](efb/PRIVACY.md). Drittanbieter und Lizenzen: [THIRD-PARTY-NOTICES.md](efb/THIRD-PARTY-NOTICES.md).
+There is no developer server, no accounts and no telemetry. Everything runs on your PC. Details: [PRIVACY.md](efb/PRIVACY.md) (German). Third-party components and licenses: [THIRD-PARTY-NOTICES.md](efb/THIRD-PARTY-NOTICES.md).
 
-## Lizenz
+## License
 
-[MIT](efb/LICENSE). Mitgelieferte Drittsoftware hat eigene Lizenzen (siehe Hinweise oben).
+[MIT](efb/LICENSE). Bundled third-party software has its own licenses (see the notices above).
 
-## Für Entwickler
+## For developers
 
-Siehe [README-ENTWICKLER.md](README-ENTWICKLER.md).
+See [README-ENTWICKLER.md](README-ENTWICKLER.md) (German).

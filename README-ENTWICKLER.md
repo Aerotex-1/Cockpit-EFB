@@ -47,15 +47,18 @@ npm run dist     # Installer in app/dist
 
 ## Eingebaute Stimmen (Piper)
 
-Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch). Beim Bauen lädt `npm run dist` (bzw. der GitHub-Workflow) sie automatisch von GitHub und Hugging Face; der Installer wird dadurch etwa 230 MB groß. Weitere Stimmen lädt der Nutzer in der App unter **Copilot → Eingebaute Stimmen** nach (sie liegen in `%APPDATA%\cockpit-efb-app\voices` und bleiben bei Updates erhalten). Lizenzen der Stimmen: siehe `efb/THIRD-PARTY-NOTICES.md`.
+Der Installer enthält Piper, aber keine Stimmen mehr (etwa 90 MB statt 230 MB). Beim Bauen lädt `npm run dist` (bzw. der GitHub-Workflow) nur Piper von GitHub. Die empfohlenen Stimmen (Thorsten, Lessac; `bundled: true` im Katalog `lib/voices.js`) lädt die App auf der Copilot-Seite mit einem Klick von Hugging Face nach; weitere Stimmen ebenso. Wer sie wieder einbauen will: `BUNDLE_VOICES=1` beim Bauen und den Eintrag `voices-bundle` in `extraResources` ergänzen.
 
 ## Wo liegen die Daten?
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.5.0, enthält EFB 1.3.6)
+## Stand dieser Version (App 1.5.1, enthält EFB 1.3.6)
 
-- **Release-bereit (1.5.0):** Standard-Repository `benbadelt-dot/Cockpit-EFB` ist fest voreingestellt (`lib/store.js`), die Update-Suche läuft ohne Token über die öffentliche GitHub-API (Limit 60 Abfragen/Stunde je IP, die App fragt alle 6 h). Token und andere Quelle stehen unter „Updates → Erweitert“. Copilot ist in der App als Beta gekennzeichnet. Root-`README.md` für das Repository.
+- **Kleinerer Installer (1.5.1):** keine mitgelieferten Stimmen mehr, Download per Knopf auf der Copilot-Seite (siehe unten bei „Der Installer enthält“).
+
+- **Release-bereit (1.5.0):** Standard-Repository `Aerotex-1/Cockpit-EFB` ist fest voreingestellt (`lib/store.js`), die Update-Suche läuft ohne Token über die öffentliche GitHub-API (Limit 60 Abfragen/Stunde je IP, die App fragt alle 6 h). Token und andere Quelle stehen unter „Updates → Erweitert“. Copilot ist in der App als Beta gekennzeichnet. Root-`README.md` für das Repository.
+- **App-Sprache (1.5.0):** Die App ist auf Deutsch und Englisch nutzbar (Einstellungen → Sprache der App, Standard automatisch nach Windows). Quelltext bleibt deutsch; `renderer/i18n.js` übersetzt beim Anzeigen anhand von `renderer/i18n-en.js` (Wörterbuch + Muster für Texte mit Zahlen). Neue deutsche Texte brauchen dort einen englischen Eintrag, sonst bleiben sie deutsch. Fenstertitel der Dateidialoge folgen derselben Wahl (`en()` in app-main.js). README.md ist englisch, README.de.md deutsch.
 - **EFB 1.3.6:** Kartenanbieter wählbar (CARTO Standard) mit Rückfall, Setup in vier Gruppen sortiert.
 
 - **EFB 1.3.5:** Türzuordnung bei Fliegern ohne eigene Schnittstelle wird aus der Sim-Reaktion gelernt (Knopf zum Zurücksetzen); obere Leiste lässt die Uhr nie mehr abschneiden. Beides nur mit Attrappe/Chromium getestet.

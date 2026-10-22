@@ -57,3 +57,7 @@ pre.notes { margin:6px 0; white-space:pre-wrap; font:inherit; color:var(--dim); 
 details.adv { margin-top: 14px; }
 details.adv summary { cursor: pointer; color: #8a98a8; font-size: 13px; }
 details.adv label { display: block; margin-top: 10px; }
+
+.starter { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid rgba(56,200,245,.4); border-radius: 10px; background: rgba(56,200,245,.08); margin-bottom: 10px; }
+.starter[hidden] { display: none; }
+.starter span { flex: 1; min-width: 220px; }

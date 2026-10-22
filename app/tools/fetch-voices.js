@@ -12,9 +12,11 @@ const PIPER_URL = 'https://github.com/rhasspy/piper/releases/download/2023.11.14
     execFileSync('tar', ['-xf', zip, '-C', pdir]); fs.unlinkSync(zip);
     if (!fs.existsSync(path.join(pdir, 'piper', 'piper.exe'))) throw new Error('piper.exe nicht gefunden nach dem Entpacken.');
   }
-  for (const v of voices.CATALOG.filter((x) => x.bundled)) {
+  // Stimmen werden nicht mehr mitgeliefert (kleinerer Installer); die App lädt sie auf Wunsch nach. Mit BUNDLE_VOICES=1 und dem Eintrag
+  // „voices-bundle“ in extraResources lassen sie sich wieder einbauen.
+  for (const v of process.env.BUNDLE_VOICES === '1' ? voices.CATALOG.filter((x) => x.bundled) : []) {
     if (fs.existsSync(path.join(vdir, v.id + '.onnx'))) continue;
     console.log('Lade Stimme', v.id); await voices.install(v.id, { userDir: vdir });
   }
-  console.log('Piper und Stimmen bereit.');
+  console.log('Piper bereit.');
 })().catch((e) => { console.error(e); process.exit(1); });

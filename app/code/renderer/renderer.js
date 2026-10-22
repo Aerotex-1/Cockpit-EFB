@@ -56,6 +56,7 @@ $('#edGo').onclick = () => goPage('edition');
 
 function render(s) {
   st = s;
+  if (window.I18N && !render._i18n) { render._i18n = true; render._pref = (s.settings && s.settings.lang) || ''; I18N.apply(render._pref); }
   renderEdition(s);
   renderStatus(s.status);
   $('#stSub').textContent = s.status === 'running' ? `Port ${s.port} · EFB ${s.efbVersion}` : s.status === 'crashed' ? `Beendet mit Code ${s.lastExit} – siehe Protokoll` : '';
@@ -64,7 +65,7 @@ function render(s) {
   if (s.bootNote) $('#uState').textContent = s.bootNote;
   const c = s.settings;
   $('#sAutoStart').checked = c.autoStartServer; $('#sBrowser').checked = c.openBrowserOnStart; $('#sLogin').checked = c.startWithWindows; $('#sClose').checked = c.closeStopsServer;
-  $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port; $('#cpOnStart').checked = !!c.copilotOnStart;
+  $('#sLang').value = c.lang || ''; $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port; $('#cpOnStart').checked = !!c.copilotOnStart;
   renderHotkeys(c, s.hotkeys || {});
   $('#uRepo').value = c.repo; $('#uToken').value = c.token; $('#uEdition').value = c.edition; $('#uCheck').checked = c.checkOnStart;
   $('#logBox').textContent = s.logs.join('\n');
@@ -83,7 +84,8 @@ bridge.on('log', (l) => { const b = $('#logBox'); b.textContent += (b.textConten
 
 // ---- Einstellungen
 $('#sSave').onclick = async () => {
-  const s = await bridge.invoke('settings:set', { autoStartServer: $('#sAutoStart').checked, openBrowserOnStart: $('#sBrowser').checked, startWithWindows: $('#sLogin').checked, closeStopsServer: $('#sClose').checked, openIn: $('#sOpenIn').value, port: $('#sPort').value });
+  const s = await bridge.invoke('settings:set', { autoStartServer: $('#sAutoStart').checked, openBrowserOnStart: $('#sBrowser').checked, startWithWindows: $('#sLogin').checked, closeStopsServer: $('#sClose').checked, openIn: $('#sOpenIn').value, port: $('#sPort').value, lang: $('#sLang').value });
+  if ((s.settings.lang || '') !== render._pref) { location.reload(); return; }
   render(s); $('#sMsg').textContent = 'Gespeichert.'; setTimeout(() => ($('#sMsg').textContent = ''), 2500);
 };
 
@@ -159,9 +161,20 @@ function renderVoices() {
   $('#vList').innerHTML = vInfo.voices.map((v) => `<div class="v ${v.installed ? 'on' : ''}"><div><b>${esc(v.name)}</b> <span class="sub">${v.lang === 'de' ? 'Deutsch' : 'Englisch'}</span></div>
     <span class="sub">${esc(v.desc)} · ${v.mb} MB</span>
     ${v.installed ? (v.removable ? `<button data-vrm="${v.id}">Entfernen</button>` : '<button disabled>Installiert</button>') : `<button class="primary" data-vget="${v.id}" id="vb-${v.id}">Laden</button>`}</div>`).join('');
-  if (!vInfo.piper) $('#vNote').textContent = 'In dieser Entwicklungsversion ist Piper nicht enthalten; im Installer sind die Stimmen dabei.';
+  if (!vInfo.piper) $('#vNote').textContent = 'In dieser Entwicklungsversion ist Piper nicht enthalten; im Installer ist es dabei.';
+  $('#vStarter').hidden = !(vInfo.piper && vInfo.voices.some((v) => v.bundled && !v.installed));
   fillVoices();
 }
+$('#vStarterGo').onclick = async () => {
+  const b = $('#vStarterGo'); b.disabled = true; $('#vMsg').textContent = '';
+  try {
+    for (const v of vInfo.voices.filter((x) => x.bundled && !x.installed)) {
+      b.textContent = v.name + ' …';
+      vInfo.voices = await bridge.invoke('voices:install', v.id);
+    }
+  } catch (er) { $('#vMsg').textContent = 'Fehler: ' + er.message.replace(/^Error invoking remote method[^:]*: /, ''); }
+  b.disabled = false; b.textContent = 'Empfohlene Stimmen laden'; renderVoices();
+};
 async function loadVoiceList() { vInfo = await bridge.invoke('voices:list'); renderVoices(); }
 document.addEventListener('click', async (e) => {
   const g = e.target.closest('[data-vget]'), r = e.target.closest('[data-vrm]');

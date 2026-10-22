@@ -233,6 +233,16 @@
     <!-- GSX -->
     <section class="tab" id="tab-gsx">
       <div class="screen gsx-page">
+        <div class="gsx-mode" id="gsxMode" hidden>
+          <button class="btn-s on" data-gsxmode="web">GSX-Oberfläche</button>
+          <button class="btn-s" data-gsxmode="tiles">Schnellwahl</button>
+          <span class="spacer"></span>
+          <a class="btn-s" id="gsxOpenWeb" target="_blank" rel="noopener">Im Browser öffnen</a>
+        </div>
+        <div class="gsx-web" id="gsxWeb" hidden>
+          <iframe id="gsxFrame" title="GSX" allow="autoplay"></iframe>
+          <p class="note">Bleibt das Fenster leer, erlaubt GSX die Einbettung nicht oder die Adresse stimmt nicht. Dann „Im Browser öffnen“ nutzen und die Adresse unter Setup → Dienste und Karte prüfen.</p>
+        </div>
         <div class="gsx-tiles" id="gsxTiles"></div>
         <div class="gsx-ask" id="gsxAsk" hidden>
           <h3>Aktuelles GSX-Menü: <span id="gsxAskTitle"></span></h3>
@@ -309,6 +319,9 @@
               <label class="field">Pfad zur GSX-Menüdatei (leer lassen = automatisch suchen)
                 <input id="gsxFile" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="…\fsdreamteam-gsx-pro\html_ui\InGamePanels\FSDT_GSX_Panel\menu"></label>
               <p class="note" id="gsxFileInfo"></p>
+              <label class="field">GSX-Weboberfläche (optional)
+                <input id="gsxWebIn" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="http://{host}:PORT"></label>
+              <p class="note">Ab GSX 4.0.6 zeigt GSX unter „Einstellungen → Netzwerk“ eine Adresse, über die man GSX im Browser bedienen kann. Trage sie hier ein (statt der PC-Adresse darfst du {host} schreiben, dann nimmt die EFB die Adresse, über die du sie gerade öffnest). Der Tab GSX zeigt dann die echte GSX-Oberfläche; die Schnellwahl bleibt als Alternative.</p>
             </div>
             <div class="actions"><button class="btn" id="btnSave">Einstellungen speichern</button><span id="saveMsg" class="dim-t"></span></div>
           </section>
