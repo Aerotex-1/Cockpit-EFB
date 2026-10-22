@@ -669,7 +669,7 @@ window.EN_DICT = {
 "PIN speichern": "Save PIN",
 "PIN gespeichert": "PIN saved",
 "PIN konnte nicht gespeichert werden": "PIN could not be saved",
-"Gekoppelte Geräte bleiben gekoppelt. Vergisst du die PIN, steht sie hier am PC.": "Paired devices stay paired. If you forget the PIN, it is shown here on the PC.",
+"Vergisst du die PIN, steht sie hier am PC. Ist die Abfrage eingeschaltet, fragt die EFB am iPad bei jedem Öffnen danach.": "If you forget the PIN, it is shown here on the PC. When the prompt is on, the EFB asks for it on the iPad every time it is opened.",
 "Zufällige neue PIN, alle Geräte abmelden": "Random new PIN, sign out all devices",
 "Endlosschleife aus": "Endless loop off",
 "Endlosschleife: Playlist": "Endless loop: playlist",
@@ -1077,5 +1077,20 @@ window.EN_DICT = {
     'Türzuordnung zurückgesetzt. Tippe die Türen neu an, dann lernt die EFB sie wieder.': 'Door mapping reset. Tap the doors again and the EFB will relearn them.',
     'Frachttüren und Zusatztüren melden sich bei manchen Fliegern unter höheren Nummern.': 'On some aircraft cargo and extra doors report under higher numbers.',
   });
+  Object.assign(window.EN_DICT, {
+    'Aus VATSIM übernehmen': 'Take over from VATSIM',
+    'Lichter': 'Lights',
+    'Trage zuerst dein Rufzeichen ein. Damit wird dein Flugplan bei VATSIM gesucht.': 'Enter your callsign first. It is used to find your flight plan on VATSIM.',
+    'Suche deinen Flugplan bei VATSIM …': 'Looking for your flight plan on VATSIM …',
+    'PIN bei jedem Öffnen der EFB auf dem iPad abfragen': 'Ask for the PIN every time the EFB is opened on the iPad',
+    'PIN wird bei jedem Öffnen abgefragt': 'The PIN is asked every time the EFB is opened',
+    'PIN wird nur beim Koppeln abgefragt': 'The PIN is only asked when pairing',
+    'Das hat nicht geklappt': 'That did not work',
+  });
+  window.EN_PATTERNS.push(
+    [/^Bei VATSIM ist kein Pilot mit dem Rufzeichen (\S+) online\. Verbinde dich dort mit deinem Client und gib den Flugplan ab \(das dauert bis zu 15 Sekunden, bis er hier sichtbar ist\)\.$/, 'No pilot with the callsign $1 is online on VATSIM. Connect with your client and file the flight plan (it can take up to 15 seconds to show up here).'],
+    [/^(\S+) ist online, aber ohne Flugplan\. Gib ihn im Client oder auf vatsim\.net ab\.$/, '$1 is online but has no flight plan. File one in your client or on vatsim.net.'],
+    [/^Flugplan von VATSIM übernommen: (.+?)( \(ohne Route\))?\.$/, (a, n) => `Flight plan taken over from VATSIM: ${a}${n ? ' (no route)' : ''}.`],
+  );
   window.EN_SUBS = [["\\bGegenwind\\b", "Headwind"], ["\\bSeitenwind\\b", "Crosswind"], ["\\bRückenwind\\b", "Tailwind"], ["\\bvon rechts\\b", "from the right"], ["\\bvon links\\b", "from the left"], ["\\bReserve\\b", "reserve"], ["\\bKurs\\b", "Course"], ["\\bPiste\\b", "Runway"], ["\\bDemo-Daten\\b", "demo data"], ["\\bFlughäfen\\b", "airports"], ["\\bTitel\\b", "tracks"]].map(([re, r]) => [new RegExp(re, 'g'), r]);
 })();

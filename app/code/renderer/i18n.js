@@ -52,7 +52,7 @@
   // Einmal aufrufen, sobald die gewählte Sprache bekannt ist ('' = automatisch). Gibt die wirksame Sprache zurück.
   window.I18N = {
     apply(pref) {
-      const want = pref === 'en' || pref === 'de' ? pref : (/^de\b/i.test(navigator.language || 'de') ? 'de' : 'en');
+      const want = pref === 'de' ? 'de' : 'en'; // Standard: Englisch
       lang = want; document.documentElement.lang = want;
       if (want === 'en' && !started) {
         started = true;

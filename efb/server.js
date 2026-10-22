@@ -344,9 +344,10 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/info') return sendJson(res, 200, { ips: localIps(), port: config.port, version: VERSION });
 
     if (p === '/api/config' && req.method === 'GET') return sendJson(res, 200, cfgFor());
-    if (p === '/api/auth/status') return sendJson(res, 200, local ? { local: true, requirePin: !!config.requirePin, pin: auth.hasPin() ? config.pin : '', hasPin: auth.hasPin(), devices: auth.sessions.length } : { local: false, requirePin: !!config.requirePin, paired: true });
+    if (p === '/api/auth/status') return sendJson(res, 200, local ? { local: true, requirePin: !!config.requirePin, pinEvery: config.pinEvery !== false, pin: auth.hasPin() ? config.pin : '', hasPin: auth.hasPin(), devices: auth.sessions.length } : { local: false, requirePin: !!config.requirePin, paired: true });
     if (p === '/api/pair/state') return sendJson(res, 200, { needsPin: !auth.hasPin() });
     if (p === '/api/auth/setpin' && req.method === 'POST') { if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' }); try { return sendJson(res, 200, { pin: auth.setPin((await readBody(req)).pin) }); } catch (e) { return sendJson(res, 400, { error: e.message }); } }
+    if (p === '/api/auth/every' && req.method === 'POST') { if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' }); config.pinEvery = !!(await readBody(req)).on; saveConfig(); return sendJson(res, 200, { pinEvery: config.pinEvery }); }
     if (p === '/api/auth/reset' && req.method === 'POST') { if (!local) return sendJson(res, 403, { error: 'Nur am PC möglich.' }); const pin = auth.reset(); return sendJson(res, 200, { pin, devices: 0 }); }
     if (p === '/api/config' && req.method === 'POST') {
       const body = await readBody(req);

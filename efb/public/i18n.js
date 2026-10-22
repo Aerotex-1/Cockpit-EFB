@@ -1,12 +1,12 @@
-// Sprachumschaltung: Deutsch (Standard) und Englisch.
+// Sprachumschaltung: Englisch (Standard) und Deutsch.
 // Die Oberfläche ist auf Deutsch geschrieben. Für Englisch übersetzt dieses Modul Texte und Attribute
 // anhand von Wörterbuch (i18n-en.js) und Mustern. Unbekannte Texte bleiben deutsch, nichts geht kaputt.
 'use strict';
 (function () {
-  let lang = 'de';
+  let lang = 'en';
   try {
     const s = JSON.parse(localStorage.getItem('efb.lang') || 'null');
-    lang = s === 'en' || s === 'de' ? s : (/^de\b/i.test(navigator.language || 'de') ? 'de' : 'en');
+    lang = s === 'de' ? 'de' : 'en'; // Standard: Englisch, Deutsch nur wenn gewählt
   } catch { /* Standard */ }
   window.LANG = lang;
   document.documentElement.lang = lang;

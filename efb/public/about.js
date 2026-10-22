@@ -9,6 +9,7 @@ const About = (() => {
     try { s = await fetch('/api/auth/status', { cache: 'no-store' }).then((r) => r.json()); } catch { /* offline */ }
     if (!s) { t.textContent = 'Nicht erreichbar.'; return; }
     if (!s.requirePin) { t.textContent = 'Die PIN-Abfrage ist ausgeschaltet (requirePin in config.json). Jedes Gerät im lokalen Netzwerk kann die EFB bedienen.'; return; }
+    if (s.local) { $('#pinEveryRow').hidden = false; $('#pinEvery').checked = s.pinEvery !== false; }
     if (s.local && !s.hasPin) {
       t.textContent = 'Noch keine PIN festgelegt. Lege sie hier fest oder beim ersten Öffnen am iPad.';
       $('#pinSet').hidden = false; $('#authActions').hidden = true;
@@ -20,6 +21,11 @@ const About = (() => {
       t.textContent = 'Dieses Gerät ist gekoppelt. Die PIN und das Abmelden aller Geräte siehst du, wenn du die EFB am PC öffnest (http://127.0.0.1:8090).';
     }
   }
+  document.addEventListener('change', async (e) => {
+    if (e.target.id !== 'pinEvery') return;
+    const r = await fetch('/api/auth/every', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: e.target.checked }) }).then((x) => x.json()).catch(() => null);
+    if (r) Settings.toast(r.pinEvery ? 'PIN wird bei jedem Öffnen abgefragt' : 'PIN wird nur beim Koppeln abgefragt'); else Settings.toast('Das hat nicht geklappt', true);
+  });
   document.addEventListener('click', async (e) => {
     if (e.target.id === 'pinSave') {
       const r = await fetch('/api/auth/setpin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: $('#pinNew').value }) }).then((x) => x.json()).catch(() => null);

@@ -690,6 +690,9 @@ function updateProgress() {
   pl.style.left = (f * 100).toFixed(1) + '%';
   $('.rl-done').style.width = (f * 100).toFixed(1) + '%';
   const r = $('.rl-pct');
-  r.textContent = `${fmt(Math.round(done))} NM geflogen · ${fmt(Math.round(left))} NM verbleibend`;
+  // Passt zur Streckenlänge aus dem OFP (Anzeige oben): der Anteil kommt aus der Luftlinie, die Summe aus der geplanten Strecke
+  const plan = Number(o.general && o.general.air_distance) || 0;
+  const tot = plan > 0 ? plan : done + left;
+  r.textContent = `${fmt(Math.round(f * tot))} NM geflogen · ${fmt(Math.round((1 - f) * tot))} NM verbleibend`;
 }
 hooks.sim.push(updateProgress);

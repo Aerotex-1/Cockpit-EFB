@@ -36,6 +36,23 @@ const AtcTab = (() => {
     applySidAlt();
     save();
   }
+  // Flugplan aus dem öffentlichen VATSIM-Datenfeed (Pilot mit diesem Rufzeichen, eingeloggt, Flugplan abgegeben). Dafür ist kein VATSIM-Login in der EFB nötig.
+  async function fromVatsim() {
+    const h = (t) => { const el = $('#clrHint'); if (el) el.textContent = t; };
+    if (!upper(clr.cs)) { h('Trage zuerst dein Rufzeichen ein. Damit wird dein Flugplan bei VATSIM gesucht.'); return; }
+    h('Suche deinen Flugplan bei VATSIM …');
+    await poll(true);
+    const m = data && data.me;
+    if (!m) { h(`Bei VATSIM ist kein Pilot mit dem Rufzeichen ${upper(clr.cs)} online. Verbinde dich dort mit deinem Client und gib den Flugplan ab (das dauert bis zu 15 Sekunden, bis er hier sichtbar ist).`); return; }
+    if (!m.dep && !m.arr && !m.route) { h(`${m.cs} ist online, aber ohne Flugplan. Gib ihn im Client oder auf vatsim.net ab.`); return; }
+    if (m.dep) clr.dep = upper(m.dep);
+    if (m.arr) clr.dest = upper(m.arr);
+    if (m.route) { clr.rte = m.route; const sid = sidFromRoute(m.route); if (sid) clr.sid = sid; }
+    if (m.assigned && sqkOk(m.assigned)) clr.sqk = m.assigned;
+    clr.flightKey = clr.flightKey || 'vatsim';
+    applySidAlt(); save(); build(); poll(true);
+    h(`Flugplan von VATSIM übernommen: ${upper(m.cs)} ${upper(m.dep)} → ${upper(m.arr)}${m.route ? '' : ' (ohne Route)'}.`);
+  }
   function sidList() {
     const dep = upper(clr.dep);
     const names = new Set([...Object.keys(fileSids[dep] || {}), ...Object.keys(sidbook[dep] || {})]);
@@ -87,6 +104,7 @@ const AtcTab = (() => {
         <button class="btn-s" id="clrSqk" hidden></button>
         <button class="btn-s ${clr.rb ? 'on' : ''}" id="clrRb">Readback gesprochen</button>
         <button class="btn-s" id="clrReset">Neu aus OFP</button>
+        <button class="btn-s" id="clrVatsim">Aus VATSIM übernehmen</button>
       </div>
       <p class="note" id="clrHint"></p>`;
     hint();
@@ -244,7 +262,12 @@ const AtcTab = (() => {
     sqkButton();
   });
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'clr_dep' || e.target.id === 'clr_dest' || e.target.id === 'clr_cs') { build(); poll(true); }
+    if (e.target.id === 'clr_dep' || e.target.id === 'clr_dest' || e.target.id === 'clr_cs') {
+      // Nicht die ganze Maske neu zeichnen: sonst geht ein Tipp auf einen Knopf verloren, der gleichzeitig das Feld verlässt
+      const dl = $('#sidList'); if (dl) dl.innerHTML = sidList().map((x) => `<option value="${esc(x)}">`).join('');
+      const S = $('#clrSum'); if (S) S.innerHTML = summary();
+      hint(); poll(true);
+    }
   });
   document.addEventListener('click', (e) => {
     const t = e.target.closest('button, .stn-link'); if (!t) return;
@@ -254,6 +277,7 @@ const AtcTab = (() => {
     }
     if (t.id === 'clrSqk') { clr.sqk = t.dataset.sqk; save(); build(); }
     if (t.id === 'clrRb') { clr.rb = !clr.rb; save(); t.classList.toggle('on', clr.rb); }
+    if (t.id === 'clrVatsim') fromVatsim();
     if (t.id === 'clrReset') { fromOfp(true); build(); poll(true); }
     if (t.classList.contains('stn') && t.dataset.f) setActive(t.dataset.f, t.dataset.cs, t.dataset.name);
     else if (t.dataset.f && t.closest('#radioPanel')) setActive(t.dataset.f, t.dataset.cs, '');

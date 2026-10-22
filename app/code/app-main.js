@@ -30,7 +30,7 @@ const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices
 const PIPER_EXE = [path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(BOOT.shellDir, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || '';
 const safe = { available: () => safeStorage.isEncryptionAvailable(), encrypt: (t) => safeStorage.encryptString(t), decrypt: (b) => safeStorage.decryptString(b) };
 // Sprache für Fenstertitel und Dateidialoge: Einstellung der App, sonst die von Windows
-const en = () => ((S && S.lang) || (app.getLocale() || 'de').slice(0, 2)) === 'en';
+const en = () => !(S && S.lang === 'de'); // Standard: Englisch
 let S = null, win = null, efbWin = null, cpWin = null, proc = null, updateInfo = { efb: null, code: null, shell: null, error: null, checkedAt: 0 };
 
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
@@ -157,8 +157,10 @@ function applyHotkeys() {
 function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startWithWindows }); } catch { /* nicht unterstützt */ } }
 
 const editionState = () => { try { return editionLib.status(EFB_DIR, BUNDLE); } catch (e) { return { supported: false, current: { id: 'full', name: 'Voll', tabs: [] }, editions: [], tabs: [], error: e.message }; } };
+// PIN-Abfrage bei jedem Öffnen der EFB (steht in der config.json der EFB, Standard: an)
+function pinEveryNow() { try { return readJson(path.join(EFB_DIR, 'config.json'), {}).pinEvery !== false; } catch { return true; } }
 function state() {
-  return { edition: editionState(), status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '' }, hotkeys: hotkeyState, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
+  return { edition: editionState(), status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '', pinEvery: pinEveryNow() }, hotkeys: hotkeyState, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
 }
 
 // Eigene Sounds des Bodenpersonals: Ordner „sounds“ in der EFB, Dateiname = Ereignis (z. B. pushback.ack.S1.mp3)
@@ -196,9 +198,15 @@ app.whenReady().then(() => {
   ipcMain.handle('folder:open', () => shell.openPath(EFB_DIR));
   ipcMain.handle('settings:set', async (_e, patch) => {
     const portNew = patch.port; delete patch.port;
+    const pinNew = patch.pinEvery; delete patch.pinEvery;
     if (patch.token === '••••') delete patch.token;
     S = { ...S, ...patch }; settingsStore.save(SETTINGS_FILE, S, safe); applyLogin();
     if ('hotkeyMic' in patch || 'hotkeyMute' in patch) applyHotkeys();
+    if (typeof pinNew === 'boolean' && pinNew !== pinEveryNow()) {
+      const cf = path.join(EFB_DIR, 'config.json'), c = readJson(cf, {});
+      c.pinEvery = pinNew; fs.writeFileSync(cf, JSON.stringify(c, null, 2));
+      if (proc.status === 'running') await proc.restart(); // der Server liest die Datei beim Start
+    }
     if (portNew) {
       const cf = path.join(EFB_DIR, 'config.json'), c = readJson(cf, {});
       if (Number(portNew) >= 1024 && Number(portNew) <= 65535 && c.port !== Number(portNew)) { c.port = Number(portNew); fs.writeFileSync(cf, JSON.stringify(c, null, 2)); if (proc.status === 'running') await proc.restart(); }

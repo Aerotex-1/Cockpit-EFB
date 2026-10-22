@@ -53,12 +53,16 @@ Der Installer enthält Piper, aber keine Stimmen mehr (etwa 90 MB statt 230 MB).
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.5.1, enthält EFB 1.3.6)
+## Stand dieser Version (App 1.5.2, enthält EFB 1.3.7)
+
+- **Englisch als Standard (1.5.2):** App und EFB starten auf Englisch (vorher nach Windows-/Browsersprache). Deutsch wählbar. In der App ist `settings.lang === 'de'` der einzige Weg zu Deutsch; leer oder `en` ergibt Englisch.
+- **PIN bei jedem Öffnen (EFB 1.3.7, App 1.5.2):** `config.json` der EFB enthält `pinEvery` (Standard `true`). Die App schreibt den Schalter („Einstellungen → Allgemein“) in diese Datei und startet den Server neu, wenn er läuft. Logik in `efb/auth.js` (`gate`): jede Kopplung gilt für genau ein Laden von `/`, dazu 5 Minuten Leerlauf; `efb/public/authguard.js` leitet bei 401 auf `/pair.html`. Mit älteren EFB-Versionen hat der Schalter keine Wirkung.
+- **ATC: „Aus VATSIM übernehmen“ (EFB 1.3.7):** nutzt `data.me` aus `/api/atc` (öffentlicher VATSIM-Datenfeed, Suche über das Rufzeichen), kein VATSIM-Login nötig.
 
 - **Kleinerer Installer (1.5.1):** keine mitgelieferten Stimmen mehr, Download per Knopf auf der Copilot-Seite (siehe unten bei „Der Installer enthält“).
 
 - **Release-bereit (1.5.0):** Standard-Repository `Aerotex-1/Cockpit-EFB` ist fest voreingestellt (`lib/store.js`), die Update-Suche läuft ohne Token über die öffentliche GitHub-API (Limit 60 Abfragen/Stunde je IP, die App fragt alle 6 h). Token und andere Quelle stehen unter „Updates → Erweitert“. Copilot ist in der App als Beta gekennzeichnet. Root-`README.md` für das Repository.
-- **App-Sprache (1.5.0):** Die App ist auf Deutsch und Englisch nutzbar (Einstellungen → Sprache der App, Standard automatisch nach Windows). Quelltext bleibt deutsch; `renderer/i18n.js` übersetzt beim Anzeigen anhand von `renderer/i18n-en.js` (Wörterbuch + Muster für Texte mit Zahlen). Neue deutsche Texte brauchen dort einen englischen Eintrag, sonst bleiben sie deutsch. Fenstertitel der Dateidialoge folgen derselben Wahl (`en()` in app-main.js). README.md ist englisch, README.de.md deutsch.
+- **App-Sprache (1.5.0):** Die App ist auf Deutsch und Englisch nutzbar (Einstellungen → Sprache der App; seit 1.5.2 ist Englisch der Standard). Quelltext bleibt deutsch; `renderer/i18n.js` übersetzt beim Anzeigen anhand von `renderer/i18n-en.js` (Wörterbuch + Muster für Texte mit Zahlen). Neue deutsche Texte brauchen dort einen englischen Eintrag, sonst bleiben sie deutsch. Fenstertitel der Dateidialoge folgen derselben Wahl (`en()` in app-main.js). README.md ist englisch, README.de.md deutsch.
 - **EFB 1.3.6:** Kartenanbieter wählbar (CARTO Standard) mit Rückfall, Setup in vier Gruppen sortiert.
 
 - **EFB 1.3.5:** Türzuordnung bei Fliegern ohne eigene Schnittstelle wird aus der Sim-Reaktion gelernt (Knopf zum Zurücksetzen); obere Leiste lässt die Uhr nie mehr abschneiden. Beides nur mit Attrappe/Chromium getestet.

@@ -4,7 +4,7 @@ const fs = require('fs');
 // Öffentliches Repository: Updates brauchen keinen Zugriffstoken.
 const DEFAULT_REPO = 'Aerotex-1/Cockpit-EFB';
 const DEFAULTS = {
-  lang: '', repo: DEFAULT_REPO, token: '', edition: 'public', checkOnStart: true,
+  lang: 'en', repo: DEFAULT_REPO, token: '', edition: 'public', checkOnStart: true,
   autoStartServer: true, openBrowserOnStart: false, startWithWindows: false, closeStopsServer: true, openIn: 'browser', copilotOnStart: false, sttModel: '', communityDir: '', communityAuto: true, editionChosen: false, hotkeyMic: '', hotkeyMute: '', hotkeyBeep: false,
 };
 function load(file, safe) {

@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const FILE = path.join(__dirname, 'auth.json');
+const IDLE_MS = 5 * 60 * 1000;
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 const norm = (a) => String(a || '').replace(/^::ffff:/, '');
 
@@ -43,13 +44,15 @@ class Auth {
     this.fails = new Map();
     const c = this.cfg();
     if (c.requirePin === undefined) { c.requirePin = true; this.save(); }
+    // Standard: Die PIN wird bei jedem Öffnen der EFB abgefragt (am PC in der App oder unter Setup → Zugang abschaltbar)
+    if (c.pinEvery === undefined) { c.pinEvery = true; this.save(); }
     // Ohne gültige PIN legt der Nutzer sie beim ersten Öffnen am iPad (oder am PC unter Setup) selbst fest
     if (c.pin !== undefined && !/^\d{4,8}$/.test(String(c.pin))) { delete c.pin; this.save(); }
   }
   hasPin() { return /^\d{4,8}$/.test(String(this.cfg().pin || '')); }
   issue(req, res, send) {
     const ip = norm(req.socket.remoteAddress), token = crypto.randomBytes(32).toString('hex');
-    this.sessions.push({ h: sha(token), at: Date.now(), last: Date.now(), ip, ua: String(req.headers['user-agent'] || '').slice(0, 80) });
+    this.sessions.push({ h: sha(token), at: Date.now(), last: Date.now(), fresh: true, ip, ua: String(req.headers['user-agent'] || '').slice(0, 80) });
     if (this.sessions.length > 20) this.sessions.shift();
     this.persist();
     return send(200, { ok: true }, { 'Set-Cookie': `efb_auth=${token}; Max-Age=31536000; Path=/; HttpOnly; SameSite=Strict` });
@@ -70,13 +73,19 @@ class Auth {
     this.cfg().pin = pin; this.save(); return pin;
   }
   persist() { try { fs.writeFileSync(FILE, JSON.stringify({ sessions: this.sessions }), { mode: 0o600 }); } catch { /* egal */ } }
-  cookieValid(req) {
+  findSession(req) {
     const m = /(?:^|;\s*)efb_auth=([a-f0-9]{64})/.exec(req.headers.cookie || '');
-    if (!m) return false;
+    if (!m) return null;
     const h = sha(m[1]);
-    const s = this.sessions.find((x) => x.h === h);
-    if (s) { s.last = Date.now(); return true; }
-    return false;
+    return this.sessions.find((x) => x.h === h) || null;
+  }
+  drop(s) { this.sessions = this.sessions.filter((x) => x !== s); this.persist(); }
+  cookieValid(req) {
+    const s = this.findSession(req);
+    if (!s) return false;
+    // Im Modus „PIN bei jedem Öffnen“ verfällt die Kopplung, wenn die EFB länger als 5 Minuten nichts angefragt hat (iPad im Hintergrund)
+    if (this.cfg().pinEvery && Date.now() - s.last > IDLE_MS) { this.drop(s); return false; }
+    s.last = Date.now(); return true;
   }
   pair(req, res, body) {
     const ip = norm(req.socket.remoteAddress), f = this.fails.get(ip) || { n: 0, until: 0 };
@@ -116,7 +125,16 @@ class Auth {
     if (p === '/api/pair/state') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ needsPin: !this.hasPin() })); return true; }
     if (p === '/api/pair/set' && req.method === 'POST') { readBody(req).then((b) => this.setFirst(req, res, b)).catch(() => deny(400, 'Ungültige Anfrage')); return true; }
     if (p === '/api/pair' && req.method === 'POST') { readBody(req).then((b) => this.pair(req, res, b)).catch(() => deny(400, 'Ungültige Anfrage')); return true; }
-    if (this.cookieValid(req)) return false;
+    if (this.cookieValid(req)) {
+      // Jedes frische Öffnen der Startseite braucht eine neue PIN-Eingabe: die Kopplung gilt für genau ein Laden der Seite
+      if (this.cfg().pinEvery && req.method === 'GET' && (p === '/' || p === '/index.html')) {
+        const s = this.findSession(req);
+        if (s && s.fresh) { s.fresh = false; this.persist(); return false; }
+        if (s) this.drop(s);
+        res.writeHead(302, { Location: '/pair.html', 'Cache-Control': 'no-store' }); res.end(); return true;
+      }
+      return false;
+    }
     if (p === '/pair.html' || p === '/i18n.js' || p === '/i18n-en.js') return false;
     if (p.startsWith('/api/') || p.startsWith('/tiles/') || p.startsWith('/charts/') || p.startsWith('/bg/')) return deny(401, 'Nicht gekoppelt.');
     res.writeHead(302, { Location: '/pair.html' }); res.end(); return true;

@@ -14,6 +14,6 @@ module.exports = function demo(body) {
       { fir: 'EDMM-N / EDMM-S', name: 'München Radar', prefix: 'EDMM', controllers: [{ cs: 'EDMM_N_CTR', freq: '132.150', name: 'Demo Lotse F', role: 'CTR', facility: 6 }] },
       { fir: 'EDGG', name: 'Langen Radar', prefix: 'EDGG', controllers: [] },
     ],
-    me: body.callsign ? { cs: body.callsign, squawk: '2000', assigned: '4521', route: '', alt: '', dep: body.dep, arr: body.dest } : null,
+    me: body.callsign ? { cs: body.callsign, squawk: '2000', assigned: '4521', route: 'OBOK3D OBOKA UL607 NATAL', alt: 'FL360', dep: body.dep, arr: body.dest } : null,
   };
 };

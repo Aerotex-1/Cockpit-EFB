@@ -56,7 +56,7 @@ $('#edGo').onclick = () => goPage('edition');
 
 function render(s) {
   st = s;
-  if (window.I18N && !render._i18n) { render._i18n = true; render._pref = (s.settings && s.settings.lang) || ''; I18N.apply(render._pref); }
+  if (window.I18N && !render._i18n) { render._i18n = true; render._pref = (s.settings && s.settings.lang) === 'de' ? 'de' : 'en'; I18N.apply(render._pref); }
   renderEdition(s);
   renderStatus(s.status);
   $('#stSub').textContent = s.status === 'running' ? `Port ${s.port} · EFB ${s.efbVersion}` : s.status === 'crashed' ? `Beendet mit Code ${s.lastExit} – siehe Protokoll` : '';
@@ -65,7 +65,7 @@ function render(s) {
   if (s.bootNote) $('#uState').textContent = s.bootNote;
   const c = s.settings;
   $('#sAutoStart').checked = c.autoStartServer; $('#sBrowser').checked = c.openBrowserOnStart; $('#sLogin').checked = c.startWithWindows; $('#sClose').checked = c.closeStopsServer;
-  $('#sLang').value = c.lang || ''; $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port; $('#cpOnStart').checked = !!c.copilotOnStart;
+  $('#sLang').value = c.lang === 'de' ? 'de' : 'en'; $('#sPinEvery').checked = c.pinEvery !== false; $('#sOpenIn').value = c.openIn; $('#sPort').value = s.port; $('#cpOnStart').checked = !!c.copilotOnStart;
   renderHotkeys(c, s.hotkeys || {});
   $('#uRepo').value = c.repo; $('#uToken').value = c.token; $('#uEdition').value = c.edition; $('#uCheck').checked = c.checkOnStart;
   $('#logBox').textContent = s.logs.join('\n');
@@ -84,8 +84,8 @@ bridge.on('log', (l) => { const b = $('#logBox'); b.textContent += (b.textConten
 
 // ---- Einstellungen
 $('#sSave').onclick = async () => {
-  const s = await bridge.invoke('settings:set', { autoStartServer: $('#sAutoStart').checked, openBrowserOnStart: $('#sBrowser').checked, startWithWindows: $('#sLogin').checked, closeStopsServer: $('#sClose').checked, openIn: $('#sOpenIn').value, port: $('#sPort').value, lang: $('#sLang').value });
-  if ((s.settings.lang || '') !== render._pref) { location.reload(); return; }
+  const s = await bridge.invoke('settings:set', { autoStartServer: $('#sAutoStart').checked, openBrowserOnStart: $('#sBrowser').checked, startWithWindows: $('#sLogin').checked, closeStopsServer: $('#sClose').checked, openIn: $('#sOpenIn').value, port: $('#sPort').value, pinEvery: $('#sPinEvery').checked, lang: $('#sLang').value });
+  if ((s.settings.lang === 'de' ? 'de' : 'en') !== render._pref) { location.reload(); return; }
   render(s); $('#sMsg').textContent = 'Gespeichert.'; setTimeout(() => ($('#sMsg').textContent = ''), 2500);
 };
 
