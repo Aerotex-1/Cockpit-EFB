@@ -53,7 +53,10 @@ Der Installer enthält Piper und zwei Stimmen (Thorsten deutsch, Lessac englisch
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.4.6, enthält EFB 1.3.5)
+## Stand dieser Version (App 1.5.0, enthält EFB 1.3.6)
+
+- **Release-bereit (1.5.0):** Standard-Repository `benbadelt-dot/Cockpit-EFB` ist fest voreingestellt (`lib/store.js`), die Update-Suche läuft ohne Token über die öffentliche GitHub-API (Limit 60 Abfragen/Stunde je IP, die App fragt alle 6 h). Token und andere Quelle stehen unter „Updates → Erweitert“. Copilot ist in der App als Beta gekennzeichnet. Root-`README.md` für das Repository.
+- **EFB 1.3.6:** Kartenanbieter wählbar (CARTO Standard) mit Rückfall, Setup in vier Gruppen sortiert.
 
 - **EFB 1.3.5:** Türzuordnung bei Fliegern ohne eigene Schnittstelle wird aus der Sim-Reaktion gelernt (Knopf zum Zurücksetzen); obere Leiste lässt die Uhr nie mehr abschneiden. Beides nur mit Attrappe/Chromium getestet.
 

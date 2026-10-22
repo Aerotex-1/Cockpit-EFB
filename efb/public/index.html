@@ -15,9 +15,9 @@
   <meta name="format-detection" content="telephone=no">
   <!-- Schrift ohne Blockieren laden: fehlt Internet, wird die Systemschrift genutzt -->
   <link href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="style.css?v=1.3.5">
-  <script src="i18n-en.js?v=1.3.5"></script>
-  <script src="i18n.js?v=1.3.5"></script>
+  <link rel="stylesheet" href="style.css?v=1.3.6">
+  <script src="i18n-en.js?v=1.3.6"></script>
+  <script src="i18n.js?v=1.3.6"></script>
   <script>try{var c=JSON.parse(localStorage.getItem('efb.settingsCache')||'null');if(c&&c.t)document.documentElement.dataset.theme=c.t;}catch(e){}</script>
 </head>
 <body>
@@ -256,20 +256,24 @@
     <section class="tab" id="tab-setup">
       <div class="setup-layout">
         <nav class="set-nav" id="setNav" aria-label="Einstellungen">
-          <button data-sec="airlines" class="on">Airlines</button>
-          <button data-sec="design">Design</button>
+          <div class="set-grp">Darstellung</div>
+          <button data-sec="design" class="on">Design</button>
+          <button data-sec="lang">Sprache</button>
           <button data-sec="tabs">Tabs</button>
           <button data-sec="presets">Presets</button>
+          <div class="set-grp">Flug</div>
+          <button data-sec="airlines">Airlines</button>
+          <button data-sec="aircraft">Flieger-Profile</button>
           <button data-sec="logbook">Logbuch</button>
-          <button data-sec="lang">Sprache</button>
-          <button data-sec="connect">Verbindungen</button>
-          <button data-sec="aircraft">Flieger</button>
-          <button data-sec="access">Zugang</button>
-          <button data-sec="about">Info</button>
+          <div class="set-grp">Verbindungen</div>
+          <button data-sec="connect">Dienste und Karte</button>
+          <div class="set-grp">System</div>
+          <button data-sec="access">Zugang (PIN)</button>
+          <button data-sec="about">Update und Info</button>
         </nav>
         <div class="screen set-body">
-          <section class="set-sec on" id="sec-airlines"></section>
-          <section class="set-sec" id="sec-design">
+          <section class="set-sec" id="sec-airlines"></section>
+          <section class="set-sec on" id="sec-design">
             <div id="designDyn" class="set-dyn"></div>
             <div class="panel">
               <h3>Helligkeit</h3>
@@ -291,6 +295,14 @@
               <h3>Spotify (freiwillig)</h3>
               <label class="field">Client-ID der Spotify-App <input id="spClient" autocomplete="off" autocapitalize="off" autocorrect="off"></label>
               <p class="note">So bekommst du sie: Auf developer.spotify.com/dashboard eine App anlegen und als Redirect-URI <b>http://127.0.0.1:8090/api/spotify/callback</b> eintragen. Danach im Tab Musik anmelden.</p>
+            </div>
+            <div class="panel">
+              <h3>Karte</h3>
+              <label class="field">Kartenanbieter
+                <select id="tileProv"></select></label>
+              <label class="field" id="tileUrlRow" hidden>Adresse mit {z}, {x} und {y}
+                <input id="tileUrl" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="https://…/{z}/{x}/{y}.png"></label>
+              <p class="note">Alle Anbieter sind ohne Schlüssel nutzbar. Die Kacheln werden auf dem PC zwischengespeichert, jede Kachel wird nur einmal geladen. Fällt ein Anbieter aus oder ist überlastet, springt die EFB automatisch auf einen anderen. Gilt nach „Einstellungen speichern“ und Neuladen der Seite.</p>
             </div>
             <div class="panel">
               <h3>GSX</h3>
@@ -323,7 +335,7 @@
           <h3>Quellen und Hinweise</h3>
           <p class="note"><b>Nur für die Flugsimulation.</b> Leistungsrechner, Flughafen- und Wetterdaten sind Näherungen und dürfen nicht für echte Flüge oder echte Navigation verwendet werden. Cockpit EFB steht in keiner Verbindung zu Microsoft, Asobo, FlyByWire, Headwind, Fenix, FSDreamTeam (GSX), Navigraph/Lido, SimBrief, ChartFox, VATSIM oder Spotify. Alle Namen gehören ihren Inhabern.</p>
           <ul class="note about-list">
-            <li>Karte: © OpenStreetMap-Mitwirkende (ODbL), Bodenkarte aus OpenStreetMap über Overpass, Kartendarstellung mit Leaflet (BSD-2-Clause)</li>
+            <li>Karte: © OpenStreetMap-Mitwirkende (ODbL), Kacheln wahlweise von CARTO, OpenStreetMap oder OpenTopoMap, Bodenkarte aus OpenStreetMap über Overpass, Kartendarstellung mit Leaflet (BSD-2-Clause)</li>
             <li>Wind und Wolken: Wetterdaten von Open-Meteo.com (CC BY 4.0)</li>
             <li>Wetter-Radar: RainViewer</li>
             <li>VATSIM-Daten: öffentlicher VATSIM-Datenfeed, FIR-Grenzen aus dem VATSpy-Datenprojekt (werden beim ersten Aufruf vom PC geladen)</li>
@@ -347,29 +359,29 @@
     </section>
   </main>
 
-  <script src="app.js?v=1.3.5"></script>
-  <script src="sync.js?v=1.3.5"></script>
-  <script src="audio-dev.js?v=1.3.5"></script>
-  <script src="taxi-nav.js?v=1.3.5"></script>
-  <script src="ambience.js?v=1.3.5"></script>
-  <script src="mic-whisper.js?v=1.3.5"></script>
-  <script src="remote-efb.js?v=1.3.5"></script>
-  <script src="perf-model.js?v=1.3.5"></script>
-  <script src="perf-calc.js?v=1.3.5"></script>
-  <script src="finder.js?v=1.3.5"></script>
-  <script src="atc-tab.js?v=1.3.5"></script>
-  <script src="music-tab.js?v=1.3.5"></script>
-  <script src="settings.js?v=1.3.5"></script>
-  <script src="logbook-tab.js?v=1.3.5"></script>
-  <script src="wx-tab.js?v=1.3.5"></script>
-  <script src="copilot.js?v=1.3.5"></script>
-  <script src="copilot-life.js?v=1.3.5"></script>
-  <script src="copilot-ground.js?v=1.3.5"></script>
-  <script src="update-ui.js?v=1.3.5"></script>
-  <script src="setup-ui.js?v=1.3.5"></script>
-  <script src="about.js?v=1.3.5"></script>
-  <script src="charts.js?v=1.3.5"></script>
-  <script src="map-layers.js?v=1.3.5"></script>
-  <script src="map-extras.js?v=1.3.5"></script>
+  <script src="app.js?v=1.3.6"></script>
+  <script src="sync.js?v=1.3.6"></script>
+  <script src="audio-dev.js?v=1.3.6"></script>
+  <script src="taxi-nav.js?v=1.3.6"></script>
+  <script src="ambience.js?v=1.3.6"></script>
+  <script src="mic-whisper.js?v=1.3.6"></script>
+  <script src="remote-efb.js?v=1.3.6"></script>
+  <script src="perf-model.js?v=1.3.6"></script>
+  <script src="perf-calc.js?v=1.3.6"></script>
+  <script src="finder.js?v=1.3.6"></script>
+  <script src="atc-tab.js?v=1.3.6"></script>
+  <script src="music-tab.js?v=1.3.6"></script>
+  <script src="settings.js?v=1.3.6"></script>
+  <script src="logbook-tab.js?v=1.3.6"></script>
+  <script src="wx-tab.js?v=1.3.6"></script>
+  <script src="copilot.js?v=1.3.6"></script>
+  <script src="copilot-life.js?v=1.3.6"></script>
+  <script src="copilot-ground.js?v=1.3.6"></script>
+  <script src="update-ui.js?v=1.3.6"></script>
+  <script src="setup-ui.js?v=1.3.6"></script>
+  <script src="about.js?v=1.3.6"></script>
+  <script src="charts.js?v=1.3.6"></script>
+  <script src="map-layers.js?v=1.3.6"></script>
+  <script src="map-extras.js?v=1.3.6"></script>
 </body>
 </html>

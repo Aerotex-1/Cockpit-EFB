@@ -179,31 +179,46 @@ function localIps() {
 // ---------- Kartenkacheln (OpenStreetMap, kostenlos, über die Brücke zwischengespeichert) ----------
 const TILE_CACHE = path.join(ROOT, 'cache', 'tiles');
 const tileQueue = new Map();
+// Kartenanbieter ohne Schlüssel. Die Kacheln werden auf dem PC zwischengespeichert (30 Tage), jede Kachel wird also pro Installation nur einmal geladen.
+const TILE_PROVIDERS = {
+  osm: { name: 'OpenStreetMap', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr: '© OpenStreetMap-Mitwirkende', max: 19 },
+  carto: { name: 'CARTO Voyager', url: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', attr: '© OpenStreetMap-Mitwirkende © CARTO', max: 19 },
+  cartolight: { name: 'CARTO Positron (hell, ruhig)', url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', attr: '© OpenStreetMap-Mitwirkende © CARTO', max: 19 },
+  topo: { name: 'OpenTopoMap (Höhenlinien)', url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png', attr: '© OpenStreetMap-Mitwirkende, SRTM | © OpenTopoMap (CC-BY-SA)', max: 17 },
+};
+const tileProviderId = () => (config.tileUrl ? 'custom' : (TILE_PROVIDERS[config.tileProvider] ? config.tileProvider : 'carto'));
+const tileTemplate = (id) => (id === 'custom' ? config.tileUrl : TILE_PROVIDERS[id].url);
 async function serveTile(res, z, x, y) {
-  if (![z, x, y].every((n) => Number.isInteger(n) && n >= 0) || z > 19) { res.writeHead(400); return res.end(); }
-  const file = path.join(TILE_CACHE, String(z), String(x), `${y}.png`);
-  const send = () => { res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=604800' }); fs.createReadStream(file).pipe(res); };
+  const prov = tileProviderId();
+  if (![z, x, y].every((n) => Number.isInteger(n) && n >= 0) || z > (prov === 'custom' ? 19 : TILE_PROVIDERS[prov].max)) { res.writeHead(400); return res.end(); }
+  const fileFor = (id) => path.join(TILE_CACHE, id === 'osm' ? '' : id, String(z), String(x), `${y}.png`); // OSM-Kacheln der alten Versionen bleiben nutzbar
+  const file = fileFor(prov);
+  const send = (f) => { res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=604800' }); fs.createReadStream(f).pipe(res); };
   try {
     const st = fs.statSync(file);
-    if (Date.now() - st.mtimeMs < 30 * 86400000) return send();
+    if (Date.now() - st.mtimeMs < 30 * 86400000) return send(file);
   } catch { /* noch nicht im Speicher */ }
-  const key = `${z}/${x}/${y}`;
-  try {
-    if (!tileQueue.has(key)) {
-      tileQueue.set(key, (async () => {
-        const tpl = config.tileUrl || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-        const r = await fetch(tpl.replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{key}', encodeURIComponent(config.tileKey || '')), { headers: { 'User-Agent': `CockpitEFB/${VERSION} (+https://github.com/cockpit-efb)` } });
-        if (!r.ok) throw new Error(`Kartenserver ${r.status}`);
-        fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
-      })().finally(() => tileQueue.delete(key)));
-    }
-    await tileQueue.get(key);
-    send();
-  } catch {
-    if (fs.existsSync(file)) return send(); // alte Kachel ist besser als keine
-    res.writeHead(502); res.end();
+  // Zuerst der gewählte Anbieter, bei Fehler (z. B. überlastet) die anderen
+  const order = [prov, ...['carto', 'osm'].filter((i) => i !== prov)];
+  for (const id of order) {
+    const f = fileFor(id);
+    const key = `${id}/${z}/${x}/${y}`;
+    try {
+      if (!tileQueue.has(key)) {
+        tileQueue.set(key, (async () => {
+          const u = tileTemplate(id).replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{key}', encodeURIComponent(config.tileKey || ''));
+          const r = await fetch(u, { headers: { 'User-Agent': `CockpitEFB/${VERSION} (+https://github.com/benbadelt-dot/Cockpit-EFB)` }, signal: AbortSignal.timeout(8000) });
+          if (!r.ok) throw new Error(`Kartenserver ${r.status}`);
+          fs.mkdirSync(path.dirname(f), { recursive: true });
+          fs.writeFileSync(f, Buffer.from(await r.arrayBuffer()));
+        })().finally(() => tileQueue.delete(key)));
+      }
+      await tileQueue.get(key);
+      return send(f);
+    } catch { /* nächster Anbieter */ }
   }
+  if (fs.existsSync(file)) return send(file); // alte Kachel ist besser als keine
+  res.writeHead(502); res.end();
 }
 
 // ---------- Routen ----------
@@ -212,7 +227,7 @@ const server = http.createServer(async (req, res) => {
   try { url = new URL(req.url, 'http://x'); p = decodeURIComponent(url.pathname); } catch { res.writeHead(400); return res.end(); }
   if (auth.gate(req, res, p, readBody)) return;
   const local = isLoopback(req.socket.remoteAddress);
-  const cfgFor = () => { if (local) return config; const { pin, ...rest } = config; return rest; };
+  const cfgFor = () => { const { pin, ...rest } = config; const o = local ? { ...config } : rest; o.tileProviders = Object.fromEntries(Object.entries(TILE_PROVIDERS).map(([k, v]) => [k, v.name])); o.tileActive = tileProviderId(); o.tileMax = o.tileActive === 'custom' ? 19 : TILE_PROVIDERS[o.tileActive].max; o.tileAttr = o.tileActive === 'custom' ? 'Kartendaten: eigener Anbieter' : TILE_PROVIDERS[o.tileActive].attr; return o; };
 
   try {
     if (p === '/api/events') {
@@ -337,6 +352,9 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       if (typeof body.simbriefUser === 'string') config.simbriefUser = body.simbriefUser.trim();
       if (Array.isArray(body.aircraft)) config.aircraft = body.aircraft;
+      if (typeof body.gsxWebUrl === 'string') config.gsxWebUrl = /^https?:\/\/[^\s<>"']+$/.test(body.gsxWebUrl.trim()) ? body.gsxWebUrl.trim() : '';
+      if (typeof body.tileProvider === 'string' && (TILE_PROVIDERS[body.tileProvider] || body.tileProvider === 'custom')) config.tileProvider = body.tileProvider;
+      if (typeof body.tileUrl === 'string') config.tileUrl = /^https:\/\/[^\s]*\{z\}[^\s]*\{x\}[^\s]*\{y\}[^\s]*$/.test(body.tileUrl.trim()) ? body.tileUrl.trim() : '';
       if (typeof body.spotifyClientId === 'string') config.spotifyClientId = body.spotifyClientId.trim();
       if (typeof body.gsxMenuFile === 'string' && body.gsxMenuFile.trim() !== (config.gsxMenuFile || '')) {
         config.gsxMenuFile = body.gsxMenuFile.trim();

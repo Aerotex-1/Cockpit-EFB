@@ -52,3 +52,8 @@ pre.notes { margin:6px 0; white-space:pre-wrap; font:inherit; color:var(--dim); 
 .hk:first-of-type { border-top:0; }
 .hkin { flex:1; min-width:0; cursor:pointer; }
 .hkin:focus { outline:2px solid var(--ac, #2bc4e6); }
+
+.beta { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; margin-left: 6px; vertical-align: middle; background: rgba(255,170,0,.18); color: #ffb020; border: 1px solid rgba(255,170,0,.45); }
+details.adv { margin-top: 14px; }
+details.adv summary { cursor: pointer; color: #8a98a8; font-size: 13px; }
+details.adv label { display: block; margin-top: 10px; }

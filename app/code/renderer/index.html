@@ -8,7 +8,7 @@
   <nav>
     <button data-p="home" class="on">Start</button>
     <button data-p="edition">Version <span id="edBadge" hidden>●</span></button>
-    <button data-p="copilot" id="navCopilot">Copilot</button>
+    <button data-p="copilot" id="navCopilot">Copilot <span class="beta">Beta</span></button>
     <button data-p="settings">Einstellungen</button>
     <button data-p="updates">Updates <span id="badge" hidden>●</span></button>
     <button data-p="log">Protokoll</button>
@@ -40,7 +40,8 @@
   </section>
 
   <section id="p-copilot" class="page">
-    <div class="card"><h2>Copilot am PC</h2>
+    <div class="card"><h2>Copilot am PC <span class="beta">Beta</span></h2>
+      <p class="note"><b>Beta:</b> Sprachsteuerung, Bodencrew und Taxi-Ansagen sind neu und noch nicht überall erprobt. Sie können Fehler enthalten und beanspruchen Rechenleistung neben dem Simulator. Rückmeldungen sind willkommen.</p>
       <p class="note">Das Copilot-Fenster spricht über die Kopfhörer des PCs und hört per Mikrofon zu. Auf dem iPad siehst du nur die Checkliste: Haken, die du per Sprache setzt, erscheinen dort sofort, und du kannst dort auch Listen antippen. Sag zum Beispiel „Let's do the Cockpit Preparation checklist“.</p>
       <div class="row"><button id="cpOpen" class="primary">Copilot-Fenster öffnen</button></div>
     </div>
@@ -114,13 +115,16 @@
   </section>
 
   <section id="p-updates" class="page">
-    <div class="card"><h2>Update-Quelle</h2>
-      <p class="note">Neue Versionen werden von GitHub (Releases) geholt. Trage das Repository ein, in das der Entwickler seine Versionen hochlädt.</p>
-      <label>Repository<input id="uRepo" placeholder="besitzer/repository" autocomplete="off"></label>
-      <label>Zugriffstoken (nur bei privatem Repository)<input id="uToken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
-      <label>Ausgabe<select id="uEdition"><option value="public">Öffentlich</option><option value="privat">Privat (mit Lichter-Tab)</option></select></label>
+    <div class="card"><h2>Updates</h2>
+      <p class="note">Neue Versionen kommen direkt von GitHub und sind frei herunterladbar. Du brauchst dafür kein Konto und keinen Token.</p>
       <label class="chk"><input type="checkbox" id="uCheck"> Beim Start nach Updates suchen</label>
-      <div class="row"><button id="uSave">Speichern</button><button id="uGo" class="primary">Nach Updates suchen</button></div></div>
+      <div class="row"><button id="uGo" class="primary">Nach Updates suchen</button></div>
+      <details class="adv"><summary>Erweitert: andere Quelle oder privates Repository</summary>
+        <label>Repository<input id="uRepo" placeholder="besitzer/repository" autocomplete="off"></label>
+        <label>Zugriffstoken (nur bei privatem Repository)<input id="uToken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+        <label>Ausgabe<select id="uEdition"><option value="public">Öffentlich</option><option value="privat">Privat (mit Lichter-Tab)</option></select></label>
+        <div class="row"><button id="uSave">Speichern</button></div>
+      </details></div>
     <div class="card"><h2>Stand</h2><p id="uState" class="note">–</p>
       <div id="uEfb" hidden><b></b><pre class="notes"></pre><button class="primary" id="uInstEfb">EFB-Update installieren</button></div>
       <div id="uCode" hidden><b></b><pre class="notes"></pre><button class="primary" id="uInstCode">App-Update installieren</button><p class="note">Die App startet danach neu.</p></div>

@@ -686,6 +686,8 @@ body.has-bg::before { content: ''; position: fixed; inset: 0; z-index: -1; backg
 .set-nav button { text-align: left; background: transparent; border: 1px solid transparent; color: var(--grey); font-size: 15px; font-weight: 700; padding: 13px 16px; border-radius: var(--r-md); cursor: pointer; min-height: 48px; }
 .set-nav button:active { background: var(--pb-face); }
 .set-nav button.on { background: var(--surface-2); color: var(--white); border-color: var(--pb-edge); box-shadow: inset 3px 0 0 var(--cyan); }
+.set-grp { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--grey); padding: 12px 16px 2px; text-transform: uppercase; }
+.set-grp:first-child { padding-top: 2px; }
 .set-body { display: block; }
 .set-sec { display: none; }
 .set-sec.on { display: flex; flex-direction: column; gap: 14px; }
@@ -697,6 +699,7 @@ body.has-bg::before { content: ''; position: fixed; inset: 0; z-index: -1; backg
   .setup-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0,1fr); }
   .set-nav { flex-direction: row; overflow-x: auto; }
   .set-nav button { white-space: nowrap; }
+  .set-grp { display: none; }
 }
 
 /* Schalter */
@@ -916,3 +919,11 @@ input[type=range] { accent-color: var(--cyan); }
 /* ATC-Pille darf schrumpfen statt andere Anzeigen zu überlappen */
 .strip-atc { min-width: 0; flex: 0 1 auto; overflow: hidden; white-space: nowrap; }
 .strip-atc b { overflow: hidden; text-overflow: ellipsis; }
+
+/* GSX-Weboberfläche */
+.gsx-mode { display: flex; align-items: center; gap: 8px; }
+.gsx-mode .spacer { flex: 1; }
+.gsx-mode .btn-s.on { background: var(--surface-2); color: var(--white); box-shadow: inset 0 -2px 0 var(--cyan); }
+.gsx-web { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.gsx-web iframe { flex: 1; min-height: 60vh; width: 100%; border: 1px solid var(--pb-edge); border-radius: var(--r-md); background: #fff; }
+.gsx-web[hidden], .gsx-mode[hidden] { display: none; }

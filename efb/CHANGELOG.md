@@ -1,5 +1,9 @@
 # Änderungen
 
+## 1.3.6
+- **Kartenanbieter wählbar:** Im Setup unter „Dienste und Karte“ gibt es jetzt CARTO Voyager (neuer Standard), CARTO Positron, OpenStreetMap, OpenTopoMap oder eine eigene Adresse. Kacheln werden weiter auf dem PC zwischengespeichert (je Anbieter getrennt), so wird jede Kachel nur einmal geladen. Fällt ein Anbieter aus oder lehnt er ab, springt die EFB selbst auf einen anderen. Die Anfrage nennt jetzt die Projektseite auf GitHub. **Nicht getestet mit echten Kartenservern:** In meiner Testumgebung war kein Kartenserver erreichbar, geprüft ist nur, dass die Auswahl, das Speichern und der Rückfall ohne Absturz laufen.
+- **Setup neu sortiert:** Die Seitenleiste ist in vier Gruppen geteilt: Darstellung (Design, Sprache, Tabs, Presets), Flug (Airlines, Flieger-Profile, Logbuch), Verbindungen (SimBrief, Spotify, Karte, GSX) und System (Zugang, Update und Info). Keine Funktion wurde entfernt.
+
 ## 1.3.5
 - **Türen beim A330 (und anderen Fliegern ohne eigene Schnittstelle):** „Tür 6“ ließ „Tür 5“ auf „öffnen“ springen, weil die Zuordnung Knopf → Sim-Ausgang nicht stimmte. Die EFB lernt die Zuordnung jetzt beim ersten Antippen aus der echten Reaktion des Sims, und zwar nur, wenn genau ein Ausgang eindeutig reagiert; sonst kommt die Meldung „keine eindeutige Reaktion im Sim“ und nichts wird falsch gespeichert. Doppelt belegte Kacheln zeigen „Antippen“ statt eines falschen Zustands. Neu: Knopf „Türzuordnung zurücksetzen“ im Reiter „Bodendienste“. **Nur mit einem nachgebauten Sim getestet**, nicht mit dem echten A330.
 - **Obere Leiste auf dem iPad:** Die Uhr bleibt immer ganz sichtbar. Flug-/Flugzeugname und ATC-Pille schrumpfen mit „…“, bei schmalen Fenstern verschwinden zuerst HDG, dann ALT und der „UTC“-Zusatz. In Chromium bei iPad-Größen (694–1180 px) mit Testinhalt geprüft; auf dem echten iPad nicht.

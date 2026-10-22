@@ -2,7 +2,7 @@
 'use strict';
 
 const SetupUi = (() => {
-  let sec = store.get('setSec', 'airlines');
+  let sec = store.get('setSec', 'design');
   let logInfo = null;
   const S = () => Settings.get();
   const THEME_PREV = {

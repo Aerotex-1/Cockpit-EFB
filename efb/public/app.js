@@ -385,8 +385,9 @@ function initMap() {
   }
   map = L.map('map', { zoomControl: false, attributionControl: true, preferCanvas: true, zoomSnap: 0.5, wheelPxPerZoomLevel: 90 }).setView([51.42, 12.24], 8);
   // Kacheln von OpenStreetMap über die PC-Brücke (kostenlos, ohne Schlüssel); dunkel per CSS-Filter
-  L.tileLayer(window.TILE_URL || '/tiles/{z}/{x}/{y}.png', {
-    maxZoom: 19, maxNativeZoom: 19, className: 'osm-tiles', updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 2, attribution: '© OpenStreetMap-Mitwirkende',
+  const tmax = (app.config && app.config.tileMax) || 19;
+  L.tileLayer(window.TILE_URL || `/tiles/{z}/{x}/{y}.png?p=${encodeURIComponent((app.config && app.config.tileActive) || 'carto')}`, {
+    maxZoom: 19, maxNativeZoom: tmax, className: 'osm-tiles', updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 2, attribution: (app.config && app.config.tileAttr) || '© OpenStreetMap-Mitwirkende',
   }).addTo(map);
   map.getContainer().classList.toggle('map-light', store.get('mapStyle', 'dark') === 'light');
   $('#mapStyle').textContent = store.get('mapStyle', 'dark') === 'light' ? 'Dunkel' : 'Hell';
@@ -502,7 +503,24 @@ const GSX_EXTRA = [
 ];
 const gsxUi = { busy: null, msg: '', msgBad: false, showMenuUntil: 0, html: '' };
 
+function gsxWebUrl() {
+  const u = String((app.config && app.config.gsxWebUrl) || '').trim();
+  return u ? u.replace(/\{host\}/g, location.hostname) : '';
+}
+function renderGsxMode() {
+  const url = gsxWebUrl(), mode = url ? store.get('gsxMode', 'web') : 'tiles';
+  $('#gsxMode').hidden = !url;
+  $$('#gsxMode [data-gsxmode]').forEach((b) => b.classList.toggle('on', b.dataset.gsxmode === mode));
+  const web = !!url && mode === 'web';
+  $('#gsxWeb').hidden = !web;
+  ['#gsxTiles', '#gsxAsk', '.gsx-foot'].forEach((s) => { const e = document.querySelector('#tab-gsx ' + s); if (e) e.style.display = web ? 'none' : ''; });
+  if (url) $('#gsxOpenWeb').href = url;
+  const f = $('#gsxFrame');
+  if (web && f.dataset.src !== url) { f.dataset.src = url; f.src = url; }
+  return web;
+}
 function renderGsx() {
+  if (renderGsxMode()) return;
   const g = app.sim.gsx || {};
   const info = app.sim.gsxInfo || {};
   const tiles = GSX_TILES.map(([key, label, v]) => {
@@ -569,6 +587,11 @@ function renderSetup() {
   $('#sbUser').value = app.config.simbriefUser || '';
   $('#spClient').value = app.config.spotifyClientId || '';
   $('#gsxFile').value = app.config.gsxMenuFile || '';
+  $('#gsxWebIn').value = app.config.gsxWebUrl || '';
+  $('#tileProv').innerHTML = Object.entries(app.config.tileProviders || {}).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('') + '<option value="custom">Eigene Adresse …</option>';
+  $('#tileProv').value = app.config.tileActive || 'carto';
+  $('#tileUrl').value = app.config.tileUrl || '';
+  $('#tileUrlRow').hidden = $('#tileProv').value !== 'custom';
   $('#acEditor').innerHTML = app.config.aircraft.map((a, i) => `
     <div class="ac-edit" data-i="${i}">
       <div class="ac-head">
@@ -593,6 +616,9 @@ function readSetup() {
   app.config.simbriefUser = $('#sbUser').value.trim();
   app.config.spotifyClientId = $('#spClient').value.trim();
   app.config.gsxMenuFile = $('#gsxFile').value.trim();
+  app.config.gsxWebUrl = $('#gsxWebIn').value.trim();
+  app.config.tileProvider = $('#tileProv').value;
+  app.config.tileUrl = $('#tileProv').value === 'custom' ? $('#tileUrl').value.trim() : '';
 }
 function renderGsxFileInfo() {
   const f = (app.sim.gsxInfo || {}).menuFile;
@@ -613,6 +639,7 @@ function bindUi() {
     store.set('ac', e.target.value); lastProfileId = undefined; onSim();
   });
   $('#btnLoadOfp').addEventListener('click', () => loadOfp());
+  $('#tileProv').addEventListener('change', (e) => { $('#tileUrlRow').hidden = e.target.value !== 'custom'; });
   document.addEventListener('click', (e) => {
     const t = e.target.closest('button, a');
     if (!t) return;
@@ -626,6 +653,7 @@ function bindUi() {
     if (t.dataset.svc) gsxService(t.dataset.svc);
     if (t.dataset.gsx !== undefined) gsxChoose(Number(t.dataset.gsx));
     if (t.id === 'gsxRefresh') gsxRefresh();
+    if (t.dataset.gsxmode) { store.set('gsxMode', t.dataset.gsxmode); gsxUi.html = ''; renderGsx(); }
     if (t.dataset.del !== undefined) { readSetup(); app.config.aircraft.splice(Number(t.dataset.del), 1); renderSetup(); }
     if (t.id === 'acAdd') { readSetup(); app.config.aircraft.push({ id: 'ac-' + Date.now(), name: 'Neuer Flieger', match: [], efbUrl: '', checklist: 'airbus-narrow' }); renderSetup(); }
     if (t.id === 'btnSave' || t.id === 'btnSave2') saveSetup();

@@ -15,6 +15,8 @@ Cockpit EFB steht in keiner Verbindung zu den hier genannten Firmen und Projekte
 | Quelle | Bedingungen |
 |---|---|
 | OpenStreetMap-Kacheln und Daten (Bodenkarte über Overpass) | © OpenStreetMap-Mitwirkende, ODbL. Die öffentlichen Kartenserver erlauben nur maßvolle Nutzung (Tile Usage Policy). Für starke Nutzung eigenen Kartendienst eintragen (`tileUrl`, `tileKey` in `config.json`) |
+| Kartenkacheln von CARTO (Voyager, Positron) | © OpenStreetMap-Mitwirkende © CARTO. Kostenlos für nicht-kommerzielle Nutzung mit Namensnennung; es gelten die Nutzungsbedingungen von CARTO. |
+| OpenTopoMap (wählbar) | © OpenStreetMap-Mitwirkende, SRTM | © OpenTopoMap (CC-BY-SA 3.0). Nur maßvolle Nutzung. |
 | Open-Meteo (Wind, Wolken) | CC BY 4.0, kostenlos für nicht-kommerzielle Nutzung, Namensnennung nötig |
 | RainViewer (Wetter-Radar) | Nutzungsbedingungen von RainViewer, Namensnennung |
 | VATSIM-Datenfeed, VATSpy-Datenprojekt (FIR-Grenzen) | Nutzungsbedingungen von VATSIM bzw. des Projekts. Der Feed wird höchstens alle 15 Sekunden abgefragt |

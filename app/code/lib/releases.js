@@ -16,8 +16,9 @@ const headers = (token, accept) => {
 async function listReleases({ repo, token, base = 'https://api.github.com', fetchFn = fetch }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo || '')) throw new Error('Repository fehlt oder ist ungültig (Format: besitzer/name).');
   const r = await fetchFn(`${base}/repos/${repo}/releases?per_page=30`, { headers: headers(token) });
-  if (r.status === 404) throw new Error('Repository nicht gefunden. Bei privaten Repositories fehlt der Zugriffstoken.');
-  if (r.status === 401 || r.status === 403) throw new Error('Zugriff abgelehnt (Token prüfen).');
+  if (r.status === 404) throw new Error('Repository nicht gefunden. Ist es öffentlich? Bei einem privaten Repository wird ein Zugriffstoken gebraucht (Updates → Erweitert).');
+  if (r.status === 403 && r.headers && r.headers.get && r.headers.get('x-ratelimit-remaining') === '0') throw new Error('GitHub lässt gerade keine weiteren Abfragen zu (Limit ohne Anmeldung). Versuche es in etwa einer Stunde erneut.');
+  if (r.status === 401 || r.status === 403) throw new Error('Zugriff abgelehnt. Falls ein Token eingetragen ist, bitte prüfen (Updates → Erweitert).');
   if (!r.ok) throw new Error('GitHub antwortet mit Fehler ' + r.status);
   return (await r.json()).filter((x) => !x.draft);
 }
