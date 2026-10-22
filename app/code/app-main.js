@@ -160,6 +160,7 @@ const editionState = () => { try { return editionLib.status(EFB_DIR, BUNDLE); } 
 // PIN-Abfrage bei jedem Öffnen der EFB (steht in der config.json der EFB, Standard: an)
 function pinEveryNow() { try { return readJson(path.join(EFB_DIR, 'config.json'), {}).pinEvery !== false; } catch { return true; } }
 const LINKS = require('./lib/links');
+const firewall = require('./lib/firewall');
 function state() {
   return { edition: editionState(), status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '', pinEvery: pinEveryNow() }, hotkeys: hotkeyState, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
 }
@@ -192,6 +193,9 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('state', () => state());
+  ipcMain.handle('firewall:status', () => firewall.status(proc.port()));
+  ipcMain.handle('firewall:add', async () => { const r = await firewall.add(proc.port()); return { ...r, status: await firewall.status(proc.port()) }; });
+  ipcMain.handle('firewall:remove', async () => { const r = await firewall.remove(); return { ...r, status: await firewall.status(proc.port()) }; });
   ipcMain.handle('link:open', (_e, key) => { const u = LINKS[key]; if (typeof u === 'string' && /^https:\/\//.test(u)) shell.openExternal(u); }); // nur feste Adressen aus lib/links.js
   ipcMain.handle('server:start', () => { proc.start(); });
   ipcMain.handle('server:stop', () => proc.stop());

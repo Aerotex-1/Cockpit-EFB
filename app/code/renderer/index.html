@@ -22,6 +22,7 @@
     <div class="card"><h2>Version</h2><p class="note" id="edHome">–</p><div class="row"><button id="edGo">Version wechseln …</button></div></div>
     <div class="card"><h2>EFB öffnen</h2>
       <div class="row"><button id="bBrowser" class="primary">Im Browser öffnen</button><button id="bWindow">Im App-Fenster öffnen</button></div>
+      <p class="note">Verbindet sich das iPad nicht? Dann unter „Einstellungen → iPad-Verbindung“ die Firewall-Regel anlegen.</p>
       <p class="note">Das iPad zeigt die Checkliste. Der Copilot spricht und hört am PC: dafür unter „Copilot“ das Copilot-Fenster öffnen.</p>
       <p class="sub">Adresse am iPad: <code id="addr">–</code></p></div>
     <div class="card" id="cCommunity"><h2>Community &amp; Support</h2><p class="note">Fragen, Fehler oder Ideen? Im Discord gibt es Community und ein Support-Forum. Cockpit EFB ist ein privates Hobbyprojekt, Antworten und Fehlerbehebungen kommen ohne feste Zeit.</p>
@@ -71,6 +72,11 @@
   </section>
 
   <section id="p-settings" class="page">
+    <div class="card" id="cFirewall"><h2>iPad-Verbindung (Windows-Firewall)</h2>
+      <p class="note">Damit das iPad auf die EFB zugreifen kann, muss die Windows-Firewall den Port der EFB im privaten Netzwerk erlauben. Meist fragt Windows beim ersten Start danach („Private Netzwerke“ erlauben). Hat das nicht geklappt, legt der Knopf eine Regel nur für diesen Port an; Windows fragt dafür nach Administratorrechten. Die Firewall selbst musst du dafür nicht ausschalten, und das ist auch nicht zu empfehlen.</p>
+      <p class="sub" id="fwState">–</p>
+      <div class="row"><button id="fwAdd" class="primary">Firewall-Regel für den Port anlegen</button><button id="fwDel">Regel entfernen</button><span id="fwMsg" class="note"></span></div>
+      <p class="note">Zeigt Windows dein Heimnetz als „Öffentlich“ an, gilt die Regel nicht. Stelle es unter Windows → Einstellungen → Netzwerk und Internet → Eigenschaften auf „Privat“.</p></div>
     <div class="card"><h2>Allgemein</h2>
       <label class="chk"><input type="checkbox" id="sAutoStart"> Server beim Start der App starten</label>
       <label class="chk"><input type="checkbox" id="sBrowser"> Browser mit der EFB beim Serverstart öffnen</label>

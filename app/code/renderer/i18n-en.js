@@ -124,6 +124,21 @@ Object.assign(window.EN_DICT, {
   'Fragen, Fehler oder Ideen? Im Discord gibt es Community und ein Support-Forum. Cockpit EFB ist ein privates Hobbyprojekt, Antworten und Fehlerbehebungen kommen ohne feste Zeit.': 'Questions, bugs or ideas? Discord has a community and a support forum. Cockpit EFB is a personal hobby project, so replies and fixes come without a fixed schedule.',
   'Discord öffnen': 'Open Discord',
 });
+Object.assign(window.EN_DICT, {
+  'iPad-Verbindung (Windows-Firewall)': 'iPad connection (Windows Firewall)',
+  'Damit das iPad auf die EFB zugreifen kann, muss die Windows-Firewall den Port der EFB im privaten Netzwerk erlauben. Meist fragt Windows beim ersten Start danach („Private Netzwerke“ erlauben). Hat das nicht geklappt, legt der Knopf eine Regel nur für diesen Port an; Windows fragt dafür nach Administratorrechten. Die Firewall selbst musst du dafür nicht ausschalten, und das ist auch nicht zu empfehlen.': 'For the iPad to reach the EFB, the Windows Firewall must allow the EFB port on the private network. Windows usually asks about this on first start (allow "Private networks"). If that did not work, the button creates a rule for just this port; Windows asks for administrator rights. You do not need to turn the firewall off, and that is not recommended.',
+  'Firewall-Regel für den Port anlegen': 'Create firewall rule for the port',
+  'Regel entfernen': 'Remove rule',
+  'Zeigt Windows dein Heimnetz als „Öffentlich“ an, gilt die Regel nicht. Stelle es unter Windows → Einstellungen → Netzwerk und Internet → Eigenschaften auf „Privat“.': 'If Windows shows your home network as "Public", the rule does not apply. Set it to "Private" under Windows → Settings → Network & internet → Properties.',
+  'Verbindet sich das iPad nicht? Dann unter „Einstellungen → iPad-Verbindung“ die Firewall-Regel anlegen.': 'iPad cannot connect? Create the firewall rule under "Settings → iPad connection".',
+  'Nur unter Windows verfügbar.': 'Only available on Windows.',
+  'Keine eigene Regel vorhanden. Wenn das iPad sich schon verbindet, brauchst du keine.': 'No rule of its own. If the iPad already connects, you do not need one.',
+  'Warte auf Windows …': 'Waiting for Windows …',
+  'Regel angelegt.': 'Rule created.',
+  'Regel entfernt.': 'Rule removed.',
+  'Abgebrochen: Windows hat keine Administratorrechte erhalten.': 'Cancelled: Windows did not grant administrator rights.',
+  'Das hat nicht geklappt.': 'That did not work.',
+});
 window.EN_PATTERNS = [
   [/^EFB (\S+) verfügbar \(installiert: (.+)\)$/, 'EFB $1 available (installed: $2)'],
   [/^App (\S+) verfügbar \(installiert: (.+)\)$/, 'App $1 available (installed: $2)'],
@@ -148,4 +163,7 @@ window.EN_PATTERNS = [
   [/^Download fehlgeschlagen \((\d+)\)\.$/, 'Download failed ($1).'],
   [/^GitHub antwortet mit Fehler (\d+)$/, 'GitHub responded with error $1'],
   [/^(\S+) beendet mit (.+)$/, '$1 exited with $2'],
+  [/^Regel vorhanden: Port (\S+), private Netzwerke\.$/, 'Rule exists: port $1, private networks.'],
+  [/^Regel vorhanden, gilt aber für Port (\S+) und nicht für den aktuellen Port\. Lege sie neu an\.$/, 'A rule exists but is for port $1, not the current port. Create it again.'],
+  [/^Das hat nicht geklappt \((.+)\)\.$/, 'That did not work ($1).'],
 ];

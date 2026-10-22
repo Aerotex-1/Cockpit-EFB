@@ -11,7 +11,25 @@ const goPage = (name) => {
   document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x.dataset.p === name));
   document.querySelectorAll('.page').forEach((p) => p.classList.toggle('on', p.id === 'p-' + name));
 };
-document.querySelectorAll('nav button').forEach((b) => b.onclick = () => goPage(b.dataset.p));
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { goPage(b.dataset.p); if (b.dataset.p === 'settings') fwRefresh(); });
+
+// ---- Windows-Firewall-Regel für das iPad ----
+function fwShow(st) {
+  if (!st || !st.supported) { $('#fwState').textContent = 'Nur unter Windows verfügbar.'; $('#fwAdd').disabled = $('#fwDel').disabled = true; return; }
+  $('#fwAdd').disabled = false; $('#fwDel').disabled = !st.exists;
+  $('#fwState').textContent = !st.exists ? 'Keine eigene Regel vorhanden. Wenn das iPad sich schon verbindet, brauchst du keine.' : st.ok ? `Regel vorhanden: Port ${st.port}, private Netzwerke.` : `Regel vorhanden, gilt aber für Port ${st.port} und nicht für den aktuellen Port. Lege sie neu an.`;
+}
+async function fwRefresh() { try { fwShow(await bridge.invoke('firewall:status')); } catch { /* egal */ } }
+async function fwDo(ch, okMsg) {
+  $('#fwMsg').textContent = 'Warte auf Windows …';
+  try {
+    const r = await bridge.invoke(ch);
+    fwShow(r.status);
+    $('#fwMsg').textContent = r.ok ? okMsg : r.cancelled ? 'Abgebrochen: Windows hat keine Administratorrechte erhalten.' : `Das hat nicht geklappt (${r.error || 'unbekannt'}).`;
+  } catch (e) { $('#fwMsg').textContent = 'Das hat nicht geklappt.'; }
+}
+$('#fwAdd').onclick = () => fwDo('firewall:add', 'Regel angelegt.');
+$('#fwDel').onclick = () => fwDo('firewall:remove', 'Regel entfernt.');
 
 function renderStatus(s) {
   $('#dot').className = 'dot ' + s; $('#stText').textContent = ST[s] || s;

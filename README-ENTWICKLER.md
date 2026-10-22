@@ -53,7 +53,9 @@ Der Installer enthält Piper, aber keine Stimmen mehr (etwa 90 MB statt 230 MB).
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.5.4, enthält EFB 1.3.9)
+## Stand dieser Version (App 1.5.5, enthält EFB 1.3.9)
+
+- **Firewall-Regel fürs iPad (1.5.5):** Einstellungen → „iPad-Verbindung (Windows-Firewall)“. `app/code/lib/firewall.js` liest den Status mit `netsh advfirewall firewall show rule` (ohne Rechte) und legt die Regel „Cockpit EFB (iPad)“ (eingehend, TCP, nur der EFB-Port, nur privates Netzwerk) über eine PowerShell mit Administrator-Abfrage (`Start-Process -Verb RunAs`, Skript als Base64) an oder entfernt sie. Es gibt bewusst keinen Knopf, der die ganze Firewall ausschaltet. Test mit nachgestellten Befehlen: `node app/tools/test-firewall.js`. **Auf echtem Windows ungetestet** (UAC, deutsche/englische netsh-Ausgabe, Wirkung auf das iPad).
 
 - **Community & Support (1.5.4 / EFB 1.3.9):** Discord-Knopf in der App-Startseite (`link:open` öffnet nur die Adressen aus `app/code/lib/links.js`) und im EFB-Setup (Update und Info). Kein Spenden-Knopf. Die Karten-Voreinstellung ist wieder OpenStreetMap (Rückfall auf CARTO). Lizenzhinweise ergänzt (eSpeak NG GPL-3.0 im Piper-Paket, Leaflet-Lizenzdatei, RainViewer-Bedingungen).
 - **Englisch als Standard (1.5.2):** App und EFB starten auf Englisch (vorher nach Windows-/Browsersprache). Deutsch wählbar. In der App ist `settings.lang === 'de'` der einzige Weg zu Deutsch; leer oder `en` ergibt Englisch.
