@@ -1,4 +1,4 @@
-// Musik-Tab: Spotify steuern (Wiedergabe läuft auf dem PC oder einem anderen Spotify-Gerät, nicht im iPad)
+// Musik-Tab: Spotify steuern (Wiedergabe läuft auf dem PC oder einem anderen Spotify-Gerät, nicht im Tablet)
 'use strict';
 
 const MusicTab = (() => {
@@ -23,7 +23,7 @@ const MusicTab = (() => {
   }
   function login() {
     $('#musicBody').innerHTML = `<div class="panel music-setup"><h3>Bei Spotify anmelden</h3>
-      <p>Die Anmeldung läuft einmalig <b>am PC</b>, nicht am iPad.</p>
+      <p>Die Anmeldung läuft einmalig <b>am PC</b>, nicht am Tablet.</p>
       ${isLocal ? `<div class="form-row"><a class="btn" href="/api/spotify/login" target="_blank" rel="noopener">Bei Spotify anmelden</a></div>`
         : `<p>Öffne diese Adresse im Browser des PCs:</p><p><code>${esc(status.loginUrl)}</code></p>`}
       <div class="form-row"><button class="btn-s" id="spRecheck">Neu prüfen</button></div><p class="note" id="spMsg"></p></div>`;

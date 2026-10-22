@@ -46,7 +46,7 @@ class Auth {
     if (c.requirePin === undefined) { c.requirePin = true; this.save(); }
     // Standard: Die PIN wird bei jedem Öffnen der EFB abgefragt (am PC in der App oder unter Setup → Zugang abschaltbar)
     if (c.pinEvery === undefined) { c.pinEvery = true; this.save(); }
-    // Ohne gültige PIN legt der Nutzer sie beim ersten Öffnen am iPad (oder am PC unter Setup) selbst fest
+    // Ohne gültige PIN legt der Nutzer sie beim ersten Öffnen am Tablet (oder am PC unter Setup) selbst fest
     if (c.pin !== undefined && !/^\d{4,8}$/.test(String(c.pin))) { delete c.pin; this.save(); }
   }
   hasPin() { return /^\d{4,8}$/.test(String(this.cfg().pin || '')); }
@@ -57,7 +57,7 @@ class Auth {
     this.persist();
     return send(200, { ok: true }, { 'Set-Cookie': `efb_auth=${token}; Max-Age=31536000; Path=/; HttpOnly; SameSite=Strict` });
   }
-  // Erste PIN vom iPad aus (nur solange noch keine gesetzt ist)
+  // Erste PIN vom Tablet aus (nur solange noch keine gesetzt ist)
   setFirst(req, res, body) {
     const send = (code, o, headers) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...(headers || {}) }); res.end(JSON.stringify(o)); };
     if (this.hasPin()) return send(403, { error: 'Es gibt schon eine PIN.' });
@@ -83,7 +83,7 @@ class Auth {
   cookieValid(req) {
     const s = this.findSession(req);
     if (!s) return false;
-    // Im Modus „PIN bei jedem Öffnen“ verfällt die Kopplung, wenn die EFB länger als 5 Minuten nichts angefragt hat (iPad im Hintergrund)
+    // Im Modus „PIN bei jedem Öffnen“ verfällt die Kopplung, wenn die EFB länger als 5 Minuten nichts angefragt hat (Tablet im Hintergrund)
     if (this.cfg().pinEvery && Date.now() - s.last > IDLE_MS) { this.drop(s); return false; }
     s.last = Date.now(); return true;
   }

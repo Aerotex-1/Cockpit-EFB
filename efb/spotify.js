@@ -1,5 +1,5 @@
 // Spotify-Fernbedienung über die Spotify Web API (Anmeldung per PKCE, ohne Client-Secret).
-// Die Anmeldung läuft einmal am PC im Browser; danach steuert das iPad die Wiedergabe über die PC-Brücke.
+// Die Anmeldung läuft einmal am PC im Browser; danach steuert das Tablet die Wiedergabe über die PC-Brücke.
 // Die Wiedergabe selbst braucht Spotify Premium und ein aktives Gerät (z. B. die Spotify-App am PC).
 
 const fs = require('fs');

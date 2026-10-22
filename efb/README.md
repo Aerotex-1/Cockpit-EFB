@@ -2,7 +2,7 @@
 
 **Persönliches Projekt:** Cockpit EFB ist für mein eigenes Heimcockpit gebaut (1:1-A320-Nachbau, MSFS 2024, VATSIM) und darauf zugeschnitten; ich teile es für Leute, die Ähnliches suchen. Kleinere Fehler werden nicht immer sofort behoben. Fragen und Fehlermeldungen: [Discord-Support-Forum](https://discord.gg/fdKxAVQvm).
 
-Ein iPad-Cockpit-Begleiter für den Microsoft Flight Simulator 2024. Eine kleine PC-Brücke verbindet den Sim mit einer Webseite, die du auf dem iPad (oder jedem Browser im Heimnetz) öffnest.
+Ein Tablet-Cockpit-Begleiter für den Microsoft Flight Simulator 2024. Eine kleine PC-Brücke verbindet den Sim mit einer Webseite, die du auf dem Tablet (oder jedem Browser im Heimnetz) öffnest.
 
 **Nur für die Flugsimulation.** Leistungsrechner, Flughafen- und Wetterdaten sind Näherungen. Nicht für echte Navigation verwenden. Keine Gewähr.
 
@@ -18,8 +18,8 @@ Ein iPad-Cockpit-Begleiter für den Microsoft Flight Simulator 2024. Eine kleine
 
 ## Installation (Windows)
 1. **Node.js** (LTS) von https://nodejs.org installieren.
-2. ZIP entpacken, `start.bat` doppelklicken. Beim ersten Start werden Bibliotheken geladen. Im Fenster stehen die Adresse und der Hinweis, die PIN beim ersten Öffnen am iPad festzulegen.
-3. Auf dem iPad in Safari die Adresse öffnen (z. B. `http://192.168.1.20:8090`), dort eine eigene PIN (4–8 Ziffern) festlegen. Das iPad merkt sich die Kopplung. Tipp: „Zum Home-Bildschirm" für Vollbild.
+2. ZIP entpacken, `start.bat` doppelklicken. Beim ersten Start werden Bibliotheken geladen. Im Fenster stehen die Adresse und der Hinweis, die PIN beim ersten Öffnen am Tablet festzulegen.
+3. Auf dem Tablet im Browser die Adresse öffnen (z. B. `http://192.168.1.20:8090`), dort eine eigene PIN (4–8 Ziffern) festlegen. Das Tablet merkt sich die Kopplung. Tipp: „Zum Home-Bildschirm" für Vollbild.
 4. Sim-Modul (freiwillig): `install-sim-modul.bat` ausführen (kopiert `cockpit-efb-link` in den Community-Ordner). Das Modul ist freiwillig: Es leitet nur die Systemstörungen an FBW und Headwind weiter.
 5. Im EFB unter **Setup** den SimBrief-Namen eintragen und speichern.
 

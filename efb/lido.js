@@ -3,7 +3,7 @@
 // Die Charts gibt es nur innerhalb des Sims (SDK-Schnittstelle "JS_LISTENER_CHARTS").
 // Ein kleines EFB-Modul im Sim (Ordner efb-app/) fragt diese Brücke regelmäßig nach Aufträgen,
 // ruft Chart-Liste, Seiten und Bilder im Sim ab und schickt sie hierher. Die Brücke speichert
-// alles zwischen und liefert es ans iPad.
+// alles zwischen und liefert es ans Tablet.
 
 const fs = require('fs');
 const path = require('path');
@@ -84,7 +84,7 @@ class Lido {
     });
   }
 
-  // ---------- Seite des iPads ----------
+  // ---------- Seite des Tablets ----------
   async index(icao) {
     icao = icao.toUpperCase();
     const c = this.indexCache.get(icao);

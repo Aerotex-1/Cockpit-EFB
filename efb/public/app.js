@@ -1,10 +1,10 @@
-// Cockpit EFB – iPad-Oberfläche
+// Cockpit EFB – Tablet-Oberfläche
 'use strict';
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const store = { // Werte im Speicher zwischenhalten: localStorage-Zugriffe sind auf dem iPad langsam und werden pro Sekunde oft gebraucht
+const store = { // Werte im Speicher zwischenhalten: localStorage-Zugriffe sind auf dem Tablet langsam und werden pro Sekunde oft gebraucht
   _c: new Map(),
   get(k, d) { try { let v = this._c.get(k); if (v === undefined) { v = localStorage.getItem('efb.' + k); this._c.set(k, v); } return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { const j = JSON.stringify(v); this._c.set(k, j); localStorage.setItem('efb.' + k, j); } catch { /* egal */ } },
@@ -36,7 +36,7 @@ const app = {
   frames: { efb: '' },
 };
 
-// ---------- Fehleranzeige (hilft bei der Fehlersuche auf dem iPad) ----------
+// ---------- Fehleranzeige (hilft bei der Fehlersuche auf dem Tablet) ----------
 function showError(msg) {
   const box = $('#errBox');
   if (!box) return;
@@ -95,7 +95,7 @@ async function loadConfig() {
       await new Promise((res) => setTimeout(res, 2000));
     }
   }
-  showError('PC-Brücke nicht erreichbar. Läuft start.bat auf dem PC und ist das iPad im selben WLAN?');
+  showError('PC-Brücke nicht erreichbar. Läuft start.bat auf dem PC und ist das Tablet im selben WLAN?');
 }
 
 function connectEvents() {
@@ -380,7 +380,7 @@ function initMap() {
   if (!window.L) {
     $('#map').innerHTML = '<p class="empty" style="padding:20px">Karte wird geladen …</p>';
     loadLeaflet().then(() => { $('#map').innerHTML = ''; initMap(); })
-      .catch(() => { $('#map').innerHTML = '<p class="empty" style="padding:20px">Kartenbibliothek nicht geladen. Hat das iPad Internet? Öffne die Karte erneut, um es nochmal zu versuchen.</p>'; });
+      .catch(() => { $('#map').innerHTML = '<p class="empty" style="padding:20px">Kartenbibliothek nicht geladen. Hat das Tablet Internet? Öffne die Karte erneut, um es nochmal zu versuchen.</p>'; });
     return;
   }
   map = L.map('map', { zoomControl: false, attributionControl: true, preferCanvas: true, zoomSnap: 0.5, wheelPxPerZoomLevel: 90 }).setView([51.42, 12.24], 8);

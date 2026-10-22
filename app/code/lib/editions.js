@@ -29,7 +29,8 @@ function set(efbDir, bundleDir, sel) {
     const tabs = x.ed.clean(Array.isArray(sel.tabs) ? sel.tabs : []);
     if (tabs.length < 2) throw new Error('Wähle mindestens einen Tab (zusätzlich zu Setup).');
     out = { id: 'custom', tabs };
-  } else if (sel && info.editions.some((e) => e.id === sel.id)) out = { id: sel.id };
+  } else if (sel && info.editions.some((e) => e.id === sel.id && !e.soon)) out = { id: sel.id };
+  else if (sel && info.editions.some((e) => e.id === sel.id && e.soon)) throw new Error('Diese Version ist noch in Entwicklung und vorerst nur in der privaten Version verfügbar.');
   else throw new Error('Unbekannte Version.');
   fs.writeFileSync(path.join(efbDir, 'edition.json'), JSON.stringify(out, null, 2));
   return status(efbDir, bundleDir);

@@ -153,7 +153,7 @@ const SetupUi = (() => {
     const n = logInfo ? logInfo.entries.length : 0, kb = logInfo ? Math.max(1, Math.round(logInfo.size / 1024)) : 0;
     $('#sec-logbook').innerHTML = `
       <h2>Logbuch</h2>
-      <p class="note">Das Logbuch schreibt der PC mit, auch wenn das iPad aus ist. Aktuell ${n} ${n === 1 ? 'Eintrag' : 'Einträge'} (${kb} KB). Ein Eintrag braucht nur etwa 1 KB.</p>
+      <p class="note">Das Logbuch schreibt der PC mit, auch wenn das Tablet aus ist. Aktuell ${n} ${n === 1 ? 'Eintrag' : 'Einträge'} (${kb} KB). Ein Eintrag braucht nur etwa 1 KB.</p>
       <div class="panel">
         <h3>Anzeige</h3>
         <div class="fld-row">
@@ -180,7 +180,7 @@ const SetupUi = (() => {
   function renderLang() {
     const cur = window.LANG;
     $('#sec-lang').innerHTML = `<h2>Sprache</h2>
-      <p class="note">Gilt für dieses Gerät. Auf dem iPad und am PC kannst du unterschiedliche Sprachen wählen. Die Seite lädt nach der Auswahl neu.</p>
+      <p class="note">Gilt für dieses Gerät. Auf dem Tablet und am PC kannst du unterschiedliche Sprachen wählen. Die Seite lädt nach der Auswahl neu.</p>
       <div class="th-grid lang-grid">
         <button class="th-card ${cur === 'de' ? 'on' : ''}" data-lang="de"><b>Deutsch</b><small>German</small></button>
         <button class="th-card ${cur === 'en' ? 'on' : ''}" data-lang="en"><b>English</b><small>Englisch</small></button>

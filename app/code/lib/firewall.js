@@ -1,9 +1,10 @@
-// Windows-Firewall: eine Regel nur für den EFB-Port im privaten Netzwerk (damit das iPad zugreifen kann).
+// Windows-Firewall: eine Regel nur für den EFB-Port im privaten Netzwerk (damit das Tablet zugreifen kann).
 // Lesen braucht keine Rechte; Anlegen und Entfernen startet netsh mit Administrator-Abfrage (UAC).
 'use strict';
 const { execFile } = require('child_process');
 
-const RULE = 'Cockpit EFB (iPad)';
+const RULE = 'Cockpit EFB (Tablet)';
+const OLD_RULE = 'Cockpit EFB (iPad)'; // Name bis 1.5.5: wird weiter erkannt und beim Anlegen/Entfernen mit aufgeräumt
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolve) => {
@@ -16,7 +17,8 @@ const validPort = (p) => Number.isInteger(Number(p)) && Number(p) >= 1024 && Num
 // { supported, exists, port, ok }  ok = Regel vorhanden, für diesen Port, private Netzwerke, eingehend, erlaubt
 async function status(port, { platform = process.platform, exec = run } = {}) {
   if (platform !== 'win32') return { supported: false };
-  const r = await exec('netsh', ['advfirewall', 'firewall', 'show', 'rule', `name=${RULE}`, 'verbose']);
+  let r = await exec('netsh', ['advfirewall', 'firewall', 'show', 'rule', `name=${RULE}`, 'verbose']);
+  if (r.code !== 0 || !/LocalPort|Lokaler Port/i.test(r.out)) r = await exec('netsh', ['advfirewall', 'firewall', 'show', 'rule', `name=${OLD_RULE}`, 'verbose']);
   if (r.code !== 0 || !/LocalPort|Lokaler Port/i.test(r.out)) return { supported: true, exists: false, ok: false };
   const m = /(?:LocalPort|Lokaler Port)\s*:\s*([^\r\n]+)/i.exec(r.out);
   const rulePort = m ? m[1].trim() : '';
@@ -38,8 +40,8 @@ async function elevated(script, { platform = process.platform, exec = run } = {}
 // Eine Regel: eingehend, TCP, nur dieser Port, nur private Netzwerke. Eine ältere Regel gleichen Namens wird ersetzt.
 async function add(port, opts) {
   if (!validPort(port)) return { ok: false, error: 'Ungültiger Port.' };
-  return elevated(`Remove-NetFirewallRule -DisplayName '${RULE}' -ErrorAction SilentlyContinue; New-NetFirewallRule -DisplayName '${RULE}' -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${Number(port)} -Profile Private -ErrorAction Stop | Out-Null`, opts);
+  return elevated(`Remove-NetFirewallRule -DisplayName '${RULE}' -ErrorAction SilentlyContinue; Remove-NetFirewallRule -DisplayName '${OLD_RULE}' -ErrorAction SilentlyContinue; New-NetFirewallRule -DisplayName '${RULE}' -Direction Inbound -Action Allow -Protocol TCP -LocalPort ${Number(port)} -Profile Private -ErrorAction Stop | Out-Null`, opts);
 }
-async function remove(opts) { return elevated(`Remove-NetFirewallRule -DisplayName '${RULE}' -ErrorAction Stop`, opts); }
+async function remove(opts) { return elevated(`Remove-NetFirewallRule -DisplayName '${RULE}' -ErrorAction SilentlyContinue; Remove-NetFirewallRule -DisplayName '${OLD_RULE}' -ErrorAction SilentlyContinue; if (Get-NetFirewallRule -DisplayName '${RULE}','${OLD_RULE}' -ErrorAction SilentlyContinue) { throw 'Regel noch vorhanden' }`, opts); }
 
-module.exports = { status, add, remove, RULE, validPort };
+module.exports = { status, add, remove, RULE, OLD_RULE, validPort };

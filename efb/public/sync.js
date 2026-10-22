@@ -1,4 +1,4 @@
-// Gemeinsamer Checklisten-Stand: PC-App (Copilot) und iPad sehen dieselben Haken.
+// Gemeinsamer Checklisten-Stand: PC-App (Copilot) und Tablet sehen dieselben Haken.
 // Schreibt jede Änderung von 'cl.*' an den Server und übernimmt Änderungen anderer Geräte.
 (function () {
   const ID = (store.get('deviceId', '') || (() => { const v = Math.random().toString(36).slice(2, 10); store.set('deviceId', v); return v; })());

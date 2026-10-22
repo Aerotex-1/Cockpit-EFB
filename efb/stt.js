@@ -50,7 +50,7 @@ async function startServer() {
   if (srv && srv.model === m) return srv;
   stopServer();
   const port = await freePort();
-  const proc = spawn(sb, ['-m', m, '--host', '127.0.0.1', '--port', String(port), '-t', threads(), '-bs', '1', '-bo', '1', '-nf', '-sns'], { cwd: path.dirname(sb), windowsHide: true });
+  const proc = spawn(sb, ['-m', m, '--host', '127.0.0.1', '--port', String(port), '-t', threads(), '-bs', '1', '-bo', '1', '-nf', '-sns', '-nth', '0.85'], { cwd: path.dirname(sb), windowsHide: true });
   lowPrio(proc);
   const me = { proc, port, model: m, ready: null };
   let dead = false;
@@ -81,7 +81,7 @@ async function viaServer(wav, lang, prompt) {
 function viaCli(wav, lang, prompt) {
   const f = path.join(os.tmpdir(), 'efb-stt-' + process.pid + '-' + Date.now() + '.wav');
   fs.writeFileSync(f, wav);
-  const args = ['-m', model(), '-f', f, '-l', lang, '-nt', '-np', '-nf', '-sns', '-bs', '1', '-bo', '1', '-t', threads()];
+  const args = ['-m', model(), '-f', f, '-l', lang, '-nt', '-np', '-nf', '-sns', '-nth', '0.85', '-bs', '1', '-bo', '1', '-t', threads()];
   if (prompt) args.push('--prompt', prompt);
   return new Promise((res, rej) => {
     const c = spawn(bin(), args, { cwd: path.dirname(bin()), windowsHide: true });

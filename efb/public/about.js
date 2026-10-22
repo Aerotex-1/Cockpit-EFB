@@ -11,11 +11,11 @@ const About = (() => {
     if (!s.requirePin) { t.textContent = 'Die PIN-Abfrage ist ausgeschaltet (requirePin in config.json). Jedes Gerät im lokalen Netzwerk kann die EFB bedienen.'; return; }
     if (s.local) { $('#pinEveryRow').hidden = false; $('#pinEvery').checked = s.pinEvery !== false; }
     if (s.local && !s.hasPin) {
-      t.textContent = 'Noch keine PIN festgelegt. Lege sie hier fest oder beim ersten Öffnen am iPad.';
+      t.textContent = 'Noch keine PIN festgelegt. Lege sie hier fest oder beim ersten Öffnen am Tablet.';
       $('#pinSet').hidden = false; $('#authActions').hidden = true;
     } else if (s.local) {
       $('#pinSet').hidden = false;
-      t.innerHTML = `Zum Koppeln eines iPads gibst du beim ersten Öffnen diese PIN ein: <b class="pin">${esc(s.pin)}</b><br>Gekoppelte Geräte: ${s.devices}. Die Brücke antwortet nur Geräten im eigenen Netzwerk.`;
+      t.innerHTML = `Zum Koppeln eines Tablets gibst du beim ersten Öffnen diese PIN ein: <b class="pin">${esc(s.pin)}</b><br>Gekoppelte Geräte: ${s.devices}. Die Brücke antwortet nur Geräten im eigenen Netzwerk.`;
       $('#authActions').hidden = false;
     } else {
       t.textContent = 'Dieses Gerät ist gekoppelt. Die PIN und das Abmelden aller Geräte siehst du, wenn du die EFB am PC öffnest (http://127.0.0.1:8090).';

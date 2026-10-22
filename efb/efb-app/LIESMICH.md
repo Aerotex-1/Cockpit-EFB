@@ -14,7 +14,7 @@ Das fertige Paket liegt im Projekt unter `community\cockpit-efb-link`.
 1. `start.bat` starten (PC-Brücke).
 2. MSFS starten, Flieger laden.
 3. Das EFB des Sims einmal öffnen (Tablet im Cockpit oder über die Werkzeugleiste). In der App-Liste steht „Cockpit EFB Link“. Dort muss „Verbunden mit der PC-Brücke“ stehen.
-4. Auf dem iPad: CHARTS → „Lido (Sim)“.
+4. Auf dem Tablet: CHARTS → „Lido (Sim)“.
 
 ## Fehlersuche
 

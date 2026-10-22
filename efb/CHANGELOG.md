@@ -1,5 +1,19 @@
 # Änderungen
 
+## 1.3.13
+- **Copilot nach einem Update wirklich weg:** Ein Update löscht keine alten Dateien, deshalb hielt sich die öffentliche EFB wegen einer übrig gebliebenen Copilot-Datei für die private Version und zeigte den Copilot weiter an. Jetzt sagt eine kleine Datei (`build.json`) der EFB, ob sie öffentlich oder privat ist.
+
+## 1.3.12
+- **Sprach-Copilot vorerst nur in der privaten Version:** Er hat noch zu viele Fehler. Die öffentliche Version enthält ihn nicht mehr; „Copilot & Ground“ steht in der App als „In Entwicklung“ da und lässt sich nicht wählen.
+
+## 1.3.11
+- **Stumm sofort:** [privat] „Alles stumm“ beendet die laufende Sprachausgabe jetzt sofort und spricht nicht mehr mit dem nächsten Satzteil weiter.
+- **Geschwindigkeiten:** [privat] „V156 VR162 V2164“ wird als V1 156, VR 162, V2 164 verstanden.
+- **Kurze Wörter:** [privat] Einzelwörter wie „On“ oder „Nav“ werden seltener verschluckt.
+
+## 1.3.10
+- **Neutrale Begriffe:** Überall steht jetzt „Tablet“ und „Browser“ statt „iPad“ und „Safari“ (Oberfläche, Anleitungen, Hinweise, englische Texte). Funktioniert weiterhin mit jedem Tablet und jedem Browser.
+
 ## 1.3.9
 - **Kein Spenden-Knopf:** Der in 1.3.8 vorbereitete (unsichtbare) Spenden-Knopf ist wieder entfernt.
 - **„Community & Support“:** Die Karte im Setup unter „Update und Info“ heißt jetzt so; der Discord-Server dient auch als Support.
@@ -368,6 +382,7 @@
 - Flug-Seite: Der Text „NM geflogen · NM verbleibend“ steht jetzt fest in der Mitte unter der Strecke und überlagert keine Flughafennamen mehr.
 - Karte: Der Abflug-Rollweg verschwindet nach dem Abheben, der Ankunfts-Rollweg am Gate nach der Landung (Parkbremse gesetzt, 20 s). Ein Flugplan mit anderer Strecke leert alte Rollwege. Neu: „Alle löschen“ im Rollweg-Fenster und ein × an der Rollweg-Leiste.
 - Neu: Web-Version ohne Node (eigenes Paket „Web“): läuft komplett im Browser, auch auf Xbox/iPad/Handy. Position über den VATSIM-Datenfeed, Anleitung in LIESMICH-WEB.md.
+- [privat] Neuer Tab „Lichter“: Außenbeleuchtung einzeln schalten oder per Szene (Geparkt, Rollen, Start, Reiseflug, Anflug).
 
 ## 1.5.1
 - Profile für Airbus A330 (-200/-300, auch Frachter P2F) und A400M (Standard-EFB, Airbus-Checkliste); A400M im Performance-Rechner (Näherungswerte). Headwind A339X behält Vorrang. A310 war schon in 1.5.0 enthalten.

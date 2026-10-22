@@ -1,6 +1,6 @@
 # Cockpit EFB – Anleitung
 
-Eine EFB-Hülle für dein iPad. Sie läuft als Webseite, die ein kleines Programm auf deinem Sim-PC bereitstellt („PC-Brücke“). Das iPad braucht keine App, nur Safari.
+Eine EFB-Hülle für dein Tablet. Sie läuft als Webseite, die ein kleines Programm auf deinem Sim-PC bereitstellt („PC-Brücke“). Das Tablet braucht keine App, nur Browser.
 
 **Nur für die Flugsimulation.** Leistungsrechner, Flughafen- und Wetterdaten sind Näherungen und nicht für echte Navigation gedacht.
 
@@ -35,24 +35,24 @@ Der Flieger wird automatisch am Sim-Titel erkannt. Oben links kannst du ihn auch
 
 Entpacke die ZIP-Datei z. B. nach `C:\Cockpit-EFB`. Visual Studio Code ist **freiwillig**: Du brauchst es nur, wenn du später selbst etwas am Programm ändern willst (Datei → Ordner öffnen).
 
-## Schritt 3: Starten und das iPad koppeln
+## Schritt 3: Starten und das Tablet koppeln
 
 1. Starte MSFS und lade den Flieger. Für FBW und Headwind sollte **SimBridge** (aus dem FlyByWire-Installer) laufen.
 2. Doppelklick auf **`start.bat`**. Beim ersten Mal wird automatisch die SimConnect-Bibliothek installiert (`npm install`).
 3. Windows fragt beim ersten Start nach der Firewall: **„Private Netzwerke“ erlauben**.
 4. Im Fenster stehen die Adresse (z. B. `http://192.168.178.25:8090`) und der Hinweis, dass noch keine PIN festgelegt ist.
-5. Öffne die Adresse auf dem iPad in Safari. iPad und PC müssen im selben WLAN sein. Beim ersten Öffnen legst du dort **deine eigene PIN** (4 bis 8 Ziffern) fest. Das iPad ist damit gekoppelt und merkt sich das. Weitere Geräte geben später dieselbe PIN ein.
+5. Öffne die Adresse auf dem Tablet im Browser. Tablet und PC müssen im selben WLAN sein. Beim ersten Öffnen legst du dort **deine eigene PIN** (4 bis 8 Ziffern) fest. Das Tablet ist damit gekoppelt und merkt sich das. Weitere Geräte geben später dieselbe PIN ein.
 6. Der Punkt oben links wird **grün**, sobald der Sim verbunden ist.
 
 Hast du die PIN vergessen, steht sie am PC im EFB unter Setup → Zugang. Dort kannst du auch eine neue PIN festlegen (gekoppelte Geräte bleiben gekoppelt) oder alle Geräte abmelden. Wichtig: Bis die PIN festgelegt ist, kann das erste Gerät im WLAN sie setzen. Mach das deshalb gleich nach dem ersten Start, am besten in einem vertrauten Netz. Die Brücke antwortet nur Geräten im eigenen Netzwerk. Leite den Port nicht ins Internet weiter.
 
 ## Schritt 4: Als App auf den Home-Bildschirm
 
-In Safari auf Teilen (Quadrat mit Pfeil) → **Zum Home-Bildschirm**. Danach startet das EFB im Vollbild ohne Safari-Leiste. Nach einem Update das alte Symbol löschen und neu hinzufügen, iOS merkt sich sonst manchmal die alte Version.
+Im Browser auf Teilen (Quadrat mit Pfeil) → **Zum Home-Bildschirm**. Danach startet das EFB im Vollbild ohne Browser-Leiste. Nach einem Update das alte Symbol löschen und neu hinzufügen, iOS merkt sich sonst manchmal die alte Version.
 
 ## Schritt 5: SimBrief eintragen
 
-Auf dem iPad: **SETUP** → SimBrief-Benutzername (oder Pilot-ID) eintragen → **Einstellungen speichern**. Dann auf **FLUG** → **OFP von SimBrief laden**.
+Auf dem Tablet: **SETUP** → SimBrief-Benutzername (oder Pilot-ID) eintragen → **Einstellungen speichern**. Dann auf **FLUG** → **OFP von SimBrief laden**.
 
 Perf-Tab: „Aus OFP übernehmen“ füllt Flughafen, Piste, Gewicht und Wetter aus dem Flugplan. Aktivierst du in SimBrief die Takeoff- und Landing-Performance, siehst du darunter zusätzlich die Werte aus dem OFP zum Vergleichen.
 
@@ -64,9 +64,9 @@ Flight Finder: Die Strecken kommen aus der Flughafenliste `public/data/airports.
 
 ## Schritt 7: Charts
 
-**ChartFox:** CHARTS → „ChartFox“ zeigt Buttons für Abflug, Ziel und Ausweichflughäfen aus dem OFP. Sie öffnen chartfox.org in Safari direkt für den Platz. ChartFox lässt sich nicht einbetten; am iPad legst du Safari per Split View oder Slide Over neben das EFB (Tab-Symbol antippen und halten).
+**ChartFox:** CHARTS → „ChartFox“ zeigt Buttons für Abflug, Ziel und Ausweichflughäfen aus dem OFP. Sie öffnen chartfox.org im Browser direkt für den Platz. ChartFox lässt sich nicht einbetten; am Tablet legst du Browser per Split View oder Slide Over neben das EFB (Tab-Symbol antippen und halten).
 
-**Screenshot ablegen:** Am iPad Lauter + Ein/Aus drücken, in der Vorschau zuschneiden und „Fertig → In Fotos sichern“, dann im EFB „Bild ablegen“ tippen (oder „Kopieren und Löschen“ wählen und „Aus Zwischenablage“ tippen). Du gibst einen Namen ein, das Bild wird auf dem PC in `charts\ICAO\` gespeichert und steht unter „Gespeichert“ für jeden Flughafen bereit.
+**Screenshot ablegen:** Am Tablet Lauter + Ein/Aus drücken, in der Vorschau zuschneiden und „Fertig → In Fotos sichern“, dann im EFB „Bild ablegen“ tippen (oder „Kopieren und Löschen“ wählen und „Aus Zwischenablage“ tippen). Du gibst einen Namen ein, das Bild wird auf dem PC in `charts\ICAO\` gespeichert und steht unter „Gespeichert“ für jeden Flughafen bereit.
 
 **Eigene PDFs:** PDFs oder Bilder in `charts\ICAO\` legen, z. B. `charts\EDDP\SID 26R.pdf`. Sie erscheinen unter „Gespeichert“.
 
@@ -105,7 +105,7 @@ Alles dazu findest du unter **Setup**. Links wählst du den Bereich.
 
 - **Airlines:** Lege eine Airline an (Vorlagen für Lufthansa, Condor, DHL und mehr, oder eine eigene). Jede hat eine Farbe, optional ein eigenes Hintergrundbild und ein eigenes Design. Oben in der Leiste wechselst du mit einem Tipp auf das Airline-Feld. Ist die Automatik an, wählt das EFB die Airline passend zum SimBrief-Flugplan.
 - **Design:** Cockpit, Glas, Tageslicht, Nachtrot und Hoher Kontrast. Deckkraft und Glas-Unschärfe stellst du dort ein.
-- **Sprache:** Deutsch oder Englisch. Die Wahl gilt für das jeweilige Gerät, iPad und PC können also unterschiedliche Sprachen haben.
+- **Sprache:** Deutsch oder Englisch. Die Wahl gilt für das jeweilige Gerät, Tablet und PC können also unterschiedliche Sprachen haben.
 - **Tabs:** Blende Tabs aus, die du nicht brauchst, und sortiere sie neu.
 - **Presets:** Speichere Design, Airline und Tab-Auswahl als Preset und lade sie mit einem Tipp. Beispiel-Presets lassen sich mit einem Knopf anlegen.
 - **Logbuch:** Der PC zeichnet jeden Flug automatisch auf (Boarding, Off-Block, Start, Landung, On-Block, Strecke, Sprit, Landerate, Gewichte). Im Tab Logbuch filterst du nach der gewählten Airline oder zeigst alle Flüge, sortierst nach Datum, Flugzeugtyp, Blockzeit oder Airline, bewertest Flüge, schreibst Notizen und löschst Einträge. Unter Setup → Logbuch räumst du alte Einträge auf und exportierst alles als CSV.
@@ -121,7 +121,7 @@ Alles dazu findest du unter **Setup**. Links wählst du den Bereich.
 - Befehle: „weiter“ (Punkt überspringen), „wiederholen“, „stopp“.
 - Die Sprache ist die Spracherkennung deines Browsers; Chrome und Edge senden die Aufnahme dafür an Google bzw. Microsoft (siehe PRIVACY.md). Das Feld „Antwort eintippen“ funktioniert auch ohne Mikrofon.
 
-**Mit der Windows-App (empfohlen):** Die App hat ein eigenes Copilot-Fenster (Reiter „Copilot“ → „Copilot-Fenster öffnen“). Es spricht über deine Kopfhörer und hört per Mikrofon zu; die Spracherkennung (Whisper) läuft offline auf dem PC und wird in der App mit einem Klick installiert. Das iPad zeigt nur die Checkliste: Haken erscheinen dort sofort, du kannst dort auch Listen antippen. Du kannst eine Liste direkt ansagen: „Let's do the Cockpit Preparation checklist“, „starte die Before Start Checkliste“ oder „next checklist“.
+**Mit der Windows-App (empfohlen):** Die App hat ein eigenes Copilot-Fenster (Reiter „Copilot“ → „Copilot-Fenster öffnen“). Es spricht über deine Kopfhörer und hört per Mikrofon zu; die Spracherkennung (Whisper) läuft offline auf dem PC und wird in der App mit einem Klick installiert. Das Tablet zeigt nur die Checkliste: Haken erscheinen dort sofort, du kannst dort auch Listen antippen. Du kannst eine Liste direkt ansagen: „Let's do the Cockpit Preparation checklist“, „starte die Before Start Checkliste“ oder „next checklist“.
 
 ## Updates installieren
 
@@ -129,17 +129,17 @@ Neue ZIP herunterladen, EFB am PC öffnen, Setup → Info → „Update installi
 
 ## Gut zu wissen
 
-- **Remote-EFB und Original-flyPad:** Beide steuern dieselben Variablen. Was du am iPad einstellst, siehst du auch im flyPad im Cockpit. Nutzt du GSX mit Fuel- oder Payload-Sync, übernimmt GSX das Betanken bzw. Boarding.
+- **Remote-EFB und Original-flyPad:** Beide steuern dieselben Variablen. Was du am Tablet einstellst, siehst du auch im flyPad im Cockpit. Nutzt du GSX mit Fuel- oder Payload-Sync, übernimmt GSX das Betanken bzw. Boarding.
 - **Rechner:** Der Perf-Tab ist ein eigenes Näherungsmodell, kein FCOM. Wähle den richtigen Typ und die richtige Klappenstellung und vergleiche die Werte mit dem Rechner deines Fliegers.
-- **Systemstörungen (FBW/Headwind):** Das flyPad im Sim verwaltet die Störungen ebenfalls. Schaltest du dort eine Störung, überschreibt es die Auswahl vom iPad.
+- **Systemstörungen (FBW/Headwind):** Das flyPad im Sim verwaltet die Störungen ebenfalls. Schaltest du dort eine Störung, überschreibt es die Auswahl vom Tablet.
 - **Fenix:** Die eingetragene EFB-Adresse (`Port 8083`) ist eine Annahme. Wenn sie nicht stimmt, ändere sie unter SETUP.
 - **GSX:** Eine Kachel antippen löst den Dienst aus. Das EFB sucht dafür den passenden Eintrag im GSX-Menü, egal an welcher Stelle er steht. Fragt GSX nach (z. B. Pushback-Richtung), erscheinen die Antworten als Kacheln darunter.
   - Das EFB liest das GSX-Menü aus der Datei `menu` im GSX-Paketordner (`…\fsdreamteam-gsx-pro\html_ui\InGamePanels\FSDT_GSX_Panel\menu`). Sie wird automatisch gesucht; klappt das nicht, trag den Pfad unter SETUP → GSX ein.
   - GSX blendet sein Menüfenster im Sim kurz ein, wenn es von außen bedient wird. Das lässt sich von außen nicht sicher unterdrücken.
   - Wird regelmäßig der Eintrag direkt neben dem richtigen gewählt, stell in `config.json` den Wert `gsxChoiceOffset` auf `1` oder `-1`.
 - **Karte:** Die Kacheln kommen von OpenStreetMap. Die PC-Brücke lädt sie und speichert sie im Ordner `cache\tiles` zwischen; einmal angesehene Gegenden laden danach sofort. Bei starker Nutzung trägst du in `config.json` einen eigenen Kartendienst ein (`tileUrl`, `tileKey`). Oben rechts auf der Karte schaltest du zwischen dunkler und heller Darstellung um. Die Knöpfe unten schalten Bodenkarte, VATSIM, Wetter-Radar, Wind & Wolken und die Rollweg-Eingabe.
-- **Internet:** Radar (RainViewer) und die Schrift lädt das iPad. Kartenkacheln, Bodenkarte, Wind (Open-Meteo), VATSIM- und SimBrief-Daten holt die PC-Brücke.
-- **Adresse merken:** Gib deinem PC im Router eine feste IP, dann bleibt die Adresse auf dem iPad immer gleich.
+- **Internet:** Radar (RainViewer) und die Schrift lädt das Tablet. Kartenkacheln, Bodenkarte, Wind (Open-Meteo), VATSIM- und SimBrief-Daten holt die PC-Brücke.
+- **Adresse merken:** Gib deinem PC im Router eine feste IP, dann bleibt die Adresse auf dem Tablet immer gleich.
 
 ## Projektaufbau (zum Anpassen in VS Code)
 
@@ -155,7 +155,7 @@ spotify.js           Spotify-Steuerung
 settings.js          Airlines, Design, Tabs, Presets (Datei settings.json)
 logbook.js           Logbuch-Aufzeichnung (Datei logbook.json)
 config.json          Flieger-Profile und Einstellungen
-public/              iPad-Oberfläche (i18n-en.js enthält die englischen Texte)
+public/              Tablet-Oberfläche (i18n-en.js enthält die englischen Texte)
 public/data/         Checklisten, Flieger-Definitionen, Flughafenliste
 public/lib/          Leaflet (Karte)
 tools/               Import der Flughafendaten

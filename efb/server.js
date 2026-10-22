@@ -1,5 +1,5 @@
 // Cockpit EFB – PC-Brücke
-// Startet einen kleinen Webserver, den das iPad im WLAN aufruft.
+// Startet einen kleinen Webserver, den das Tablet im WLAN aufruft.
 // Start: "npm start" (mit MSFS) oder "npm run demo" (Testdaten)
 
 const http = require('http');
@@ -98,7 +98,7 @@ setInterval(() => {
 setInterval(() => { for (const res of clients) res.write(': ping\n\n'); }, 15000);
 const bcast = (name, obj) => { const msg = `event: ${name}\ndata: ${JSON.stringify(obj)}\n\n`; for (const res of clients) res.write(msg); };
 
-// ---------- Checklisten-Stand und Copilot-Ereignisse (gemeinsam für PC-App und iPad) ----------
+// ---------- Checklisten-Stand und Copilot-Ereignisse (gemeinsam für PC-App und Tablet) ----------
 const CL_FILE = path.join(__dirname, 'clstate.json');
 let clState = {}; try { clState = JSON.parse(fs.readFileSync(CL_FILE, 'utf8')); } catch { /* neu */ }
 let clTimer = 0;
@@ -465,7 +465,7 @@ const server = http.createServer(async (req, res) => {
       return res.end(Buffer.from('R0lGODlhAQABAAAAACw=', 'base64'));
     }
 
-    // ---------- Lido: Seite des iPads ----------
+    // ---------- Lido: Seite des Tablets ----------
     if (p === '/api/lido/index') return sendJson(res, 200, await lido.index(url.searchParams.get('icao') || ''));
     if (p === '/api/lido/pages') return sendJson(res, 200, await lido.pages(url.searchParams.get('guid') || ''));
     if (p === '/api/lido/image') {
@@ -550,12 +550,12 @@ server.listen(config.port, '0.0.0.0', () => {
   try { stt.warm(); } catch { /* ohne Spracherkennung egal */ }
   console.log('');
   console.log('  Cockpit EFB läuft.');
-  console.log('  Auf dem iPad in Safari öffnen:');
+  console.log('  Auf dem Tablet im Browser öffnen:');
   for (const ip of localIps()) console.log(`    http://${ip}:${config.port}`);
   if (config.requirePin) {
     console.log('');
-    if (auth.hasPin()) { console.log(`  Kopplungs-PIN fürs iPad: ${config.pin}`); console.log('  (steht auch im EFB unter Setup → Zugang, wenn du es am PC öffnest)'); }
-    else { console.log('  Noch keine PIN festgelegt. Öffne die Adresse am iPad und lege dort deine PIN fest'); console.log('  (oder am PC unter Setup → Zugang). Bis dahin kann das erste Gerät im WLAN sie festlegen.'); }
+    if (auth.hasPin()) { console.log(`  Kopplungs-PIN fürs Tablet: ${config.pin}`); console.log('  (steht auch im EFB unter Setup → Zugang, wenn du es am PC öffnest)'); }
+    else { console.log('  Noch keine PIN festgelegt. Öffne die Adresse am Tablet und lege dort deine PIN fest'); console.log('  (oder am PC unter Setup → Zugang). Bis dahin kann das erste Gerät im WLAN sie festlegen.'); }
   }
   console.log('');
 });

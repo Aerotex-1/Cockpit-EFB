@@ -22,9 +22,9 @@
     <div class="card"><h2>Version</h2><p class="note" id="edHome">–</p><div class="row"><button id="edGo">Version wechseln …</button></div></div>
     <div class="card"><h2>EFB öffnen</h2>
       <div class="row"><button id="bBrowser" class="primary">Im Browser öffnen</button><button id="bWindow">Im App-Fenster öffnen</button></div>
-      <p class="note">Verbindet sich das iPad nicht? Dann unter „Einstellungen → iPad-Verbindung“ die Firewall-Regel anlegen.</p>
-      <p class="note">Das iPad zeigt die Checkliste. Der Copilot spricht und hört am PC: dafür unter „Copilot“ das Copilot-Fenster öffnen.</p>
-      <p class="sub">Adresse am iPad: <code id="addr">–</code></p></div>
+      <p class="note">Verbindet sich das Tablet nicht? Dann unter „Einstellungen → Tablet-Verbindung“ die Firewall-Regel anlegen.</p>
+      <p class="note" id="homeCpNote">Das Tablet zeigt die Checkliste. Der Copilot spricht und hört am PC: dafür unter „Copilot“ das Copilot-Fenster öffnen.</p>
+      <p class="sub">Adresse am Tablet: <code id="addr">–</code></p></div>
     <div class="card" id="cCommunity"><h2>Community &amp; Support</h2><p class="note">Fragen, Fehler oder Ideen? Im Discord gibt es Community und ein Support-Forum. Cockpit EFB ist ein privates Hobbyprojekt, Antworten und Fehlerbehebungen kommen ohne feste Zeit.</p>
       <div class="row"><button id="bDiscord" class="primary">Discord öffnen</button></div></div>
     <div class="card"><h2>Daten</h2><p class="note">Logbuch, Charts, Einstellungen und PIN liegen in diesem Ordner und bleiben bei Updates erhalten.</p><button id="bFolder">Ordner öffnen</button></div>
@@ -32,7 +32,7 @@
 
   <section id="p-edition" class="page">
     <div class="card"><h2>Welche Version der EFB?</h2>
-      <p class="note" id="edNote">Alle Versionen stecken in derselben EFB. Hier wählst du, welche Tabs du siehst – du kannst jederzeit wechseln. Logbuch, Charts, Einstellungen und PIN bleiben dabei erhalten. Nach dem Wechsel die EFB im Browser bzw. auf dem iPad neu laden.</p>
+      <p class="note" id="edNote">Alle Versionen stecken in derselben EFB. Hier wählst du, welche Tabs du siehst – du kannst jederzeit wechseln. Logbuch, Charts, Einstellungen und PIN bleiben dabei erhalten. Nach dem Wechsel die EFB im Browser bzw. auf dem Tablet neu laden.</p>
       <p class="note" id="edFirst" hidden><b>Neu:</b> Wähle hier deine Version. „Voll“ entspricht dem bisherigen Stand.</p>
       <div id="edList" class="vlist"></div>
       <p id="edMsg" class="note"></p></div>
@@ -43,9 +43,14 @@
   </section>
 
   <section id="p-copilot" class="page">
+    <div class="card" id="cpSoon" hidden><h2>Copilot <span class="beta">In Entwicklung</span></h2>
+      <p class="note">Der Sprach-Copilot (Checklisten per Stimme, Bodencrew, Funk) ist noch in Entwicklung und kommt in einer späteren Version. Bis dahin ist er nur in der privaten Version enthalten.</p></div>
+    <div class="card" id="cPack" hidden><h2>Copilot-Pack</h2>
+      <p class="note" id="packNote">Der Copilot braucht eine Sprachengine (Piper, etwa 22 MB). Sie ist nicht im Installer, sondern wird nur geladen, wenn du die Version „Copilot &amp; Ground“ nutzt.</p>
+      <div class="row"><button id="packGo" class="primary">Copilot-Pack installieren</button></div><p id="packMsg" class="note"></p></div>
     <div class="card"><h2>Copilot am PC <span class="beta">Beta</span></h2>
       <p class="note"><b>Beta:</b> Sprachsteuerung, Bodencrew und Taxi-Ansagen sind neu und noch nicht überall erprobt. Sie können Fehler enthalten und beanspruchen Rechenleistung neben dem Simulator. Rückmeldungen sind willkommen.</p>
-      <p class="note">Das Copilot-Fenster spricht über die Kopfhörer des PCs und hört per Mikrofon zu. Auf dem iPad siehst du nur die Checkliste: Haken, die du per Sprache setzt, erscheinen dort sofort, und du kannst dort auch Listen antippen. Sag zum Beispiel „Let's do the Cockpit Preparation checklist“.</p>
+      <p class="note">Das Copilot-Fenster spricht über die Kopfhörer des PCs und hört per Mikrofon zu. Auf dem Tablet siehst du nur die Checkliste: Haken, die du per Sprache setzt, erscheinen dort sofort, und du kannst dort auch Listen antippen. Sag zum Beispiel „Let's do the Cockpit Preparation checklist“.</p>
       <div class="row"><button id="cpOpen" class="primary">Copilot-Fenster öffnen</button></div>
     </div>
     <div class="card"><h2>Eigene Sounds für das Bodenpersonal (MP3)</h2>
@@ -72,8 +77,8 @@
   </section>
 
   <section id="p-settings" class="page">
-    <div class="card" id="cFirewall"><h2>iPad-Verbindung (Windows-Firewall)</h2>
-      <p class="note">Damit das iPad auf die EFB zugreifen kann, muss die Windows-Firewall den Port der EFB im privaten Netzwerk erlauben. Meist fragt Windows beim ersten Start danach („Private Netzwerke“ erlauben). Hat das nicht geklappt, legt der Knopf eine Regel nur für diesen Port an; Windows fragt dafür nach Administratorrechten. Die Firewall selbst musst du dafür nicht ausschalten, und das ist auch nicht zu empfehlen.</p>
+    <div class="card" id="cFirewall"><h2>Tablet-Verbindung (Windows-Firewall)</h2>
+      <p class="note">Damit das Tablet auf die EFB zugreifen kann, muss die Windows-Firewall den Port der EFB im privaten Netzwerk erlauben. Meist fragt Windows beim ersten Start danach („Private Netzwerke“ erlauben). Hat das nicht geklappt, legt der Knopf eine Regel nur für diesen Port an; Windows fragt dafür nach Administratorrechten. Die Firewall selbst musst du dafür nicht ausschalten, und das ist auch nicht zu empfehlen.</p>
       <p class="sub" id="fwState">–</p>
       <div class="row"><button id="fwAdd" class="primary">Firewall-Regel für den Port anlegen</button><button id="fwDel">Regel entfernen</button><span id="fwMsg" class="note"></span></div>
       <p class="note">Zeigt Windows dein Heimnetz als „Öffentlich“ an, gilt die Regel nicht. Stelle es unter Windows → Einstellungen → Netzwerk und Internet → Eigenschaften auf „Privat“.</p></div>
@@ -84,7 +89,7 @@
       <label class="chk"><input type="checkbox" id="sLogin"> App mit Windows starten</label>
       <label class="chk"><input type="checkbox" id="sClose"> Server beenden, wenn ich das Fenster schließe</label>
       <label>Sprache der App<select id="sLang"><option value="en">English</option><option value="de">Deutsch</option></select></label>
-      <label class="chk"><input type="checkbox" id="sPinEvery"> PIN bei jedem Öffnen der EFB am iPad abfragen</label>
+      <label class="chk"><input type="checkbox" id="sPinEvery"> PIN bei jedem Öffnen der EFB am Tablet abfragen</label>
       <label>„EFB öffnen“ standardmäßig<select id="sOpenIn"><option value="browser">im Browser</option><option value="window">im App-Fenster</option></select></label>
       <label>Port des Servers<input type="number" id="sPort" min="1024" max="65535"></label>
       <div class="row"><button id="sSave" class="primary">Speichern</button><span id="sMsg" class="note"></span></div></div>

@@ -12,6 +12,7 @@ nav button:hover { color:var(--tx); }
 main { overflow:auto; padding:20px 24px; }
 .page { display:none; max-width:680px; gap:14px; flex-direction:column; } .page.on { display:flex; }
 .card { background:var(--pn); border:1px solid var(--ln); border-radius:12px; padding:16px 18px; display:grid; gap:10px; }
+.card[hidden] { display: none; }
 .card h2 { margin:0; font-size:15px; }
 .status { grid-template-columns:1fr auto; align-items:center; }
 .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--dim); margin-right:8px; }

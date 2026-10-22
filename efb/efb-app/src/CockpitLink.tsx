@@ -15,7 +15,7 @@ class CockpitLinkView extends AppView {
         <div style="font-size: 36px; margin-bottom: 20px;">Cockpit EFB Link</div>
         <div style="color: #3be26a;">{status}</div>
         <div style="margin-top: 22px; color: #8794a0; font-size: 20px; line-height: 1.4;">
-          Verbindet den Sim mit der PC-Brücke deines iPad-EFB (Lido-Charts, Systemstörungen).
+          Verbindet den Sim mit der PC-Brücke deines Tablet-EFB (Lido-Charts, Systemstörungen).
           Die App arbeitet im Hintergrund, du musst sie nicht geöffnet lassen.
         </div>
       </div>

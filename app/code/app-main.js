@@ -27,7 +27,9 @@ const KOKORO_DIR = path.join(app.getPath('userData'), 'kokoro');
 const SETTINGS_FILE = path.join(DATA, 'launcher.json');
 const VOICES_USER = path.join(DATA, 'voices');
 const VOICES_BUNDLED = app.isPackaged ? path.join(process.resourcesPath, 'voices') : path.join(BOOT.shellDir, 'voices-bundle');
-const PIPER_EXE = [path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(BOOT.shellDir, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || '';
+const piperLib = require('./lib/piperpack');
+const PIPER_DIR = path.join(DATA, 'piper-pack'); // Copilot-Pack: wird erst beim Wählen von „Copilot & Ground“ nachgeladen
+const piperExe = () => [piperLib.exe(PIPER_DIR), path.join(process.resourcesPath || '', 'piper', 'piper', 'piper.exe'), path.join(BOOT.shellDir, 'piper-bundle', 'piper', 'piper.exe')].find((p) => fs.existsSync(p)) || ''; // die beiden letzten: ältere Installationen
 const safe = { available: () => safeStorage.isEncryptionAvailable(), encrypt: (t) => safeStorage.encryptString(t), decrypt: (b) => safeStorage.decryptString(b) };
 // Sprache für Fenstertitel und Dateidialoge: Einstellung der App, sonst die von Windows
 const en = () => !(S && S.lang === 'de'); // Standard: Englisch
@@ -125,7 +127,7 @@ function openEfb(mode) {
   } else shell.openExternal(url);
 }
 
-// Copilot-Fenster: spricht über die Kopfhörer des PCs und hört per Mikrofon zu; das iPad zeigt nur die Checkliste
+// Copilot-Fenster: spricht über die Kopfhörer des PCs und hört per Mikrofon zu; das Tablet zeigt nur die Checkliste
 function openCopilot() {
   if (cpWin && !cpWin.isDestroyed()) { cpWin.show(); return cpWin.focus(); }
   cpWin = new BrowserWindow({ width: 560, height: 760, title: 'Cockpit Copilot', autoHideMenuBar: true, webPreferences: { autoplayPolicy: 'no-user-gesture-required', backgroundThrottling: false } });
@@ -179,7 +181,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   S = settingsStore.load(SETTINGS_FILE, safe);
   seed();
-  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath(), EFB_PIPER: PIPER_EXE, EFB_VOICES: VOICES_USER, EFB_VOICES_BUNDLED: VOICES_BUNDLED, ...whisperEnv(), ...kokoroLib.env(KOKORO_DIR) }, getPort: null });
+  proc = new ServerProc({ execPath: process.execPath, cwd: EFB_DIR, env: { ELECTRON_RUN_AS_NODE: '1', NODE_PATH: nodePath(), EFB_PIPER: piperExe(), EFB_VOICES: VOICES_USER, EFB_VOICES_BUNDLED: VOICES_BUNDLED, ...whisperEnv(), ...kokoroLib.env(KOKORO_DIR) }, getPort: null });
   // Mikrofon nur für die lokale EFB erlauben
   const okOrigin = (u) => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(u || '');
   const ses = require('electron').session.defaultSession;
@@ -187,7 +189,7 @@ app.whenReady().then(() => {
   ses.setPermissionCheckHandler((wc, perm, origin) => perm === 'media' && okOrigin(origin + '/'));
   proc.on('status', (st) => { send('status', st); if (st === 'running' && S.openBrowserOnStart && !proc._opened) { proc._opened = true; openEfb(); } if (st === 'running' && S.copilotOnStart && !proc._cpOpened && (() => { const t = editionState().current.tabs; return !t.length || t.includes('copilot'); })()) { proc._cpOpened = true; openCopilot(); } });
   proc.on('log', (l) => {
-    // Vom iPad aus „Copilot starten“ gedrückt, aber am PC läuft kein Copilot-Fenster: öffnen
+    // Vom Tablet aus „Copilot starten“ gedrückt, aber am PC läuft kein Copilot-Fenster: öffnen
     if (String(l).includes('@@EFB:COPILOT_OPEN@@')) { try { const t = editionState().current.tabs; if (proc.status === 'running' && releases.cmp(efbVersion(), '1.2.0') >= 0 && (!t.length || t.includes('copilot'))) openCopilot(); } catch { /* egal */ } return; }
     send('log', l);
   });
@@ -267,7 +269,9 @@ app.whenReady().then(() => {
   ipcMain.handle('kokoro:remove', async () => { kokoroLib.remove(KOKORO_DIR); await kokoroApply(); return kokoroLib.status(KOKORO_DIR); });
   ipcMain.handle('copilot:get', () => readJson(copilotFile(), {}));
   ipcMain.handle('copilot:set', (_e, patch) => { const o = { ...readJson(copilotFile(), {}), ...patch }; if (patch.voice) o.voice = { ...(readJson(copilotFile(), {}).voice || {}), ...patch.voice }; fs.writeFileSync(copilotFile(), JSON.stringify(o, null, 2)); return o; });
-  ipcMain.handle('voices:list', () => ({ voices: voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }), piper: !!PIPER_EXE }));
+  ipcMain.handle('voices:list', () => ({ voices: voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }), piper: !!piperExe() }));
+  ipcMain.handle('pack:status', () => ({ piper: !!piperExe(), mb: piperLib.status(PIPER_DIR).mb }));
+  ipcMain.handle('pack:install', async () => { if (editionState().copilot === false) throw new Error('Der Copilot ist noch in Entwicklung und vorerst nur in der privaten Version verfügbar.'); await piperLib.install(PIPER_DIR, { onProgress: (p) => send('pack:progress', p) }); Object.assign(proc.env, { EFB_PIPER: piperExe() }); if (proc.status === 'running') { await proc.restart(); if (cpWin && !cpWin.isDestroyed()) setTimeout(() => cpWin && !cpWin.isDestroyed() && cpWin.reload(), 2500); } return { piper: !!piperExe(), mb: piperLib.status(PIPER_DIR).mb }; });
   ipcMain.handle('voices:install', async (_e, id) => { await voiceLib.install(id, { userDir: VOICES_USER, onProgress: (p) => send('voices:progress', id, p) }); return voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }); });
   ipcMain.handle('voices:remove', (_e, id) => { voiceLib.remove(id, { userDir: VOICES_USER }); return voiceLib.list({ userDir: VOICES_USER, bundledDir: VOICES_BUNDLED }); });
   ipcMain.handle('update:check', () => doCheck());

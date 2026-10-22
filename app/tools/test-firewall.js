@@ -10,8 +10,8 @@ const fw = require('../code/lib/firewall');
   // keine Regel (netsh meldet Code 1)
   assert.deepStrictEqual(await fw.status(8090, { platform: 'win32', exec: mk(() => ({ code: 1, out: 'No rules match the specified criteria.', err: '' })) }), { supported: true, exists: false, ok: false });
   // Regel vorhanden, englisch und deutsch, richtiger und falscher Port
-  const en = (p) => mk(() => ({ code: 0, out: `Rule Name: Cockpit EFB (iPad)\r\nProtocol: TCP\r\nLocalPort: ${p}\r\nAction: Allow\r\n`, err: '' }));
-  const de = (p) => mk(() => ({ code: 0, out: `Regelname: Cockpit EFB (iPad)\r\nProtokoll: TCP\r\nLokaler Port: ${p}\r\nAktion: Zulassen\r\n`, err: '' }));
+  const en = (p) => mk(() => ({ code: 0, out: `Rule Name: Cockpit EFB (Tablet)\r\nProtocol: TCP\r\nLocalPort: ${p}\r\nAction: Allow\r\n`, err: '' }));
+  const de = (p) => mk(() => ({ code: 0, out: `Regelname: Cockpit EFB (Tablet)\r\nProtokoll: TCP\r\nLokaler Port: ${p}\r\nAktion: Zulassen\r\n`, err: '' }));
   assert.strictEqual((await fw.status(8090, { platform: 'win32', exec: en(8090) })).ok, true);
   assert.strictEqual((await fw.status(8090, { platform: 'win32', exec: de(8090) })).ok, true);
   const wrong = await fw.status(8090, { platform: 'win32', exec: en(9000) });

@@ -142,7 +142,7 @@ class Efb {
     return w;
   }
 
-  // Aufbereiteter Zustand für das iPad
+  // Aufbereiteter Zustand für das Tablet
   status() {
     const d = this.def();
     if (!d) return { kind: null };

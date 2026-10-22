@@ -1,4 +1,4 @@
-// Logbuch: zeichnet Flüge automatisch auf dem PC auf (auch wenn das iPad aus ist)
+// Logbuch: zeichnet Flüge automatisch auf dem PC auf (auch wenn das Tablet aus ist)
 'use strict';
 const fs = require('fs');
 const path = require('path');

@@ -913,7 +913,7 @@ input[type=range] { accent-color: var(--cyan); }
 .tab[data-off] { display: none !important; }
 .cp-log .cp-pend { opacity: .6; font-style: italic; }
 
-/* Schmale Fenster (iPad hochkant): zuerst weniger wichtige Teile ausblenden, damit die Uhr immer ganz sichtbar bleibt */
+/* Schmale Fenster (Tablet hochkant): zuerst weniger wichtige Teile ausblenden, damit die Uhr immer ganz sichtbar bleibt */
 @media (max-width: 800px) { .strip-live span:nth-child(3), .strip-airline { display: none; } .strip-atc span { display: none; } }
 @media (max-width: 700px) { .strip-live span:nth-child(2) { display: none; } .strip-clock small { display: none; } }
 /* ATC-Pille darf schrumpfen statt andere Anzeigen zu überlappen */

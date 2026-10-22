@@ -46,7 +46,7 @@ const Charts = (() => {
     }
     $('#chartCanvas').innerHTML = `<div class="cf-launch">
       <h3>ChartFox</h3>
-      <p>ChartFox lässt sich nicht in andere Seiten einbetten. Öffne es in Safari und lege es per Split View neben dieses EFB: Antippen und halten auf dem Tab-Symbol, dann „Split View“ (oder Slide Over).</p>
+      <p>ChartFox lässt sich nicht in andere Seiten einbetten. Öffne es im Browser und lege es per Split View neben dieses EFB: Antippen und halten auf dem Tab-Symbol, dann „Split View“ (oder Slide Over).</p>
       <div class="cf-links">${apts.length ? apts.map((a) => `<a class="btn" target="_blank" rel="noopener" href="https://chartfox.org/${encodeURIComponent(a)}"><b>${esc(a)}</b><small>${esc(roles[a] || 'Flughafen')}</small></a>`).join('')
         : '<p class="empty">Lade einen OFP oder gib links einen ICAO-Code ein.</p>'}
         <a class="btn-s" target="_blank" rel="noopener" href="https://chartfox.org/">ChartFox-Startseite</a></div>
@@ -54,8 +54,8 @@ const Charts = (() => {
   }
   function chartfoxList() {
     const files = local[apt] || [];
-    $('#chartList').innerHTML = `<p class="note">ChartFox öffnet in Safari (Buttons rechts).</p>
-      <p class="note"><b>Screenshot ablegen:</b> Am iPad Lauter + Ein/Aus drücken, in der Vorschau unten links Zuschneiden und „Fertig → In Fotos sichern“, dann hier „Bild ablegen“. Oder „Kopieren und Löschen“ wählen und „Aus Zwischenablage“ tippen.</p>
+    $('#chartList').innerHTML = `<p class="note">ChartFox öffnet im Browser (Buttons rechts).</p>
+      <p class="note"><b>Screenshot ablegen:</b> Am Tablet Lauter + Ein/Aus drücken, in der Vorschau unten links Zuschneiden und „Fertig → In Fotos sichern“, dann hier „Bild ablegen“. Oder „Kopieren und Löschen“ wählen und „Aus Zwischenablage“ tippen.</p>
       ${apt ? `<h4>Gespeichert für ${esc(apt)} <small>${files.length}</small></h4>` + (files.map((f) => `<button class="chart-item" data-cfile="${esc(f)}" data-tosaved="1">${esc(f.replace(/\.(pdf|png|jpe?g)$/i, ''))}</button>`).join('') || '<p class="note">Noch nichts gespeichert.</p>') : ''}`;
   }
   async function uploadImage(blob, suggested) {

@@ -2,7 +2,7 @@
 
 Cockpit EFB läuft vollständig auf deinem eigenen PC und im eigenen Heimnetz. Es gibt keinen Server des Entwicklers, keine Konten, keine Telemetrie und keine Werbung.
 
-**Was gespeichert wird (nur auf deinem PC):** Einstellungen (`config.json`, darin SimBrief-Name, Spotify-Client-ID, Kopplungs-PIN), Anmeldung bei Spotify (`spotify-token.json`), gekoppelte Geräte (`auth.json`), zwischengespeicherte Karten und Daten (`cache\`), eigene Charts (`charts\`). Auf dem iPad speichert der Browser Einstellungen wie Checklistenfortschritt.
+**Was gespeichert wird (nur auf deinem PC):** Einstellungen (`config.json`, darin SimBrief-Name, Spotify-Client-ID, Kopplungs-PIN), Anmeldung bei Spotify (`spotify-token.json`), gekoppelte Geräte (`auth.json`), zwischengespeicherte Karten und Daten (`cache\`), eigene Charts (`charts\`). Auf dem Tablet speichert der Browser Einstellungen wie Checklistenfortschritt.
 
 **Was ins Internet gesendet wird (vom PC aus):** Abfragen an den gewählten Kartenanbieter (Standard OpenStreetMap, wählbar: CARTO, OpenTopoMap, eigene Adresse) für Kartenkacheln, an OpenStreetMap/Overpass für die Bodenkarte, bei der Windows-App an GitHub für die Update-Suche (ohne Anmeldung), Open-Meteo (Koordinaten des Kartenausschnitts), RainViewer, VATSIM-Datenfeed, VATSpy-Daten, SimBrief (dein Benutzername), Spotify (nur wenn du den Musik-Tab nutzt). Diese Anbieter sehen dabei die IP-Adresse deines PCs und ihre eigenen Datenschutzbestimmungen gelten.
 

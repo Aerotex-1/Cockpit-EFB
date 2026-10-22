@@ -13,11 +13,11 @@ const goPage = (name) => {
 };
 document.querySelectorAll('nav button').forEach((b) => b.onclick = () => { goPage(b.dataset.p); if (b.dataset.p === 'settings') fwRefresh(); });
 
-// ---- Windows-Firewall-Regel für das iPad ----
+// ---- Windows-Firewall-Regel für das Tablet ----
 function fwShow(st) {
   if (!st || !st.supported) { $('#fwState').textContent = 'Nur unter Windows verfügbar.'; $('#fwAdd').disabled = $('#fwDel').disabled = true; return; }
   $('#fwAdd').disabled = false; $('#fwDel').disabled = !st.exists;
-  $('#fwState').textContent = !st.exists ? 'Keine eigene Regel vorhanden. Wenn das iPad sich schon verbindet, brauchst du keine.' : st.ok ? `Regel vorhanden: Port ${st.port}, private Netzwerke.` : `Regel vorhanden, gilt aber für Port ${st.port} und nicht für den aktuellen Port. Lege sie neu an.`;
+  $('#fwState').textContent = !st.exists ? 'Keine eigene Regel vorhanden. Wenn das Tablet sich schon verbindet, brauchst du keine.' : st.ok ? `Regel vorhanden: Port ${st.port}, private Netzwerke.` : `Regel vorhanden, gilt aber für Port ${st.port} und nicht für den aktuellen Port. Lege sie neu an.`;
 }
 async function fwRefresh() { try { fwShow(await bridge.invoke('firewall:status')); } catch { /* egal */ } }
 async function fwDo(ch, okMsg) {
@@ -52,20 +52,39 @@ function renderEdition(s) {
   const e = s.edition || { supported: false, editions: [], tabs: [], current: { id: 'full', name: 'Voll', tabs: [] } };
   (e.tabs || []).forEach((t) => { TABN[t.id] = t.label; });
   const cur = e.current || {}, tabs = cur.tabs || [];
-  $('#navCopilot').hidden = !!tabs.length && !tabs.includes('copilot'); // ohne Copilot in der gewählten Version keine Copilot-Seite
-  $('#grpVoice').hidden = $('#navCopilot').hidden; // Sprachpakete nur mit Copilot
+  cpAvail = e.copilot !== false; // false: öffentliche EFB ohne Copilot (nur in der privaten Version) → Seite zeigt nur „in Entwicklung“
+  $('#navCopilot').hidden = cpAvail && !!tabs.length && !tabs.includes('copilot'); // ohne Copilot in der gewählten Version keine Copilot-Seite
+  $('#grpVoice').hidden = !cpAvail || $('#navCopilot').hidden; // Sprachpakete nur mit Copilot
+  $('#cpSoon').hidden = cpAvail; $('#navCopilot .beta').textContent = cpAvail ? 'Beta' : 'In Entwicklung'; $('#homeCpNote').hidden = !cpAvail;
+  document.querySelectorAll('#p-copilot > .card').forEach((c) => { if (c.id !== 'cpSoon' && c.id !== 'cPack') c.hidden = !cpAvail; });
+  if (typeof refreshPack === 'function') refreshPack();
   $('#edHome').textContent = e.supported ? `Aktiv: ${cur.name}${cur.id === 'custom' ? '' : ''} (${tabs.length} Tabs). ${cur.id === 'voice' ? 'Die Einstellungen steuerst du auch im Sim-EFB unter „Cockpit EFB Link“.' : ''}` : 'Die installierte EFB kennt noch keine Versionen (Updates → EFB aktualisieren).';
   const chosen = !!(s.settings && s.settings.editionChosen);
   $('#edBadge').hidden = chosen || !e.supported; $('#edFirst').hidden = chosen;
-  $('#edList').innerHTML = !e.supported ? '<p class="note">Die installierte EFB kennt noch keine Versionen. Bitte unter „Updates“ die EFB aktualisieren.</p>' : e.editions.map((x) => `<div class="ed ${cur.id === x.id ? 'on' : ''}"><div class="top"><div><b>${esc(x.name)}</b> ${cur.id === x.id ? '<span class="sub">aktiv</span>' : ''}</div>${cur.id === x.id ? '' : `<button class="primary" data-ed="${esc(x.id)}">Verwenden</button>`}</div><span class="sub">${esc(x.desc)}</span><div class="chips">${x.tabs.map((t) => `<span>${esc(TABN[t] || t)}</span>`).join('')}</div></div>`).join('');
+  $('#edList').innerHTML = !e.supported ? '<p class="note">Die installierte EFB kennt noch keine Versionen. Bitte unter „Updates“ die EFB aktualisieren.</p>' : e.editions.map((x) => `<div class="ed ${cur.id === x.id ? 'on' : ''}"><div class="top"><div><b>${esc(x.name)}</b> ${cur.id === x.id ? '<span class="sub">aktiv</span>' : ''}</div>${cur.id === x.id ? '' : x.soon ? '<span class="sub">In Entwicklung</span>' : `<button class="primary" data-ed="${esc(x.id)}">Verwenden</button>`}</div><span class="sub">${esc(x.desc)}</span><div class="chips">${x.tabs.map((t) => `<span>${esc(TABN[t] || t)}</span>`).join('')}</div></div>`).join('');
   const sel = new Set(cur.id === 'custom' ? tabs : []);
   $('#edTabs').innerHTML = (e.tabs || []).filter((t) => t.id !== 'setup').map((t) => `<label class="chk"><input type="checkbox" data-et="${esc(t.id)}" ${(cur.id === 'custom' ? sel.has(t.id) : tabs.includes(t.id)) ? 'checked' : ''}> ${esc(t.label)}</label>`).join('');
   $('#edCustom').disabled = !e.supported;
   if (!chosen && e.supported && !edShown) { edShown = true; goPage('edition'); }
 }
+// ---- Copilot-Pack (Sprachengine wird erst bei Bedarf geladen)
+let packOk = true, cpAvail = true;
+async function refreshPack() {
+  try { packOk = !!(await bridge.invoke('pack:status')).piper; } catch { packOk = true; }
+  const show = cpAvail && !$('#navCopilot').hidden && !packOk; $('#cPack').hidden = !show;
+  return packOk;
+}
+async function installPack() {
+  const b = $('#packGo'); b.disabled = true; b.textContent = '0 %'; $('#packMsg').textContent = 'Lädt …'; $('#cPack').hidden = false;
+  try { await bridge.invoke('pack:install'); packOk = true; $('#packMsg').textContent = 'Fertig. Als Nächstes unter „Sprache und Stimmen“ die Stimmen laden.'; await loadVoiceList(); }
+  catch (er) { $('#packMsg').textContent = 'Fehler: ' + String(er.message || er).replace(/^Error invoking remote method[^:]*: /, ''); }
+  b.disabled = false; b.textContent = 'Copilot-Pack installieren'; if (packOk) setTimeout(() => { $('#cPack').hidden = true; }, 4000);
+}
+$('#packGo').onclick = installPack;
+bridge.on('pack:progress', (p) => { $('#packGo').textContent = Math.round(p * 100) + ' %'; });
 async function setEdition(sel) {
   $('#edMsg').textContent = 'Wird gesetzt …';
-  try { const r = await bridge.invoke('edition:set', sel); st.edition = r; st.settings.editionChosen = true; renderEdition(st); $('#edMsg').textContent = `Aktiv: ${r.current.name}. Lade die EFB im Browser bzw. auf dem iPad neu (F5).`; }
+  try { const r = await bridge.invoke('edition:set', sel); st.edition = r; st.settings.editionChosen = true; renderEdition(st); $('#edMsg').textContent = `Aktiv: ${r.current.name}. Lade die EFB im Browser bzw. auf dem Tablet neu (F5).`; if (r.current.tabs.includes('copilot') && !(await refreshPack())) { $('#edMsg').textContent += ' Das Copilot-Pack wird jetzt geladen …'; installPack(); } }
   catch (er) { $('#edMsg').textContent = 'Fehler: ' + String(er.message || er).replace(/^Error invoking remote method[^:]*: /, ''); }
 }
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-ed]'); if (b) setEdition({ id: b.dataset.ed }); });
@@ -180,7 +199,7 @@ function renderVoices() {
   $('#vList').innerHTML = vInfo.voices.map((v) => `<div class="v ${v.installed ? 'on' : ''}"><div><b>${esc(v.name)}</b> <span class="sub">${v.lang === 'de' ? 'Deutsch' : 'Englisch'}</span></div>
     <span class="sub">${esc(v.desc)} · ${v.mb} MB</span>
     ${v.installed ? (v.removable ? `<button data-vrm="${v.id}">Entfernen</button>` : '<button disabled>Installiert</button>') : `<button class="primary" data-vget="${v.id}" id="vb-${v.id}">Laden</button>`}</div>`).join('');
-  if (!vInfo.piper) $('#vNote').textContent = 'In dieser Entwicklungsversion ist Piper nicht enthalten; im Installer ist es dabei.';
+  if (!vInfo.piper) $('#vNote').textContent = 'Die Sprachengine (Piper) ist noch nicht geladen: oben auf dieser Seite unter „Copilot-Pack“ installieren.';
   $('#vStarter').hidden = !(vInfo.piper && vInfo.voices.some((v) => v.bundled && !v.installed));
   fillVoices();
 }

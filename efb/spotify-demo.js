@@ -14,7 +14,7 @@ module.exports = class DemoPlayer {
     this._tick();
     const t = this.tracks[this.i];
     return { ok: true, active: true, playing: this.playing, title: t[0], artist: t[1], album: 'Demo-Album', art: '', progress: this.pos, duration: t[2], volume: this.volume, shuffle: this.shuffle, repeat: this.repeat,
-      device: { id: this.device, name: this.device === 'dev1' ? 'Cockpit-PC' : 'iPad', type: 'Computer' }, ctx: 'demo:pl1', at: Date.now() };
+      device: { id: this.device, name: this.device === 'dev1' ? 'Cockpit-PC' : 'Tablet', type: 'Computer' }, ctx: 'demo:pl1', at: Date.now() };
   }
   playlists() { return { ok: true, items: ['Anflug-Mix', 'Nachtflug', 'Deutschrap-Klassiker', 'Chill im Cockpit', 'Lange Strecke', 'Gute Laune'].map((n, i) => ({ name: n, uri: 'demo:pl' + i, art: '', count: 20 + i * 7 })) }; }
   search(q) {
@@ -25,7 +25,7 @@ module.exports = class DemoPlayer {
       albums: pick([{ name: 'Demo-Album', sub: 'Demo Ensemble', uri: 'demo:al1', art: '', kind: 'context' }]),
       playlists: pick(['Anflug-Mix', 'Nachtflug', 'Chill im Cockpit'].map((n, i) => ({ name: n, sub: 'Playlist', uri: 'demo:pl' + i, art: '', kind: 'context' }))) };
   }
-  devices() { return { ok: true, items: [{ id: 'dev1', name: 'Cockpit-PC', type: 'Computer', active: this.device === 'dev1' }, { id: 'dev2', name: 'iPad', type: 'Tablet', active: this.device === 'dev2' }] }; }
+  devices() { return { ok: true, items: [{ id: 'dev1', name: 'Cockpit-PC', type: 'Computer', active: this.device === 'dev1' }, { id: 'dev2', name: 'Tablet', type: 'Tablet', active: this.device === 'dev2' }] }; }
   command(c) {
     this._tick();
     if (c.cmd === 'play') { this.playing = true; if (c.uri) { this.i = Math.floor(Math.random() * this.tracks.length); this.pos = 0; } }

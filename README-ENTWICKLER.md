@@ -53,9 +53,15 @@ Der Installer enthält Piper, aber keine Stimmen mehr (etwa 90 MB statt 230 MB).
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.5.5, enthält EFB 1.3.9)
+## Stand dieser Version (App 1.5.8, enthält EFB 1.3.12)
 
-- **Firewall-Regel fürs iPad (1.5.5):** Einstellungen → „iPad-Verbindung (Windows-Firewall)“. `app/code/lib/firewall.js` liest den Status mit `netsh advfirewall firewall show rule` (ohne Rechte) und legt die Regel „Cockpit EFB (iPad)“ (eingehend, TCP, nur der EFB-Port, nur privates Netzwerk) über eine PowerShell mit Administrator-Abfrage (`Start-Process -Verb RunAs`, Skript als Base64) an oder entfernt sie. Es gibt bewusst keinen Knopf, der die ganze Firewall ausschaltet. Test mit nachgestellten Befehlen: `node app/tools/test-firewall.js`. **Auf echtem Windows ungetestet** (UAC, deutsche/englische netsh-Ausgabe, Wirkung auf das iPad).
+- **Copilot nur privat (1.5.8):** Die öffentliche EFB enthält `copilot.js`, `copilot-life.js`, `copilot-ground.js` und `mic-whisper.js` nicht mehr (Bau-Skript entfernt sie wie die Lichter, `<!--PRIVATE-->` in `index.html`). `editions.js` erkennt das an `public/copilot.js`: ohne die Datei ist „Copilot & Ground“ „in Entwicklung“ (`soon`) und nicht wählbar, die App zeigt auf der Copilot-Seite nur einen Hinweis. Mit der privaten EFB (Updates → Ausgabe „privat“) ist alles wie vorher.
+
+- **Copilot-Pack (1.5.7):** Der Copilot steckt nur noch in der Version „Copilot & Ground“ (oder einer eigenen Auswahl mit Copilot-Tab). Piper ist nicht mehr im Installer (`extraResources` und `fetch-voices` im `dist`-Skript entfernt); `app/code/lib/piperpack.js` lädt es nach `%APPDATA%\\cockpit-efb-app\\piper-pack`, sobald man diese Version wählt (oder auf der Copilot-Seite „Copilot-Pack installieren“ drückt). Ältere Installationen mit mitgeliefertem Piper laufen weiter.
+
+- **„Tablet“ und „Browser“ statt „iPad“ und „Safari“ (1.5.6):** alle sichtbaren Texte und beide Sprachtabellen. Die Firewall-Regel heißt jetzt „Cockpit EFB (Tablet)“; die alte Regel „Cockpit EFB (iPad)“ wird weiter erkannt und beim Anlegen/Entfernen mit aufgeräumt.
+
+- **Firewall-Regel fürs Tablet (1.5.5):** Einstellungen → „Tablet-Verbindung (Windows-Firewall)“. `app/code/lib/firewall.js` liest den Status mit `netsh advfirewall firewall show rule` (ohne Rechte) und legt die Regel „Cockpit EFB (Tablet)“ (eingehend, TCP, nur der EFB-Port, nur privates Netzwerk) über eine PowerShell mit Administrator-Abfrage (`Start-Process -Verb RunAs`, Skript als Base64) an oder entfernt sie. Es gibt bewusst keinen Knopf, der die ganze Firewall ausschaltet. Test mit nachgestellten Befehlen: `node app/tools/test-firewall.js`. **Auf echtem Windows ungetestet** (UAC, deutsche/englische netsh-Ausgabe, Wirkung auf das Tablet).
 
 - **Community & Support (1.5.4 / EFB 1.3.9):** Discord-Knopf in der App-Startseite (`link:open` öffnet nur die Adressen aus `app/code/lib/links.js`) und im EFB-Setup (Update und Info). Kein Spenden-Knopf. Die Karten-Voreinstellung ist wieder OpenStreetMap (Rückfall auf CARTO). Lizenzhinweise ergänzt (eSpeak NG GPL-3.0 im Piper-Paket, Leaflet-Lizenzdatei, RainViewer-Bedingungen).
 - **Englisch als Standard (1.5.2):** App und EFB starten auf Englisch (vorher nach Windows-/Browsersprache). Deutsch wählbar. In der App ist `settings.lang === 'de'` der einzige Weg zu Deutsch; leer oder `en` ergibt Englisch.
@@ -79,7 +85,7 @@ Der Installer enthält Piper, aber keine Stimmen mehr (etwa 90 MB statt 230 MB).
 - **Stimmen (1.3.9):** Katalog um hochwertigere Piper-Stimmen erweitert (Ryan high, Lessac high, Cori high, HFC Male, Joe, John, Norman). Die Bodencrew nimmt automatisch die beste installierte (Ryan high zuerst). Nach dem Installieren in der App unter Stimmen auswählbar.
 
 - **Sim-Modul:** Die App findet den Community-Ordner von MSFS 2024 selbst (aus der UserCfg.opt, Store und Steam) oder du wählst ihn unter „Sim-Modul“. Das Modul `cockpit-efb-link` wird beim App-Start und nach EFB-Updates automatisch installiert bzw. erneuert (abschaltbar). Test: `node tools/test-community.js`.
-- **Copilot-Tab:** Einstellungen und Verlauf liegen im Tab „Copilot“ (nicht mehr bei den Checklisten). Das iPad steuert nur: „Starten“ dort startet den Copilot am PC, und die App öffnet bei Bedarf das Copilot-Fenster (App 1.3.8).
+- **Copilot-Tab:** Einstellungen und Verlauf liegen im Tab „Copilot“ (nicht mehr bei den Checklisten). Das Tablet steuert nur: „Starten“ dort startet den Copilot am PC, und die App öffnet bei Bedarf das Copilot-Fenster (App 1.3.8).
 - **Audio-Geräte:** Mikrofon und Ausgabe wählst du im Copilot-Fenster unter „Audio-Geräte“. Das ist reine EFB-Funktion (EFB 1.2.7), die App braucht dafür kein Update.
 - **Spracherkennung:** whisper-server bleibt mit geladenem Modell im Speicher (EFB 1.2.5). Das Basis-Modell ist für Befehle meist genau genug und schneller.
 - **Funk und Geräusche:** Funk-Effekt und Hintergrundgeräusche stellst du im Copilot-Fenster unter „Funk & Geräusche“ ein (EFB 1.2.6).
