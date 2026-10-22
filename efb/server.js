@@ -186,7 +186,7 @@ const TILE_PROVIDERS = {
   cartolight: { name: 'CARTO Positron (hell, ruhig)', url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', attr: '© OpenStreetMap-Mitwirkende © CARTO', max: 19 },
   topo: { name: 'OpenTopoMap (Höhenlinien)', url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png', attr: '© OpenStreetMap-Mitwirkende, SRTM | © OpenTopoMap (CC-BY-SA)', max: 17 },
 };
-const tileProviderId = () => (config.tileUrl ? 'custom' : (TILE_PROVIDERS[config.tileProvider] ? config.tileProvider : 'carto'));
+const tileProviderId = () => (config.tileUrl ? 'custom' : (TILE_PROVIDERS[config.tileProvider] ? config.tileProvider : 'osm'));
 const tileTemplate = (id) => (id === 'custom' ? config.tileUrl : TILE_PROVIDERS[id].url);
 async function serveTile(res, z, x, y) {
   const prov = tileProviderId();
@@ -199,7 +199,7 @@ async function serveTile(res, z, x, y) {
     if (Date.now() - st.mtimeMs < 30 * 86400000) return send(file);
   } catch { /* noch nicht im Speicher */ }
   // Zuerst der gewählte Anbieter, bei Fehler (z. B. überlastet) die anderen
-  const order = [prov, ...['carto', 'osm'].filter((i) => i !== prov)];
+  const order = [prov, ...['osm', 'carto'].filter((i) => i !== prov)];
   for (const id of order) {
     const f = fileFor(id);
     const key = `${id}/${z}/${x}/${y}`;

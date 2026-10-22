@@ -1,5 +1,7 @@
 # Cockpit EFB
 
+**Persönliches Projekt:** Cockpit EFB ist für mein eigenes Heimcockpit gebaut (1:1-A320-Nachbau, MSFS 2024, VATSIM) und darauf zugeschnitten; ich teile es für Leute, die Ähnliches suchen. Kleinere Fehler werden nicht immer sofort behoben. Fragen und Fehlermeldungen: [Discord-Support-Forum](https://discord.gg/fdKxAVQvm).
+
 Ein iPad-Cockpit-Begleiter für den Microsoft Flight Simulator 2024. Eine kleine PC-Brücke verbindet den Sim mit einer Webseite, die du auf dem iPad (oder jedem Browser im Heimnetz) öffnest.
 
 **Nur für die Flugsimulation.** Leistungsrechner, Flughafen- und Wetterdaten sind Näherungen. Nicht für echte Navigation verwenden. Keine Gewähr.

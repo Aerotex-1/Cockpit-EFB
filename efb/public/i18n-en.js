@@ -1079,6 +1079,11 @@ window.EN_DICT = {
   });
   Object.assign(window.EN_DICT, {
     'Aus VATSIM übernehmen': 'Take over from VATSIM',
+    'Community & Support': 'Community & Support',
+    'Fragen, Fehler oder Ideen? Im Discord gibt es Community und ein Support-Forum. Cockpit EFB ist ein privates Hobbyprojekt, Antworten und Fehlerbehebungen kommen ohne feste Zeit.': 'Questions, bugs or ideas? Discord has a community and a support forum. Cockpit EFB is a personal hobby project, so replies and fixes come without a fixed schedule.',
+    'Discord öffnen': 'Open Discord',
+    'Wetter-Radar: Weather data by': 'Weather radar: weather data by',
+    '(kostenlose Schnittstelle, nur für privaten Gebrauch)': '(free API, personal use only)',
     'Lichter': 'Lights',
     'Trage zuerst dein Rufzeichen ein. Damit wird dein Flugplan bei VATSIM gesucht.': 'Enter your callsign first. It is used to find your flight plan on VATSIM.',
     'Suche deinen Flugplan bei VATSIM …': 'Looking for your flight plan on VATSIM …',

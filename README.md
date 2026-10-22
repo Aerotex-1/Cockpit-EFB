@@ -1,8 +1,14 @@
 # Cockpit EFB
 
-An iPad cockpit companion for **Microsoft Flight Simulator 2024**: checklists, SimBrief flight plan, performance calculator, moving map with taxi guidance, GSX control, VATSIM helpers, logbook and a voice copilot (beta). A small bridge on your PC connects the simulator to a web page that you open on your iPad (or any browser on your home network).
-
 🇩🇪 [Deutsche Version](README.de.md)
+
+## A personal project, shared for people who look for something similar
+
+**Cockpit EFB is built for my own home cockpit** (a 1:1 Airbus A320 replica with Microsoft Flight Simulator 2024 and VATSIM) and tailored to it. I wanted to share it for people who are looking for something like this.
+
+That also means: it is a personal hobby project, not a polished product. Features follow my own needs, and **smaller bugs may not get fixed right away** (or at all). Bigger problems I do try to fix. Questions, bug reports and ideas are welcome in the [Discord support forum](https://discord.gg/fdKxAVQvm).
+
+An iPad cockpit companion for **Microsoft Flight Simulator 2024**: checklists, SimBrief flight plan, performance calculator, moving map with taxi guidance, GSX control, VATSIM helpers, logbook and a voice copilot (beta). A small bridge on your PC connects the simulator to a web page that you open on your iPad (or any browser on your home network).
 
 > **For flight simulation only.** All data and calculators are approximations and must not be used for real-world navigation. No warranty. Cockpit EFB is not affiliated with Microsoft, Asobo, FSDreamTeam, VATSIM or any aircraft add-on developer.
 
@@ -32,8 +38,8 @@ The EFB only works inside your own network. Do not forward its port to the inter
 
 - The **voice copilot is beta**: voice control, ground crew and taxi callouts are new and not yet tested everywhere.
 - Mostly tested with the Airbus A320 family (FlyByWire, Fenix) in MSFS 2024. Boeing and other add-ons are not verified with the real aircraft.
-- The interface is available in German and English (the app and the EFB follow your system language and can be switched in the settings).
-- Bugs and wishes are welcome as [issues](../../issues). Please include the version number from the app and the log (App → Log).
+- The interface is available in English (default) and German; switch it in the settings of the app and of the EFB.
+- Questions and support: [Discord](https://discord.gg/fdKxAVQvm) (community and support forum). Bugs and wishes are also welcome as [issues](../../issues). Please include the version number from the app and the log (App → Log).
 
 ## Privacy
 

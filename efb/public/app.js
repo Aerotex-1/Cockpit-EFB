@@ -589,7 +589,7 @@ function renderSetup() {
   $('#gsxFile').value = app.config.gsxMenuFile || '';
   $('#gsxWebIn').value = app.config.gsxWebUrl || '';
   $('#tileProv').innerHTML = Object.entries(app.config.tileProviders || {}).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('') + '<option value="custom">Eigene Adresse …</option>';
-  $('#tileProv').value = app.config.tileActive || 'carto';
+  $('#tileProv').value = app.config.tileActive || 'osm';
   $('#tileUrl').value = app.config.tileUrl || '';
   $('#tileUrlRow').hidden = $('#tileProv').value !== 'custom';
   $('#acEditor').innerHTML = app.config.aircraft.map((a, i) => `

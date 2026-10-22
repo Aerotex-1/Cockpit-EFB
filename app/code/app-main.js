@@ -159,6 +159,7 @@ function applyLogin() { try { app.setLoginItemSettings({ openAtLogin: !!S.startW
 const editionState = () => { try { return editionLib.status(EFB_DIR, BUNDLE); } catch (e) { return { supported: false, current: { id: 'full', name: 'Voll', tabs: [] }, editions: [], tabs: [], error: e.message }; } };
 // PIN-Abfrage bei jedem Öffnen der EFB (steht in der config.json der EFB, Standard: an)
 function pinEveryNow() { try { return readJson(path.join(EFB_DIR, 'config.json'), {}).pinEvery !== false; } catch { return true; } }
+const LINKS = require('./lib/links');
 function state() {
   return { edition: editionState(), status: proc.status, port: proc.port(), efbVersion: efbVersion(), appVersion: CODE_VERSION, shellVersion: BOOT.shellVersion, bootNote: BOOT.note || '', settings: { ...S, token: S.token ? '••••' : '', pinEvery: pinEveryNow() }, hotkeys: hotkeyState, update: updateInfo, logs: proc.logs.slice(-150), efbDir: EFB_DIR, lastExit: proc.lastExit };
 }
@@ -191,6 +192,7 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('state', () => state());
+  ipcMain.handle('link:open', (_e, key) => { const u = LINKS[key]; if (typeof u === 'string' && /^https:\/\//.test(u)) shell.openExternal(u); }); // nur feste Adressen aus lib/links.js
   ipcMain.handle('server:start', () => { proc.start(); });
   ipcMain.handle('server:stop', () => proc.stop());
   ipcMain.handle('server:restart', () => proc.restart());

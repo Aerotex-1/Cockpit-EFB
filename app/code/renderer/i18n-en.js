@@ -119,6 +119,11 @@ window.EN_DICT = {
   // Dialoge des Hauptprozesses
   'Sound auswählen': 'Choose sound', 'Community-Ordner von MSFS 2024 wählen': 'Choose the MSFS 2024 Community folder',
 };
+Object.assign(window.EN_DICT, {
+  'Community & Support': 'Community & Support',
+  'Fragen, Fehler oder Ideen? Im Discord gibt es Community und ein Support-Forum. Cockpit EFB ist ein privates Hobbyprojekt, Antworten und Fehlerbehebungen kommen ohne feste Zeit.': 'Questions, bugs or ideas? Discord has a community and a support forum. Cockpit EFB is a personal hobby project, so replies and fixes come without a fixed schedule.',
+  'Discord öffnen': 'Open Discord',
+});
 window.EN_PATTERNS = [
   [/^EFB (\S+) verfügbar \(installiert: (.+)\)$/, 'EFB $1 available (installed: $2)'],
   [/^App (\S+) verfügbar \(installiert: (.+)\)$/, 'App $1 available (installed: $2)'],

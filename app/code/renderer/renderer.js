@@ -74,6 +74,7 @@ function render(s) {
 
 // ---- Server
 $('#bStart').onclick = () => bridge.invoke('server:start');
+$('#bDiscord').onclick = () => bridge.invoke('link:open', 'discord');
 $('#bStop').onclick = () => bridge.invoke('server:stop');
 $('#bRestart').onclick = () => bridge.invoke('server:restart');
 $('#bBrowser').onclick = () => bridge.invoke('efb:open', 'browser');

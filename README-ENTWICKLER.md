@@ -53,8 +53,9 @@ Der Installer enthält Piper, aber keine Stimmen mehr (etwa 90 MB statt 230 MB).
 
 `%APPDATA%\cockpit-efb-app\efb` (Knopf „Ordner öffnen“ in der App). Beim Deinstallieren bleibt dieser Ordner erhalten.
 
-## Stand dieser Version (App 1.5.2, enthält EFB 1.3.7)
+## Stand dieser Version (App 1.5.4, enthält EFB 1.3.9)
 
+- **Community & Support (1.5.4 / EFB 1.3.9):** Discord-Knopf in der App-Startseite (`link:open` öffnet nur die Adressen aus `app/code/lib/links.js`) und im EFB-Setup (Update und Info). Kein Spenden-Knopf. Die Karten-Voreinstellung ist wieder OpenStreetMap (Rückfall auf CARTO). Lizenzhinweise ergänzt (eSpeak NG GPL-3.0 im Piper-Paket, Leaflet-Lizenzdatei, RainViewer-Bedingungen).
 - **Englisch als Standard (1.5.2):** App und EFB starten auf Englisch (vorher nach Windows-/Browsersprache). Deutsch wählbar. In der App ist `settings.lang === 'de'` der einzige Weg zu Deutsch; leer oder `en` ergibt Englisch.
 - **PIN bei jedem Öffnen (EFB 1.3.7, App 1.5.2):** `config.json` der EFB enthält `pinEvery` (Standard `true`). Die App schreibt den Schalter („Einstellungen → Allgemein“) in diese Datei und startet den Server neu, wenn er läuft. Logik in `efb/auth.js` (`gate`): jede Kopplung gilt für genau ein Laden von `/`, dazu 5 Minuten Leerlauf; `efb/public/authguard.js` leitet bei 401 auf `/pair.html`. Mit älteren EFB-Versionen hat der Schalter keine Wirkung.
 - **ATC: „Aus VATSIM übernehmen“ (EFB 1.3.7):** nutzt `data.me` aus `/api/atc` (öffentlicher VATSIM-Datenfeed, Suche über das Rufzeichen), kein VATSIM-Login nötig.

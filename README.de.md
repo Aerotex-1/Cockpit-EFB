@@ -2,6 +2,12 @@
 
 🇬🇧 [English version](README.md)
 
+## Ein persönliches Projekt, geteilt für alle, die so etwas suchen
+
+**Cockpit EFB ist für mein eigenes Heimcockpit gebaut** (1:1-Nachbau eines Airbus A320 mit Microsoft Flight Simulator 2024 und VATSIM) und darauf zugeschnitten. Ich teile es für Leute, die etwas Ähnliches suchen.
+
+Das heißt auch: Es ist ein privates Hobbyprojekt und kein fertiges Produkt. Funktionen richten sich nach meinem eigenen Bedarf, und **kleinere Fehler werden nicht immer sofort behoben** (manche gar nicht). Größere Probleme versuche ich zu beheben. Fragen, Fehlermeldungen und Ideen sind im [Discord-Support-Forum](https://discord.gg/fdKxAVQvm) willkommen.
+
 Ein iPad-Cockpit-Begleiter für den Microsoft Flight Simulator 2024: Checklisten, SimBrief-Flugplan, Leistungsrechner, Karte mit Rollweg-Anzeige, GSX-Steuerung, VATSIM-Hilfen, Logbuch und ein Sprach-Copilot (Beta). Eine kleine Brücke auf dem PC verbindet den Simulator mit einer Webseite, die du am iPad (oder jedem Browser im Heimnetz) öffnest.
 
 > **Nur für die Flugsimulation.** Alle Daten und Rechner sind Näherungen und nicht für echte Navigation gedacht. Keine Gewähr. Cockpit EFB steht in keiner Verbindung zu Microsoft, Asobo, FSDreamTeam, VATSIM oder den Herstellern der Flugzeug-Add-ons.
@@ -32,7 +38,7 @@ Die EFB funktioniert nur im eigenen Netzwerk. Nicht ins Internet weiterleiten.
 
 - Der **Sprach-Copilot ist Beta**: Sprachsteuerung, Bodencrew und Taxi-Ansagen sind noch nicht überall erprobt.
 - Getestet wurde vor allem mit Airbus-A320-Familie (FlyByWire, Fenix) in MSFS 2024. Boeing-Add-ons und andere Flugzeuge sind nicht mit den echten Add-ons geprüft.
-- Fehler und Wünsche gern als [Issue](../../issues) melden. Bitte die Versionsnummer aus der App und das Protokoll (App → Protokoll) beilegen.
+- Fragen und Support: [Discord](https://discord.gg/fdKxAVQvm) (Community und Support-Forum). Fehler und Wünsche gern auch als [Issue](../../issues) melden. Bitte die Versionsnummer aus der App und das Protokoll (App → Protokoll) beilegen.
 
 ## Datenschutz
 

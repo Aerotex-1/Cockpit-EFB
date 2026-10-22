@@ -927,3 +927,6 @@ input[type=range] { accent-color: var(--cyan); }
 .gsx-web { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
 .gsx-web iframe { flex: 1; min-height: 60vh; width: 100%; border: 1px solid var(--pb-edge); border-radius: var(--r-md); background: #fff; }
 .gsx-web[hidden], .gsx-mode[hidden] { display: none; }
+
+.linkbtn { display: inline-flex; align-items: center; text-decoration: none; }
+.linkbtn[hidden] { display: none; }

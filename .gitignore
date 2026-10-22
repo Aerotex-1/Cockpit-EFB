@@ -3,3 +3,13 @@ app/dist/
 app/efb-bundle/
 app/piper-bundle/
 app/voices-bundle/
+# Laufzeitdaten der EFB (enthalten PIN, Tokens, Logbuch): nie einchecken
+efb/auth.json
+efb/spotify-token.json
+efb/logbook.json
+efb/copilot.json
+efb/cache/
+efb/sounds/
+efb/charts/*.pdf
+efb/charts/*.png
+efb/charts/*.jpg

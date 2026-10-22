@@ -1,5 +1,14 @@
 # Änderungen
 
+## 1.3.9
+- **Kein Spenden-Knopf:** Der in 1.3.8 vorbereitete (unsichtbare) Spenden-Knopf ist wieder entfernt.
+- **„Community & Support“:** Die Karte im Setup unter „Update und Info“ heißt jetzt so; der Discord-Server dient auch als Support.
+- **Rechtliches und Quellen:** Das Lizenz-Urheberrecht nennt jetzt „Aerotex-1“ statt „Cockpit EFB contributors“. RainViewer wird verlinkt und mit „nur für privaten Gebrauch“ benannt (so verlangt es deren Schnittstelle). In THIRD-PARTY-NOTICES stehen jetzt die Lizenz von eSpeak NG (GPL-3.0, steckt im Piper-Paket des Installers), Electron/Chromium, Open-Meteo und der Hinweis auf VATSIMs Regeln für kommerzielle Nutzung; Leaflet hat eine eigene Lizenzdatei.
+
+## 1.3.8
+- **Karten-Standard wieder OpenStreetMap.** Wer im Setup schon einen Anbieter gewählt hat, behält ihn. Fällt OpenStreetMap aus oder lehnt es ab, springt die EFB weiterhin selbst auf CARTO. Hinweis: OpenStreetMap ist für leichte Nutzung gedacht (die Kacheln werden auf dem PC zwischengespeichert und die Anfrage nennt die Projektseite). Wenn viele Leute dieselbe Installation oder viele Installationen gleichzeitig nutzen, ist CARTO die schonendere Wahl.
+- **Community:** Im Setup unter „Update und Info“ gibt es einen Knopf zum Discord-Server.
+
 ## 1.3.7
 - **PIN bei jedem Öffnen:** Am iPad fragt die EFB jetzt bei jedem Öffnen nach der PIN (vorher einmal beim Koppeln). Die Kopplung gilt für ein Laden der Seite und verfällt außerdem nach 5 Minuten ohne Anfrage, etwa wenn das iPad im Hintergrund war; dann kommt die PIN-Seite von selbst. Abschaltbar im Setup unter „Zugang (PIN)“ am PC oder in der Windows-App unter „Einstellungen“. Am PC selbst (127.0.0.1) wird nie nach einer PIN gefragt. **Getestet mit nachgestellten Anfragen (Ablauf: Kopplung, erstes Laden, zweites Laden, Leerlauf, Schalter aus), nicht mit einem echten iPad.** Ob Safari die Startseite im Hintergrund selbst vorab lädt und damit die Kopplung „verbraucht“, kann ich nicht ausschließen; dann würde die PIN einmal zu oft gefragt, nie einmal zu wenig.
 - **Englisch ist jetzt der Standard** (bisher richtete sich die Sprache nach dem Browser). Deutsch wählst du im Setup unter „Sprache“.

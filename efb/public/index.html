@@ -15,10 +15,10 @@
   <meta name="format-detection" content="telephone=no">
   <!-- Schrift ohne Blockieren laden: fehlt Internet, wird die Systemschrift genutzt -->
   <link href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="style.css?v=1.3.7">
-  <script src="authguard.js?v=1.3.7"></script>
-  <script src="i18n-en.js?v=1.3.7"></script>
-  <script src="i18n.js?v=1.3.7"></script>
+  <link rel="stylesheet" href="style.css?v=1.3.9">
+  <script src="authguard.js?v=1.3.9"></script>
+  <script src="i18n-en.js?v=1.3.9"></script>
+  <script src="i18n.js?v=1.3.9"></script>
   <script>try{var c=JSON.parse(localStorage.getItem('efb.settingsCache')||'null');if(c&&c.t)document.documentElement.dataset.theme=c.t;}catch(e){}</script>
 </head>
 <body>
@@ -346,13 +346,18 @@
           </section>
           <section class="set-sec" id="sec-about">
             <h2>Info</h2>
+        <div class="panel" id="communityPanel">
+          <h3>Community &amp; Support</h3>
+          <p class="note">Fragen, Fehler oder Ideen? Im Discord gibt es Community und ein Support-Forum. Cockpit EFB ist ein privates Hobbyprojekt, Antworten und Fehlerbehebungen kommen ohne feste Zeit.</p>
+          <div class="row-gap"><a class="btn-s linkbtn" id="linkDiscord" href="https://discord.gg/fdKxAVQvm" target="_blank" rel="noopener">Discord öffnen</a></div>
+        </div>
         <div class="panel" id="aboutPanel">
           <h3>Quellen und Hinweise</h3>
           <p class="note"><b>Nur für die Flugsimulation.</b> Leistungsrechner, Flughafen- und Wetterdaten sind Näherungen und dürfen nicht für echte Flüge oder echte Navigation verwendet werden. Cockpit EFB steht in keiner Verbindung zu Microsoft, Asobo, FlyByWire, Headwind, Fenix, FSDreamTeam (GSX), Navigraph/Lido, SimBrief, ChartFox, VATSIM oder Spotify. Alle Namen gehören ihren Inhabern.</p>
           <ul class="note about-list">
             <li>Karte: © OpenStreetMap-Mitwirkende (ODbL), Kacheln wahlweise von CARTO, OpenStreetMap oder OpenTopoMap, Bodenkarte aus OpenStreetMap über Overpass, Kartendarstellung mit Leaflet (BSD-2-Clause)</li>
             <li>Wind und Wolken: Wetterdaten von Open-Meteo.com (CC BY 4.0)</li>
-            <li>Wetter-Radar: RainViewer</li>
+            <li>Wetter-Radar: Weather data by <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a> (kostenlose Schnittstelle, nur für privaten Gebrauch)</li>
             <li>VATSIM-Daten: öffentlicher VATSIM-Datenfeed, FIR-Grenzen aus dem VATSpy-Datenprojekt (werden beim ersten Aufruf vom PC geladen)</li>
             <li>Flugplan: SimBrief (mit deinem eigenen Konto). Charts: Verknüpfung zu ChartFox, eigene Dateien</li>
             <li>Musik: Steuerung deines eigenen Spotify-Kontos über die Spotify Web API. Premium nötig. Spotify ist eine Marke von Spotify AB</li>
@@ -374,29 +379,29 @@
     </section>
   </main>
 
-  <script src="app.js?v=1.3.7"></script>
-  <script src="sync.js?v=1.3.7"></script>
-  <script src="audio-dev.js?v=1.3.7"></script>
-  <script src="taxi-nav.js?v=1.3.7"></script>
-  <script src="ambience.js?v=1.3.7"></script>
-  <script src="mic-whisper.js?v=1.3.7"></script>
-  <script src="remote-efb.js?v=1.3.7"></script>
-  <script src="perf-model.js?v=1.3.7"></script>
-  <script src="perf-calc.js?v=1.3.7"></script>
-  <script src="finder.js?v=1.3.7"></script>
-  <script src="atc-tab.js?v=1.3.7"></script>
-  <script src="music-tab.js?v=1.3.7"></script>
-  <script src="settings.js?v=1.3.7"></script>
-  <script src="logbook-tab.js?v=1.3.7"></script>
-  <script src="wx-tab.js?v=1.3.7"></script>
-  <script src="copilot.js?v=1.3.7"></script>
-  <script src="copilot-life.js?v=1.3.7"></script>
-  <script src="copilot-ground.js?v=1.3.7"></script>
-  <script src="update-ui.js?v=1.3.7"></script>
-  <script src="setup-ui.js?v=1.3.7"></script>
-  <script src="about.js?v=1.3.7"></script>
-  <script src="charts.js?v=1.3.7"></script>
-  <script src="map-layers.js?v=1.3.7"></script>
-  <script src="map-extras.js?v=1.3.7"></script>
+  <script src="app.js?v=1.3.9"></script>
+  <script src="sync.js?v=1.3.9"></script>
+  <script src="audio-dev.js?v=1.3.9"></script>
+  <script src="taxi-nav.js?v=1.3.9"></script>
+  <script src="ambience.js?v=1.3.9"></script>
+  <script src="mic-whisper.js?v=1.3.9"></script>
+  <script src="remote-efb.js?v=1.3.9"></script>
+  <script src="perf-model.js?v=1.3.9"></script>
+  <script src="perf-calc.js?v=1.3.9"></script>
+  <script src="finder.js?v=1.3.9"></script>
+  <script src="atc-tab.js?v=1.3.9"></script>
+  <script src="music-tab.js?v=1.3.9"></script>
+  <script src="settings.js?v=1.3.9"></script>
+  <script src="logbook-tab.js?v=1.3.9"></script>
+  <script src="wx-tab.js?v=1.3.9"></script>
+  <script src="copilot.js?v=1.3.9"></script>
+  <script src="copilot-life.js?v=1.3.9"></script>
+  <script src="copilot-ground.js?v=1.3.9"></script>
+  <script src="update-ui.js?v=1.3.9"></script>
+  <script src="setup-ui.js?v=1.3.9"></script>
+  <script src="about.js?v=1.3.9"></script>
+  <script src="charts.js?v=1.3.9"></script>
+  <script src="map-layers.js?v=1.3.9"></script>
+  <script src="map-extras.js?v=1.3.9"></script>
 </body>
 </html>
